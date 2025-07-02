@@ -78,7 +78,7 @@ trust the grader, who can we trust?
 We then give an assignment to our base models (`o3`, `o4-mini`, `4.1-*`, 
 `4o-*`) and have the Grader decide on their scores.
 
-We use this these scores to determine which base model shows the most aptitude
+We use these scores to determine which base model shows the most aptitude
 for our use case. That model we pick as our Teacher.
 
 We also figure out who our Student should be based on which model performs the
