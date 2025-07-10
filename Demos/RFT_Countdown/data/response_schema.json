@@ -1,0 +1,25 @@
+{
+  "type": "json_schema",
+  "json_schema": {
+    "name": "math_expression",
+    "schema": {
+      "type": "object",
+      "required": [
+        "expression",
+        "result"
+      ],
+      "properties": {
+        "result": {
+          "type": "string",
+          "description": "The result of evaluating the mathematical expression."
+        },
+        "expression": {
+          "type": "string",
+          "description": "The mathematical expression to be evaluated."
+        }
+      },
+      "additionalProperties": false
+    },
+    "strict": true
+  }
+}
