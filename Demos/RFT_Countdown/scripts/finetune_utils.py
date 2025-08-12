@@ -1,4 +1,4 @@
-from openai import OpenAI, AzureOpenAI
+from openai import OpenAI
 from dotenv import load_dotenv
 import os
 import pandas as pd
@@ -13,7 +13,7 @@ AZURE_API_ENDPOINT = os.getenv("AZURE_API_ENDPOINT", "") + "/openai/v1"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", None)
 OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "") + "/v1"
 
-# Initialize the OpenAI or AzureOpenAI client based on the API type
+# Initialize the client based on the API type
 base_url = AZURE_API_ENDPOINT if OAI_API_TYPE != "openai" else OPENAI_API_BASE
 api_key = AZURE_API_KEY if OAI_API_TYPE != "openai" else OPENAI_API_KEY
 

@@ -1,7 +1,5 @@
 # Import required libraries
 import os
-from pydoc import cli
-from turtle import pu
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
