@@ -1,0 +1,15 @@
+{
+    "name": "basic_model_grader",
+    "type": "score_model",
+    "pass_threshold": 0.5,
+    "input": [
+        {
+            "role": "user",
+            "content": "Score how close the reference answer is to the model answer. You will be comparing these two as JSON objects that contain 2 keys, \"extracted_text\" and \"clause_type\". Score 1.0 if they are both the same, 0.5 if one is the same, and 0.0 if neither are the same. Return just a floating point score\n\n Reference answer: {\"extracted_text\": {{item.extracted_text}}, \"clause_type\": {{item.clause_type}}}\n\n Model answer: {{sample.output_json}}"
+        }
+    ],
+    "model": "gpt-4o-2024-08-06",
+    "sampling_params": {
+        "seed": 42
+    }
+}
