@@ -392,7 +392,6 @@ async def create_eval_python_grader(name: str, pass_threshold: float):
 
     Args:
         pass_threshold (float): The pass threshold for the evaluation.
-        grader_model (str): The grader model to use.
         name (str): The name of the evaluation.
 
     Returns:
