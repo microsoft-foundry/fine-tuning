@@ -11,7 +11,6 @@ import io
 import soundfile as sf
 
 MAX_SAMPLES = 100
-SYSTEM_PROMPT = "You are an assistant that speaks in audio with same emotion as the user. Keep responses under 10 seconds. Listen to users audio and respond with an audio message that reflects the same primary emotion."
 OUTPUT_FILE = "./data/audio_emotion_evaluation.jsonl"
 
 def load_and_create_audio_dataset(dataset_id: str, max_samples: int = MAX_SAMPLES):
