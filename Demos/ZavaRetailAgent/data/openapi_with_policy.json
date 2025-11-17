@@ -1,0 +1,727 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Generated API from OpenAI Tool Definitions",
+    "version": "1.0.0",
+    "description": "This OpenAPI spec was generated from OpenAI function tool definitions.\n\nThis OpenAPI describes a retail service. The operational rules from the retail agent policy are embedded here so an agent can operate correctly using ONLY this spec:\n\nCore operating rules\n- Authenticate the user at the start: locate user id via email OR (first name, last name, zip). Do this even if a user id is provided.\n- A single conversation may help only ONE authenticated user. Deny any requests to act on other users.\n- Before any database-changing action (cancel, modify, return, exchange), list the action details and obtain explicit user confirmation (a clear “yes”).\n- Do not invent information or procedures outside what the APIs or user provide. No subjective recommendations.\n- Prefer one tool/API call at a time.\n- Transfer to a human only if the request cannot be handled by these APIs. When transferring, call transfer_to_human_agents and then message the user: “YOU ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE HOLD ON.”\n- All timestamps in data are EST and 24-hour format.\n\nDomain notes\n- Users have: user_id, email, default address, and payment methods (gift card, PayPal, credit card).\n- Store has 50 product TYPES; each product type has variant ITEMS (options like color/size). Product ID ≠ Item ID.\n- Orders have: order_id, user_id, address, items, status, fulfillments (tracking + item ids), and payment history. Status ∈ {pending, processed, delivered, cancelled}.\n- Generally, actions are valid only on PENDING or DELIVERED orders.\n- “Modify/Exchange items” operations can be called at most ONCE per order; collect all items to change before calling."
+  },
+  "paths": {
+    "/calculate": {
+      "post": {
+        "summary": "Calculate",
+        "description": "Calculate the result of a mathematical expression.\n\nNotes:\n- Utility endpoint; no domain state is changed.\n- Use for arithmetic needed during a flow; do NOT infer or invent business facts.",
+        "operationId": "calculate",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expression": {
+                    "type": "string",
+                    "description": "The mathematical expression to calculate, such as '2 + 2'. The expression can contain numbers, operators (+, -, *, /), parentheses, and spaces."
+                  }
+                },
+                "required": [
+                  "expression"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cancel_pending_order": {
+      "post": {
+        "summary": "Cancel Pending Order",
+        "description": "Cancel a PENDING order.\n\nPreconditions:\n- The order’s status MUST be 'pending'. Check status first; cancellation is NOT allowed for processed or delivered orders.\n- The user must confirm the order_id and provide a valid reason ∈ {'no longer needed', 'ordered by mistake'}. No other reasons are accepted.\n\nConfirmation and effects:\n- Before calling, present a clear summary and obtain explicit user confirmation (“yes”).\n- On success, status becomes 'cancelled' and the total is refunded:\n  • If original payment was a gift card → refund is immediate to that gift card.\n  • Otherwise → refund within 5–7 business days.\n\nPolicy notes:\n- Authenticate the user first and act only for the authenticated user.\n- Do not invent procedures outside those stated.\n- Make one API call at a time.",
+        "operationId": "cancel_pending_order",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "no longer needed",
+                      "ordered by mistake"
+                    ],
+                    "description": "The reason for cancellation, which should be either 'no longer needed' or 'ordered by mistake'."
+                  }
+                },
+                "required": [
+                  "order_id",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exchange_delivered_order_items": {
+      "post": {
+        "summary": "Exchange Delivered Order Items",
+        "description": "Exchange specific ITEMS from a DELIVERED order for AVAILABLE variants of the SAME product TYPE (different options only).\n\nPreconditions and constraints:\n- Order must be 'delivered'. Check status first.\n- Each item must map to a new item of the SAME product (type) with different options; product type changes are NOT allowed.\n- For delivered orders, an exchange OR a return may be performed only ONCE per order. Remind the user to include ALL items to exchange before calling.\n- The user must provide a payment method to resolve price differences (additional charge or refund). If a gift card is used, it MUST have sufficient balance.\n\nConfirmation and effects:\n- Present a clear summary (items→new_items plus any price difference) and obtain explicit user confirmation (“yes”).\n- On success:\n  • Status becomes 'exchange requested'.\n  • The user will receive an email with return/exchange instructions.\n  • No new order placement is required.\n\nPolicy notes:\n- Authenticate first; act only for the authenticated user.\n- Make one API call at a time.",
+        "operationId": "exchange_delivered_order_items",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id."
+                  },
+                  "item_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The item ids to be exchanged, each such as '1008292230'. There could be duplicate items in the list."
+                  },
+                  "new_item_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The item ids to be exchanged for, each such as '1008292230'. There could be duplicate items in the list. Each new item id should match the item id in the same position and be of the same product."
+                  },
+                  "payment_method_id": {
+                    "type": "string",
+                    "description": "The payment method id to pay or receive refund for the item price difference, such as 'gift_card_0000000' or 'credit_card_0000000'. These can be looked up from the user or order details."
+                  }
+                },
+                "required": [
+                  "order_id",
+                  "item_ids",
+                  "new_item_ids",
+                  "payment_method_id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/find_user_id_by_email": {
+      "post": {
+        "summary": "Find User Id By Email",
+        "description": "Find user id by email. If the user is not found, the function returns an error.\n\nPolicy alignment:\n- Authenticate the user at the beginning of the conversation by locating their user id (via email or via name+zip). Do this even if they supply a user id.\n- You may serve only ONE authenticated user per conversation; deny any request to act on another user.\n- After authentication, you may use other read endpoints (orders/products/profile). Avoid making up data not returned by the APIs.\n- All times in data are EST, 24-hour based.",
+        "operationId": "find_user_id_by_email",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "description": "The email of the user, such as 'something@example.com'."
+                  }
+                },
+                "required": [
+                  "email"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/find_user_id_by_name_zip": {
+      "post": {
+        "summary": "Find User Id By Name Zip",
+        "description": "Find user id by first name, last name, and zip. If not found, returns an error.\nDefault to finding by email first; use this if the user cannot recall their email.\n\nPolicy alignment:\n- Use for initial authentication. You must authenticate even if a user id is provided.\n- Only one authenticated user per conversation; deny cross-user requests.\n- Post-authentication, continue with reads or allowed actions per policy.",
+        "operationId": "find_user_id_by_name_zip",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "first_name": {
+                    "type": "string",
+                    "description": "The first name of the customer, such as 'John'."
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "description": "The last name of the customer, such as 'Doe'."
+                  },
+                  "zip": {
+                    "type": "string",
+                    "description": "The zip code of the customer, such as '12345'."
+                  }
+                },
+                "required": [
+                  "first_name",
+                  "last_name",
+                  "zip"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get_order_details": {
+      "post": {
+        "summary": "Get Order Details",
+        "description": "Get the status and details of an order.\n\nPolicy alignment:\n- Use after the user is authenticated.\n- Order attributes include: order_id, user_id, address, items, status, fulfillments (tracking+item ids), payment history; status ∈ {pending, processed, delivered, cancelled}.\n- Time values are EST, 24-hour format.\n- Many mutation operations require you to check that status first (e.g., most actions are valid only for pending or delivered orders).",
+        "operationId": "get_order_details",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id."
+                  }
+                },
+                "required": [
+                  "order_id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get_product_details": {
+      "post": {
+        "summary": "Get Product Details",
+        "description": "Get inventory details of a product.\n\nPolicy alignment:\n- The store has 50 PRODUCT TYPES; each type has variant ITEMS with their own item_ids and option values (e.g., color, size), availability, and price.\n- IMPORTANT: product_id and item_id are unrelated identifiers—do not confuse them.\n- Use this to validate that exchange/modify targets are of the SAME product type (only options may differ) and that replacement items are available.",
+        "operationId": "get_product_details",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "product_id": {
+                    "type": "string",
+                    "description": "The product id, such as '6086499569'. Be careful the product id is different from the item id."
+                  }
+                },
+                "required": [
+                  "product_id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/get_user_details": {
+      "post": {
+        "summary": "Get User Details",
+        "description": "Get the details of a user.\n\nPolicy alignment and constraints:\n- Only retrieve details for the authenticated user identified earlier in the conversation. Deny attempts to access or act on other users.\n- User profiles include: user_id, email, default address, and payment methods (gift card, PayPal, credit card).\n- Do not fabricate attributes outside of those returned by this API.",
+        "operationId": "get_user_details",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string",
+                    "description": "The user id, such as 'sara_doe_496'."
+                  }
+                },
+                "required": [
+                  "user_id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/list_all_product_types": {
+      "post": {
+        "summary": "List All Product Types",
+        "description": "List product type names and product ids. There are only 50 product types in the store.\n\nPolicy alignment:\n- Each product TYPE has many variant ITEMS (options). Product ID ≠ Item ID.\n- Use this to help users find valid product types before item-level changes (modify/exchange) which must stay within the same product type.",
+        "operationId": "list_all_product_types",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/modify_pending_order_address": {
+      "post": {
+        "summary": "Modify Pending Order Address",
+        "description": "Modify the SHIPPING ADDRESS of a PENDING order.\n\nPreconditions:\n- The order’s status MUST be 'pending'. Check status first.\n- This action updates address only; no other changes are allowed here.\n\nConfirmation and effects:\n- Before calling, present the new address details and obtain explicit user confirmation (“yes”).\n- Status remains 'pending' after the change.\n\nPolicy notes:\n- Authenticate first; act only for the authenticated user.\n- Make one API call at a time.",
+        "operationId": "modify_pending_order_address",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id."
+                  },
+                  "address1": {
+                    "type": "string",
+                    "description": "The first line of the address, such as '123 Main St'."
+                  },
+                  "address2": {
+                    "type": "string",
+                    "description": "The second line of the address, such as 'Apt 1' or ''."
+                  },
+                  "city": {
+                    "type": "string",
+                    "description": "The city, such as 'San Francisco'."
+                  },
+                  "state": {
+                    "type": "string",
+                    "description": "The province, such as 'CA'."
+                  },
+                  "country": {
+                    "type": "string",
+                    "description": "The country, such as 'USA'."
+                  },
+                  "zip": {
+                    "type": "string",
+                    "description": "The zip code, such as '12345'."
+                  }
+                },
+                "required": [
+                  "order_id",
+                  "address1",
+                  "address2",
+                  "city",
+                  "state",
+                  "country",
+                  "zip"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/modify_pending_order_items": {
+      "post": {
+        "summary": "Modify Pending Order Items",
+        "description": "Modify ITEMS of a PENDING order to different OPTIONS of the SAME product TYPE.\n\nCritical restrictions:\n- This operation can be called AT MOST ONCE per order. Collect ALL item changes before calling.\n- After success, the order status becomes 'pending (items modified)'. The agent will NOT be able to modify or cancel the order further.\n\nPreconditions and constraints:\n- Order must be 'pending'. Check status first.\n- Each item may only be changed to an AVAILABLE new item of the SAME product (type); product type changes are NOT allowed (e.g., shirt → shoe is invalid).\n- The user must provide a payment method to settle any price difference. If gift card is used, it MUST have sufficient balance.\n\nConfirmation and effects:\n- Before calling, list all item→new_item mappings and obtain explicit user confirmation (“yes”).\n- On success, status is 'pending (items modified)' and no further cancel/modify is allowed.\n\nPolicy notes:\n- Authenticate first; act only for the authenticated user.\n- Make one API call at a time.",
+        "operationId": "modify_pending_order_items",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id."
+                  },
+                  "item_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The item ids to be modified, each such as '1008292230'. There could be duplicate items in the list."
+                  },
+                  "new_item_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The item ids to be modified for, each such as '1008292230'. There could be duplicate items in the list. Each new item id should match the item id in the same position and be of the same product."
+                  },
+                  "payment_method_id": {
+                    "type": "string",
+                    "description": "The payment method id to pay or receive refund for the item price difference, such as 'gift_card_0000000' or 'credit_card_0000000'. These can be looked up from the user or order details."
+                  }
+                },
+                "required": [
+                  "order_id",
+                  "item_ids",
+                  "new_item_ids",
+                  "payment_method_id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/modify_pending_order_payment": {
+      "post": {
+        "summary": "Modify Pending Order Payment",
+        "description": "Modify the PAYMENT METHOD of a PENDING order.\n\nPreconditions:\n- The order’s status MUST be 'pending'. Check status first.\n- The user must choose a SINGLE payment method that is DIFFERENT from the original method.\n- If changing to a gift card, its balance MUST cover the total amount.\n\nConfirmation and effects:\n- Before calling, summarize the change and obtain explicit user confirmation (“yes”).\n- Status remains 'pending'.\n- The original payment is refunded:\n  • If original was a gift card → refund is immediate.\n  • Otherwise → refund within 5–7 business days.\n\nPolicy notes:\n- Authenticate first; act only for the authenticated user.\n- Make one API call at a time.",
+        "operationId": "modify_pending_order_payment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id."
+                  },
+                  "payment_method_id": {
+                    "type": "string",
+                    "description": "The payment method id to pay or receive refund for the item price difference, such as 'gift_card_0000000' or 'credit_card_0000000'. These can be looked up from the user or order details."
+                  }
+                },
+                "required": [
+                  "order_id",
+                  "payment_method_id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/modify_user_address": {
+      "post": {
+        "summary": "Modify User Address",
+        "description": "Modify the default address of an user. The agent needs to explain the modification detail and ask for explicit user confirmation (yes/no) to proceed.",
+        "operationId": "modify_user_address",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string",
+                    "description": "The user id, such as 'sara_doe_496'."
+                  },
+                  "address1": {
+                    "type": "string",
+                    "description": "The first line of the address, such as '123 Main St'."
+                  },
+                  "address2": {
+                    "type": "string",
+                    "description": "The second line of the address, such as 'Apt 1' or ''."
+                  },
+                  "city": {
+                    "type": "string",
+                    "description": "The city, such as 'San Francisco'."
+                  },
+                  "state": {
+                    "type": "string",
+                    "description": "The province, such as 'CA'."
+                  },
+                  "country": {
+                    "type": "string",
+                    "description": "The country, such as 'USA'."
+                  },
+                  "zip": {
+                    "type": "string",
+                    "description": "The zip code, such as '12345'."
+                  }
+                },
+                "required": [
+                  "user_id",
+                  "address1",
+                  "address2",
+                  "city",
+                  "state",
+                  "country",
+                  "zip"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/return_delivered_order_items": {
+      "post": {
+        "summary": "Return Delivered Order Items",
+        "description": "Return specific ITEMS from a DELIVERED order.\n\nPreconditions:\n- Order must be 'delivered'. Check status first.\n- The user must confirm order_id and the list of item_ids to return.\n- For delivered orders, a return OR exchange can be performed only ONCE per order.\n\nRefund and effects:\n- The user must provide a payment method to receive the refund.\n- Refunds must go to the ORIGINAL payment method or an EXISTING gift card.\n- After confirmation and success:\n  • Status becomes 'return requested'.\n  • The user will receive an email with return instructions (how/where).\n\nConfirmation & policy notes:\n- Present a clear summary and obtain explicit “yes” before calling.\n- Authenticate first; act only for the authenticated user.\n- Make one API call at a time.",
+        "operationId": "return_delivered_order_items",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id."
+                  },
+                  "item_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The item ids to be returned, each such as '1008292230'. There could be duplicate items in the list."
+                  },
+                  "payment_method_id": {
+                    "type": "string",
+                    "description": "The payment method id to pay or receive refund for the item price difference, such as 'gift_card_0000000' or 'credit_card_0000000'. These can be looked up from the user or order details."
+                  }
+                },
+                "required": [
+                  "order_id",
+                  "item_ids",
+                  "payment_method_id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transfer_to_human_agents": {
+      "post": {
+        "summary": "Transfer To Human Agents",
+        "description": "Transfer the user to a human agent with a concise issue summary.\n\nPolicy alignment:\n- Transfer ONLY if the request cannot be handled within the scope of these APIs or the user explicitly asks for a human.\n- After calling this endpoint, send the user the message: “YOU ARE BEING TRANSFERRED TO A HUMAN AGENT. PLEASE HOLD ON.”\n- Continue to respect authentication and single-user rules until transfer.",
+        "operationId": "transfer_to_human_agents",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "summary": {
+                    "type": "string",
+                    "description": "A summary of the user's issue."
+                  }
+                },
+                "required": [
+                  "summary"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
