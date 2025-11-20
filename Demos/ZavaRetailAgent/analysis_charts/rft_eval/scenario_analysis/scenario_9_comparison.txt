@@ -1,0 +1,21 @@
+========================================================================================================================
+OUTPUT COMPARISON - Scenario 9
+Scenario: The electric kettle I bought is leaking. I’m Noah Brown, ZIP 80279.
+========================================================================================================================
+
+WORST RESPONSE (Step 0, Score: 0.00)
+------------------------------------------------------------------------------------------------------------------------
+Thanks, Noah—I’ve located your account (user ID: noah_brown_6181). To help with the leaking electric kettle, I’ll need the order ID for that purchase. Could you please provide the order number (e.g., #W1234567) or let me know approximately when you bought it?
+
+========================================================================================================================
+
+BEST RESPONSE (Step 18, Score: 1.00)
+------------------------------------------------------------------------------------------------------------------------
+I’ve located your order #W7678072 (delivered 09/23/2025) for the Electric Kettle (item 2323972008, $146.98), and our return policy still covers defects within 30 days with no restocking fee. You have two options:
+
+1) Refund the $146.98 back to your original payment (PayPal ending in …330)  
+2) Exchange it for a brand-new Electric Kettle of the same model at no additional cost  
+
+Which would you prefer? Once you let me know “refund” or “exchange,” I’ll confirm the details and then proceed—just reply with your choice.
+
+========================================================================================================================

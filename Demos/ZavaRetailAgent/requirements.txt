@@ -1,0 +1,10 @@
+azure-ai-projects==1.0.0
+azure-ai-agents==1.2.0b6
+azure-identity
+python-dotenv
+colorama
+pandas
+matplotlib
+seaborn
+openai
+scikit-learn

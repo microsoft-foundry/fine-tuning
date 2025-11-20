@@ -1,0 +1,91 @@
+{
+  "analysis_date": "C:\\Users\\omkarm\\code\\myforks\\fine-tuning\\Demos\\ZavaRetailAgent",
+  "steps_analyzed": [
+    0,
+    3,
+    6,
+    9,
+    12,
+    15,
+    18
+  ],
+  "statistics": {
+    "Step_0": {
+      "mean_score": 0.42966,
+      "median_score": 0.5,
+      "std_dev": 0.40676782616131285,
+      "pass_rate": 28.000000000000004,
+      "perfect_count": 14,
+      "partial_count": 18,
+      "fail_count": 18,
+      "total_count": 50
+    },
+    "Step_3": {
+      "mean_score": 0.33798,
+      "median_score": 0.333,
+      "std_dev": 0.3497111087740851,
+      "pass_rate": 16.0,
+      "perfect_count": 7,
+      "partial_count": 23,
+      "fail_count": 20,
+      "total_count": 50
+    },
+    "Step_6": {
+      "mean_score": 0.32665999999999995,
+      "median_score": 0.1125,
+      "std_dev": 0.38786083122687187,
+      "pass_rate": 20.0,
+      "perfect_count": 10,
+      "partial_count": 16,
+      "fail_count": 24,
+      "total_count": 50
+    },
+    "Step_9": {
+      "mean_score": 0.56148,
+      "median_score": 0.5,
+      "std_dev": 0.35840765840031935,
+      "pass_rate": 36.0,
+      "perfect_count": 16,
+      "partial_count": 27,
+      "fail_count": 7,
+      "total_count": 50
+    },
+    "Step_12": {
+      "mean_score": 0.50964,
+      "median_score": 0.5,
+      "std_dev": 0.39046535108764774,
+      "pass_rate": 34.0,
+      "perfect_count": 16,
+      "partial_count": 22,
+      "fail_count": 12,
+      "total_count": 50
+    },
+    "Step_15": {
+      "mean_score": 0.6086400000000001,
+      "median_score": 0.5,
+      "std_dev": 0.36698565421552926,
+      "pass_rate": 42.0,
+      "perfect_count": 20,
+      "partial_count": 23,
+      "fail_count": 7,
+      "total_count": 50
+    },
+    "Step_18": {
+      "mean_score": 0.72148,
+      "median_score": 0.9,
+      "std_dev": 0.3446128401554417,
+      "pass_rate": 60.0,
+      "perfect_count": 24,
+      "partial_count": 20,
+      "fail_count": 6,
+      "total_count": 50
+    }
+  },
+  "improvement_summary": {
+    "baseline_step": 0,
+    "baseline_score": 0.42966,
+    "final_step": 18,
+    "final_score": 0.72148,
+    "total_improvement_percent": 67.91881953172276
+  }
+}

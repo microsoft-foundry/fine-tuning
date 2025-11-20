@@ -1,0 +1,10 @@
+================================================================================
+WORST RESPONSE - Scenario 9
+Step: 0
+Score: 0.00
+Scenario: The electric kettle I bought is leaking. I’m Noah Brown, ZIP 80279.
+================================================================================
+
+Thanks, Noah—I’ve located your account (user ID: noah_brown_6181). To help with the leaking electric kettle, I’ll need the order ID for that purchase. Could you please provide the order number (e.g., #W1234567) or let me know approximately when you bought it?
+
+================================================================================

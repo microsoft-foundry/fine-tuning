@@ -1,0 +1,77 @@
+{
+  "evaluation_id": "eval_691ac97841808191a0b45ec1e113356d",
+  "evaluation_name": "Tool Calling Evaluation - 20251116_230631",
+  "analysis_date": "2025-11-18T20:47:51.980756",
+  "models": {
+    "gpt-4.1-nano": {
+      "total_samples": 584,
+      "pass_count": 307,
+      "pass_rate": 0.5256849315068494,
+      "statistics": {
+        "mean": 0.5555079948630137,
+        "median": 1.0,
+        "std_dev": 0.484244349337706,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "percentiles": {
+        "p25": 0.0,
+        "p50": 1.0,
+        "p75": 1.0,
+        "p90": 1.0,
+        "p95": 1.0
+      },
+      "error_counts": {
+        "UNKNOWN_ERROR": 246,
+        "ARGUMENT_VALUES_MISMATCH": 29,
+        "NAME_MISMATCH": 2
+      }
+    },
+    "gpt-4.1-mini": {
+      "total_samples": 584,
+      "pass_count": 347,
+      "pass_rate": 0.5941780821917808,
+      "statistics": {
+        "mean": 0.608162102739726,
+        "median": 1.0,
+        "std_dev": 0.48373169839298386,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "percentiles": {
+        "p25": 0.0,
+        "p50": 1.0,
+        "p75": 1.0,
+        "p90": 1.0,
+        "p95": 1.0
+      },
+      "error_counts": {
+        "UNKNOWN_ERROR": 225,
+        "ARGUMENT_VALUES_MISMATCH": 12
+      }
+    },
+    "gpt-4.1": {
+      "total_samples": 582,
+      "pass_count": 432,
+      "pass_rate": 0.7422680412371134,
+      "statistics": {
+        "mean": 0.7534364261168385,
+        "median": 1.0,
+        "std_dev": 0.4275080175445726,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "percentiles": {
+        "p25": 0.75,
+        "p50": 1.0,
+        "p75": 1.0,
+        "p90": 1.0,
+        "p95": 1.0
+      },
+      "error_counts": {
+        "UNKNOWN_ERROR": 141,
+        "ARGUMENT_VALUES_MISMATCH": 9
+      }
+    }
+  }
+}
