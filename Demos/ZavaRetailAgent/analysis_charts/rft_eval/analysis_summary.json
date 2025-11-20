@@ -4,7 +4,10 @@
     0,
     3,
     6,
-    9
+    9,
+    12,
+    15,
+    18
   ],
   "statistics": {
     "Step_0": {
@@ -46,13 +49,43 @@
       "partial_count": 27,
       "fail_count": 7,
       "total_count": 50
+    },
+    "Step_12": {
+      "mean_score": 0.50964,
+      "median_score": 0.5,
+      "std_dev": 0.39046535108764774,
+      "pass_rate": 34.0,
+      "perfect_count": 16,
+      "partial_count": 22,
+      "fail_count": 12,
+      "total_count": 50
+    },
+    "Step_15": {
+      "mean_score": 0.6086400000000001,
+      "median_score": 0.5,
+      "std_dev": 0.36698565421552926,
+      "pass_rate": 42.0,
+      "perfect_count": 20,
+      "partial_count": 23,
+      "fail_count": 7,
+      "total_count": 50
+    },
+    "Step_18": {
+      "mean_score": 0.72148,
+      "median_score": 0.9,
+      "std_dev": 0.3446128401554417,
+      "pass_rate": 60.0,
+      "perfect_count": 24,
+      "partial_count": 20,
+      "fail_count": 6,
+      "total_count": 50
     }
   },
   "improvement_summary": {
     "baseline_step": 0,
     "baseline_score": 0.42966,
-    "final_step": 9,
-    "final_score": 0.56148,
-    "total_improvement_percent": 30.680072615556487
+    "final_step": 18,
+    "final_score": 0.72148,
+    "total_improvement_percent": 67.91881953172276
   }
 }

@@ -1,0 +1,15 @@
+================================================================================
+BEST RESPONSE - Scenario 9
+Step: 15
+Score: 1.00
+Scenario: The electric kettle I bought is leaking. I’m Noah Brown, ZIP 80279.
+================================================================================
+
+I see your order #W7678072 (delivered 2025‑09‑23) included the 1 L glass electric kettle (item 2323972008). You’re still within our 30‑day return window, and because this is a defect claim (“defective”), there’s no restocking fee. You can either:
+
+ • Return for a full refund (back to your original PayPal ending in …330)  
+ • Exchange for a replacement kettle of the same model  
+
+Which would you prefer? If you’d like a refund, we’ll confirm the refund method; if you’d like an exchange, please confirm you’re OK with swapping item 2323972008 for the same 1 L glass kettle (black). Once I have your choice, I’ll walk through the next steps.
+
+================================================================================

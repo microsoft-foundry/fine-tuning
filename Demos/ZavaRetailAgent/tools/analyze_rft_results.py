@@ -243,8 +243,13 @@ class RFTResultsAnalyzer:
     
     def plot_score_distributions(self, stats):
         """Plot score distributions for each step."""
-        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-        axes = axes.flatten()
+        # Dynamically determine grid size based on number of steps
+        n_steps = len(self.steps)
+        n_cols = 3  # Use 3 columns for better layout
+        n_rows = (n_steps + n_cols - 1) // n_cols  # Ceiling division
+        
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(14, 4 * n_rows))
+        axes = axes.flatten() if n_steps > 1 else [axes]
         
         for idx, step in enumerate(self.steps):
             ax = axes[idx]
@@ -265,6 +270,10 @@ class RFTResultsAnalyzer:
             ax.set_xlim(0, 1)
             ax.legend(fontsize=9)
             ax.grid(True, alpha=0.3, axis='y')
+        
+        # Hide unused subplots
+        for idx in range(n_steps, len(axes)):
+            axes[idx].set_visible(False)
         
         plt.suptitle('Score Distributions Across RFT Steps', 
                     fontsize=14, fontweight='bold', y=0.995)

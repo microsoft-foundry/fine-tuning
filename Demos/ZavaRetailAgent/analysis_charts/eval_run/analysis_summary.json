@@ -1,7 +1,7 @@
 {
   "evaluation_id": "eval_691ac97841808191a0b45ec1e113356d",
   "evaluation_name": "Tool Calling Evaluation - 20251116_230631",
-  "analysis_date": "2025-11-16T23:55:28.627504",
+  "analysis_date": "2025-11-18T20:47:51.980756",
   "models": {
     "gpt-4.1-nano": {
       "total_samples": 584,
