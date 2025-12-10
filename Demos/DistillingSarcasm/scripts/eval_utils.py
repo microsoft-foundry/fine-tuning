@@ -154,7 +154,6 @@ def display_evaluation_summary(client: openai.Client, eval_ids: list, x_range = 
                 futures.update({ future: (row['model'] , eval_id)})
 
             for f in as_completed(futures.keys()):
-                model, eval_id = "UNKNOWN", "UNKNOWN"
                 try:
                     model, eval_id = futures[f]
                     scores = f.result()
