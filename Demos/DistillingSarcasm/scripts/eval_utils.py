@@ -29,15 +29,13 @@ def get_eval_runs_list(client: openai.Client, eval_id: str) -> list:
                 'name': run.name,
                 'status': run.status,
                 'model': run.model,
+                'pass_percentage': 0,
+                'error_percentage': 0,
             }
-            result = run.result_counts.to_dict()
+            result = run.result_counts
             if result:
-                passed = result.get('passed', 0)
-                errored = result.get('errored', 0)
-                failed = result.get('failed', 0)
-                total = result.get('total', 0)
-                pass_percentage = (passed * 100) / (passed + failed) if (passed + failed) > 0 else 0
-                error_percentage = (errored * 100) / total if total > 0 else 0
+                pass_percentage = (result.passed * 100) / (result.passed + result.failed) if (result.passed + result.failed) > 0 else 0
+                error_percentage = (result.errored * 100) / result.total if result.total > 0 else 0
                 r['pass_percentage'] = pass_percentage
                 r['error_percentage'] = error_percentage
 
@@ -248,9 +246,8 @@ def get_eval_run_output_items(client: openai.Client, eval_id: str, run_id: str) 
         for page in response.iter_pages():
             for item in page.data:
                 for result in item.results:
-                    score = result.get("score")
-                    if score is not None:
-                        scores.append(score)
+                    if result.score is not None:
+                        scores.append(result.score)
     except Exception as e:
         print(f"Failed to fetch output items for run {run_id}. Error: {e}")
 
