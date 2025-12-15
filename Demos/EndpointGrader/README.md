@@ -96,37 +96,49 @@ iwr `
 
 ## Running the Notebook
 
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt \
-   pip install -r requirements-demo.txt
-   ```
+### 1. Install dependencies
+```bash
+pip install -r requirements.txt \
+pip install -r requirements-demo.txt
+```
 
-2. **Create and configure a .env file**
-   Make sure it's got at least:
-   - `AZURE_OPENAI_API_KEY` -- no Entra id used yet
-   - `AZURE_OPENAI_ENDPOINT` -- full endpoint like https://amf-finetunes-in-sweden.openai.azure.com/openai/v1/
-   - `AZURE_FUNCTIONS_ENDPOINT` -- full path to Azure Function like https://countdown-endpoint-fn.azurewebsites.net/api/grader
-   - `X_FUNCTIONS_KEY` -- authentication key to the Azure Function
+### 2. Create and configure a `.env` file
+Make sure it's got at least:
+
+- `AZURE_OPENAI_API_KEY` -- no Entra id used yet
+- `AZURE_OPENAI_ENDPOINT` -- full endpoint like https://your-foundry-resource.openai.azure.com/openai/v1/
+- `AZURE_FUNCTIONS_ENDPOINT` -- full path to Azure Function like https://your-function-app-name.azurewebsites.net/api/grader
+- `X_FUNCTIONS_KEY` -- authentication key to the Azure Function
 
 
 ## Local Testing
 The grader logic is in [grader.py](./grader.py). You can test it in two ways:
 
-1. **Direct invocation:**
-   ```bash
-   python grader.py
-   ```
+### Direct invocation
+The [grader.py](./grader.py) file includes a `__main__` entrypoint, so you can
+invoke it directly from the command line:
 
-2. **As a local Azure Function:**
-   In one shell:
-   ```bash
-   func start
-   ```
+```bash
+python grader.py
+```
+```
+grading with:
+        sample: {'output_json': {'expression': '(72 + 22) / (88 - 86)', 'result': 47}}
+        item: {'mesages': [{'role': 'developer', 'content': 'You are an expert in arithmetic problem solving...'}, {'role': 'user', 'content': 'target: 47\nnumbers: [86, 22, 88, 72]'}], 'target': 47, 'nums': [86, 22, 88, 72]}
+score: 5
+```
 
-   In another:
-   ```bash
-   curl -s -d @test.json "http://localhost:7071/api/grader"
-   ```
+### As a local Azure Function
+In one shell, start a local Azure Function service:
+
+```bash
+func start
+```
+
+In another shell, POST it some JSON, but _without_ the authentication key:
+
+```bash
+curl -s -d @test.json "http://localhost:7071/api/grader"
+```
 
 [1]: https://github.com/azure-ai-foundry/fine-tuning/tree/main/Demos/RFT_Countdown
