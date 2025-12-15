@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "functionAppName": {
-      "value": "countdown-endpoint-fn"
+      "value": "<your-function-app-name>"
     }
   }
 }

@@ -10,41 +10,89 @@ and for RFT jobs.
 - An Azure subscription
 - A resource group created
 
+If using Windows, you can use `winget` to install most of the above:
+
+```ps
+
+```
+
 ## Bootstrapping the Azure Function
 
-1. **Login to Azure:**
-   ```bash
-   az login
-   ```
+### 1. Login to Azure
+```bash
+az login
+```
 
-2. **Create a resource group (if needed):**
-   ```bash
-   az group create --name <your-resource-group> --location <location>
-   ```
+### 2. Create a resource group (if needed)
+```bash
+az group create --name <your-resource-group> --location <location>
+```
 
-3. **Update the `main.parameters.json` file** with your values:
-   ```json
-   {
-     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-     "contentVersion": "1.0.0.0",
-     "parameters": {
-       "functionAppName": {
-         "value": "my-function-app"
-       },
-       "cosmosDbAccountName": {
-         "value": "my-cosmos-account"
-       }
-     }
+### 3. Update `main.parameters.json`
+Replace `<your-function-app-name>` with your own unique function app name.
+
+```json
+{
+   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+      "functionAppName": {
+      "value": "<your-function-app-name>"
+      }
    }
-   ```
+}
+```
 
-4. **Deploy:**
-   ```bash
-   az deployment group create \
-     --resource-group <your-resource-group> \
-     --template-file main.bicep \
-     --parameters main.parameters.json
-   ```
+### 4. Deploy resources
+```bash
+az deployment group create \
+   --resource-group <your-resource-group> \
+   --template-file main.bicep \
+   --parameters main.parameters.json
+```
+
+### 5. Publish function
+```bash
+func azure functionapp publish countdown-endpoint-demo --python
+```
+
+### 6. Test the function
+
+Without a key, you should get an HTTP 401 response when POSTing something:
+
+```bash
+curl -i -d '{}' https://<your-function-app-name>.azurewebsites.net/api/grader
+```
+
+```powershell
+iwr -Method POST `
+   -Headers @{"Content-Type" = "application/json"} `
+   -Uri "https://<your-function-app-name>.azurewebsites.net/api/grader"
+```
+
+The following example will fetch the key and use it with one of the test files:
+
+```bash
+curl -i -d "@test.json" \
+   -H "X-Functions-Key: $(az functionapp keys list --resource-group <your-resource-group> \
+      --name '<your-function-app-name>' --query 'functionKeys.default' --output tsv)" \
+   https://<your-function-app-name>.azurewebsites.net/api/grader
+```
+
+```powershell
+iwr `
+   -Uri "https://<your-function-app-name>.azurewebsites.net/api/grader" `
+   -Method POST `
+   -Headers @{ `
+      "X-FUNCTIONS-KEY" = `
+         $(az functionapp keys list --resource-group "<your-resource-group>" `
+         --name "<your-function-app-name>" --query "functionKeys.default" `
+         --output tsv); `
+      "Content-Type" = "application/json" `
+   } `
+   -Body (Get-Content "test.json" -Raw)
+```
+
 
 ## Running the Notebook
 
