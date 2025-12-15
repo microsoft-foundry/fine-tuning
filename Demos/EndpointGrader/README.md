@@ -12,8 +12,10 @@ and for RFT jobs.
 
 If using Windows, you can use `winget` to install most of the above:
 
-```ps
-
+```powershell
+winget install --id Python.Python.3.14
+winget install --id Microsoft.AzureCLI
+winget install --id Microsoft.AzureFunctionsCoreTools
 ```
 
 ## Bootstrapping the Azure Function
