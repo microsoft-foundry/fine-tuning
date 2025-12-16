@@ -5,7 +5,7 @@ and for RFT jobs.
 
 ## Prerequisites
 - Azure CLI installed and authenticated
-- Python 3.14
+- Python 3.13 (or newer)
 - Azure Functions Core Tools v4
 - An Azure subscription
 - A resource group created
@@ -13,7 +13,7 @@ and for RFT jobs.
 If using Windows, you can use `winget` to install most of the above:
 
 ```powershell
-winget install --id Python.Python.3.14
+winget install --id Python.Python.3.13
 winget install --id Microsoft.AzureCLI
 winget install --id Microsoft.AzureFunctionsCoreTools
 ```
