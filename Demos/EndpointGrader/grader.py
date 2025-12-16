@@ -67,7 +67,7 @@ def grade(sample: Dict[str, Any], item: Dict[str, Any]) -> float:
         try:
             output = json.loads(sample["output_text"])
         except Exception as e:
-            logging.error("failed to find JSON output in output_json and output_text: {e}")
+            logging.error(f"failed to find JSON output in output_json and output_text: {e}")
             return 0
     if not output:
         logging.error("failed to find non-null JSON output in sample")
