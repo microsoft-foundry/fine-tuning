@@ -1,7 +1,5 @@
-jupyter
+ipykernel
 openai
 dotenv
 openai
-numpy
-pandas
-matplotlib
+requests
