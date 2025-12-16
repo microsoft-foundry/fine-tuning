@@ -5,7 +5,7 @@ and for RFT jobs.
 
 ## Prerequisites
 - Azure CLI installed and authenticated
-- Python 3.13
+- Python 3.14
 - Azure Functions Core Tools v4
 - An Azure subscription
 - A resource group created
