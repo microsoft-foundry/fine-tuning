@@ -16,7 +16,7 @@ def grader(req: func.HttpRequest) -> func.HttpResponse:
     Grade a model response. Same API as a Python grader, meaning you get:
 
       sample -- the output from the model
-      item -- the row of training/validation data used go generate sample
+      item -- the row of training/validation data used to generate sample
 
     Must return a JSON object with a "score" member that's a JSON number.
     """
