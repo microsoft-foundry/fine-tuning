@@ -1,0 +1,27 @@
+{
+    "sample": {
+        "output_json": {
+            "expression": "(72 + 22) / (88 - 86)",
+            "result": 47
+        }
+    },
+    "item": {
+        "messages": [
+            {
+                "role": "developer",
+                "content": "You are an expert in arithmetic problem solving..."
+            },
+            {
+                "role": "user",
+                "content": "target: 47\nnumbers: [86, 22, 88, 72]"
+            }
+        ],
+        "target": 47,
+        "nums": [
+            86,
+            22,
+            88,
+            72
+        ]
+    }
+}
