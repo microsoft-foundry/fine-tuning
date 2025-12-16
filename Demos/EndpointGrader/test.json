@@ -6,7 +6,7 @@
         }
     },
     "item": {
-        "mesages": [
+        "messages": [
             {
                 "role": "developer",
                 "content": "You are an expert in arithmetic problem solving..."
