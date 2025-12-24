@@ -22,6 +22,18 @@ Direct Preference Optimization (DPO) is a technique for training language models
 
 > **Note**: This is a carefully curated subset of the full Intel Orca DPO Pairs dataset, optimized for learning and demonstration purposes. The full dataset contains ~12,900 examples and can be downloaded from [Hugging Face](https://huggingface.co/datasets/Intel/orca_dpo_pairs).
 
+**What the Data Contains**:
+The Intel Orca DPO Pairs dataset consists of instruction-response pairs across multiple domains including mathematics, reasoning, comprehension, and general knowledge. Each example includes the same input prompt with two different responses - one preferred (high-quality) and one non-preferred (lower-quality).
+
+**Preference Optimization**:
+DPO optimizes the model to favor responses that are:
+- **More accurate**: Factually correct and precise answers
+- **Better reasoned**: Clear logical progression and explanation
+- **More helpful**: Directly addresses the user's question
+- **Properly formatted**: Well-structured and complete responses
+
+The model learns to increase the probability of generating preferred responses while decreasing the probability of non-preferred ones, without requiring explicit reward modeling or reinforcement learning.
+
 **Format**: Each example contains:
 - input: System and user messages (the prompt)
 - preferred_output: The high-quality chosen response
@@ -43,6 +55,17 @@ This cookbook teaches you how to:
 - Azure subscription with Microsoft foundry project, you must have **Azure AI User** role
 - Python 3.9 or higher
 - Familiarity with Jupyter notebooks
+
+## Supported Models
+
+DPO fine-tuning in Azure AI Foundry supports the following GPT models:
+
+- **gpt-4o**: Latest GPT-4 Optimized model
+- **gpt-4o-mini**: Cost-efficient variant of GPT-4o
+- **gpt-4.1**: GPT-4.1 base model
+- **gpt-4.1-mini**: Compact version of GPT-4.1
+
+> **Note**: Model availability may vary by region. Check the [Azure OpenAI model availability](https://learn.microsoft.com/azure/ai-services/openai/concepts/models) page for the most current regional support.
 
 ## Files in This Cookbook
 
