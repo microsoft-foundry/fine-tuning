@@ -16,16 +16,15 @@ This cookbook uses the **OpenR1-Math-220k dataset**, which contains advanced mat
 
 **Source**: [OpenR1-Math-220k on Kaggle](https://www.kaggle.com/datasets/alejopaullier/openr1-math-220k) | [Hugging Face](https://huggingface.co/datasets/open-r1/OpenR1-Math-220k)
 
-**Size**: 220,000 mathematical reasoning problems (full dataset)
-- **We use**: First 2 parquet files = ~27,000 unique problems
-- **Training set**: ~24,000 problems (90% of 27K)
-- **Validation set**: ~3,000 problems (10% of 27K)
+**Dataset Statistics**:
+- **Full dataset**: 220,000 mathematical reasoning problems (7 parquet files, 1.45 GB total)
+- **Source parquet**: train-00000-of-00007.parquet (13,391 problems with 27,614 verified reasoning traces)
+- **Training set**: 2,725 examples (45 MB)
+- **Validation set**: 575 examples (10 MB)
 
 > **Important**: 
-> - The dataset does NOT have a built-in train/validation split
-> - Microsoft Foundry has a **500 MB file upload limit**
-> - We use only the **first 2 parquet files** to stay under this limit
-> - ALL data is REAL - extracted from actual parquet files
+> - ALL data is REAL - extracted directly from parquet files with NO synthetic additions
+> - Each problem has 2-4 verified reasoning traces; we use multiple traces for improved RFT learning
 
 
 **What the Data Contains**:
@@ -97,46 +96,18 @@ RFT in Azure AI Foundry supports the following models:
 
 ## Quick Start
 
-### 1. Download the Dataset
 
-1. Go to [OpenR1-Math-220k on Kaggle](https://www.kaggle.com/datasets/alejopaullier/openr1-math-220k)
-2. Click "Download" to get all 7 Parquet files (~1.45 GB)
-3. Extract **only the first 2 files** to the `training_data/` folder:
-   - `train-00000-of-00007.parquet`
-   - `train-00001-of-00007.parquet`
-4. **Delete the remaining 5 files** (train-00002 to train-00006) to stay under Azure's 500 MB limit
-
-> **Note**: We use only 2 files because using 3 files resulted in a training.jsonl file over 500 MB (the Azure upload limit).
-
-### 2. Install Dependencies
+### 1. Install Dependencies
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-### 3. Prepare the Dataset
+### 2. Prepare the Dataset
 
-Run the one-time data preparation script to convert Parquet files to JSONL:
+You can use the training and validation dataset as is from this directory or you can prepare your own dataset also.
 
-```powershell
-python scripts/prepare_data.py --input_dir ./training_data --output_dir ./
-```
-
-This will create:
-- `training.jsonl`: ~24,000 examples (409 MB - within Azure 500 MB limit!)
-- `validation.jsonl`: ~3,000 examples (46 MB)
-
-**How validation data is created:**
-- The script randomly splits the 27,000 problems into 90% train / 10% validation
-- Training uses 1 reasoning trace per problem (from the first 90% of problems)
-- Validation uses 1 reasoning trace per problem (from the last 10% of problems)
-- This ensures no data leakage between train and validation sets
-
-**All data is REAL** - extracted from actual parquet files with NO guessing or hallucination.
-
-After the JSONL files are created, you can delete the Parquet files and the preparation script to save space.
-
-### 4. Set Up Environment Variables
+### 3. Set Up Environment Variables
 
 Create a `.env` file in the root of this directory with your Azure credentials:
 
@@ -147,17 +118,11 @@ AZURE_SUBSCRIPTION_ID=<your-subscription-id>
 AZURE_RESOURCE_GROUP=<your-resource-group>
 AZURE_AOAI_ACCOUNT=<your-foundry-account-name>
 MODEL_NAME=<your-base-model-name>
-
-# Required for Model Evaluation
-AZURE_OPENAI_ENDPOINT=<your-azure-openai-endpoint>
-AZURE_OPENAI_KEY=<your-azure-openai-api-key>
-DEPLOYMENT_NAME=<your-deployment-name>
 ```
 
-### 5. Run the Notebook
+### 4. Run the Notebook
 
 Open `rft_math_reasoning.ipynb` and follow the step-by-step instructions to:
-- Evaluate base model performance on mathematical reasoning
 - Set up the grading function for mathematical correctness
 - Launch RFT training with optimal hyperparameters
 - Monitor training progress
@@ -195,7 +160,7 @@ Each training example contains:
 
 Recommended hyperparameters for RFT with mathematical reasoning:
 
-- **Model**: gpt-4o or o4-mini
+- **Model**: o4-mini
 - **Epochs**: 2-3 (mathematical reasoning benefits from focused training)
 - **Batch Size**: 1-2 (long reasoning chains require careful processing)
 - **Learning Rate Multiplier**: 0.5-1.0 (conservative for preserving reasoning ability)
@@ -226,53 +191,11 @@ After fine-tuning with RFT on OpenR1-Math-220k, your model should:
 - Show better performance on multi-hop mathematical reasoning compared to base model
 - Generate solutions with clear intermediate steps and explanations
 
-## Monitoring Training
-
-During RFT training, monitor these key metrics:
-
-- **Training Loss**: Should decrease steadily (indicates learning)
-- **Validation Loss**: Should track training loss (indicates generalization)
-- **Reward Score**: Average grader score on validation set (measures quality)
-- **Answer Accuracy**: Percentage of correct final answers
-- **Format Compliance**: Percentage following `\boxed{}` format
-
-## Troubleshooting
-
-**Issue**: Parquet files fail to load
-- **Solution**: Ensure you downloaded all 7 files and they are not corrupted
-
-**Issue**: Out of memory during data preparation
-- **Solution**: Process files one at a time or reduce batch size in the script
-
-**Issue**: Training loss not decreasing
-- **Solution**: Reduce learning rate multiplier or increase epochs
-
-**Issue**: Model generates incorrect mathematical steps
-- **Solution**: Verify grading function is properly evaluating reasoning quality
 
 ## Additional Resources
 
 - [Azure OpenAI Fine-Tuning Documentation](https://learn.microsoft.com/azure/ai-services/openai/how-to/fine-tuning)
-- [OpenR1-Math-220k Dataset Card](https://huggingface.co/datasets/open-r1/OpenR1-Math-220k)
-- [Mathematical Reasoning Best Practices](https://learn.microsoft.com/azure/ai-services/openai/concepts/advanced-prompt-engineering)
-
-## Citation
-
-If you use this dataset in your research, please cite:
-
-```bibtex
-@misc{openr1math220k,
-  title={OpenR1-Math-220k: A Large-Scale Dataset for Mathematical Reasoning},
-  author={Open R1 Team},
-  year={2024},
-  publisher={Hugging Face},
-  howpublished={\url{https://huggingface.co/datasets/open-r1/OpenR1-Math-220k}}
-}
-```
-
-## License
-
-This cookbook is provided under MIT License. The OpenR1-Math-220k dataset is licensed under Apache 2.0.
+- [OpenR1-Math-220k dataset](https://www.kaggle.com/datasets/alejopaullier/openr1-math-220k)
 
 ---
 
