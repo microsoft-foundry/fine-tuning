@@ -18,11 +18,11 @@ Medical research articles often contain complex scientific information, detailed
 
 **Source**: [PubMed Article Summarization Dataset on Kaggle](https://www.kaggle.com/datasets/thedevastator/pubmed-article-summarization-dataset)
 
-**Size**: ~6,658 article-abstract pairs (curated subset for demonstration)
-- Training set: ~5,000 examples (~91 MB)
-- Validation set: ~1,658 examples (~31 MB)
+**Size**: 6,655 article-abstract pairs (curated subset for demonstration)
+- Training set: 4,999 examples (90.49 MB)
+- Validation set: 1,656 examples (30.75 MB)
 
-> **Note**: This is a carefully curated subset of the full PubMed dataset (4% of the original 119,924 training examples), optimized for efficient training and demonstration purposes while maintaining representative coverage of medical research topics and staying within GitHub's file size limits.
+> **Note**: This is a carefully curated subset of the full PubMed dataset (~4% of the original 119,924 training examples), optimized for efficient training and demonstration purposes while maintaining representative coverage of medical research topics and staying within GitHub's file size limits.
 
 **What the Data Contains**:
 The PubMed dataset consists of medical and scientific research articles paired with professionally-written abstracts. Each example includes:
@@ -86,7 +86,7 @@ This cookbook teaches you how to:
 
 Supervised fine-tuning in Azure AI Foundry supports the following OpenAI models:
 
-- **gpt-4o** (recommended for medical text)
+- **gpt-4o**
 - **gpt-4o-mini**
 - **gpt-4.1**
 - **gpt-4.1-mini**
@@ -98,8 +98,8 @@ Supervised fine-tuning in Azure AI Foundry supports the following OpenAI models:
 
 - **README.md**: This file - comprehensive documentation
 - **requirements.txt**: Python dependencies required for the cookbook
-- **training.jsonl**: Training dataset (~30,000 article-abstract pairs)
-- **validation.jsonl**: Validation dataset (~1,658 article-abstract pairs)
+- **training.jsonl**: Training dataset (4,999 article-abstract pairs)
+- **validation.jsonl**: Validation dataset (1,656 article-abstract pairs)
 - **sft_pubmed_summarization.ipynb**: Step-by-step notebook implementation
 
 ## Quick Start
@@ -125,7 +125,7 @@ Create a .env file in the root of this directory with your Azure credentials:
 
 ```
 AZURE_AI_PROJECT_ENDPOINT=<your-endpoint> 
-MODEL_NAME=gpt-4o
+MODEL_NAME=gpt-4.1
 AZURE_SUBSCRIPTION_ID=<your-subscription-id>
 AZURE_RESOURCE_GROUP=<your-resource-group>
 AZURE_AOAI_ACCOUNT=<your-foundry-account-name>
@@ -139,7 +139,7 @@ Open sft_pubmed_summarization.ipynb and follow the step-by-step instructions.
 
 The cookbook uses the following hyperparameters:
 
-- **Model**: gpt-4o
+- **Model**: gpt-4.1
 - **Epochs**: 3
 - **Batch Size**: 1
 - **Learning Rate Multiplier**: 1.0
