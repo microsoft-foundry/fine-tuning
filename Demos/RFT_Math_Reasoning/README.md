@@ -1,6 +1,6 @@
 # Reinforcement Fine-Tuning with OpenR1-Math-220k Dataset
 
-This cookbook demonstrates how to fine-tune language models using **Reinforcement Fine-Tuning (RFT)** with the OpenR1-Math-220k dataset on Azure AI. This dataset contains 220,000 advanced mathematical reasoning problems with verified step-by-step solutions, making it ideal for teaching models complex mathematical problem-solving.
+This cookbook demonstrates how to fine-tune language models using **Reinforcement Fine-Tuning (RFT)** with the OpenR1-Math-220k dataset on Microsoft Foundry. This dataset contains 220,000 advanced mathematical reasoning problems with verified step-by-step solutions, making it ideal for teaching models complex mathematical problem-solving.
 
 ## Overview
 
@@ -62,7 +62,7 @@ The RFT dataset consists of advanced mathematical problems with ground truth ans
 This cookbook teaches you how to:
 
 1. Understand the RFT dataset format (prompts + ground truth answers)
-2. Set up your Azure AI environment for RFT
+2. Set up your Microsoft Foundry environment for RFT
 3. Create a grading function to evaluate mathematical reasoning quality
 4. Configure and launch an RFT fine-tuning job
 5. Monitor training progress and model performance
@@ -80,7 +80,7 @@ This cookbook teaches you how to:
 
 ## Supported Models
 
-RFT in Azure AI Foundry supports the following models:
+RFT in Microsoft Foundry supports the following models:
 
 - **o4-mini**
 - **gpt-5 (PrPr)**
@@ -115,7 +115,7 @@ Create a `.env` file in the root of this directory with your Azure credentials:
 
 ```env
 # Required for RFT Fine-Tuning
-AZURE_AI_PROJECT_ENDPOINT=<your-endpoint>
+MICROSOFT_FOUNDRY_PROJECT_ENDPOINT=<your-endpoint>
 AZURE_SUBSCRIPTION_ID=<your-subscription-id>
 AZURE_RESOURCE_GROUP=<your-resource-group>
 AZURE_AOAI_ACCOUNT=<your-foundry-account-name>
