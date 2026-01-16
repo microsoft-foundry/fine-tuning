@@ -1,0 +1,15 @@
+# Azure AI SDK for fine-tuning
+azure-ai-projects>=2.0.0b1
+
+# OpenAI SDK
+openai
+
+# Azure Cognitive Services for model deployment
+azure-identity
+azure-mgmt-cognitiveservices
+
+# Azure AI Evaluation SDK
+azure-ai-evaluation>=1.13.0
+
+# Core libraries
+python-dotenv
