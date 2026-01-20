@@ -18,11 +18,11 @@ Medical research articles often contain complex scientific information, detailed
 
 **Source**: [PubMed Article Summarization Dataset on Kaggle](https://www.kaggle.com/datasets/thedevastator/pubmed-article-summarization-dataset)
 
-**Size**: 6,655 article-abstract pairs (curated subset for demonstration)
-- Training set: 4,999 examples
-- Validation set: 1,656 examples
+**Size**: 1,100 article-abstract pairs (curated subset for demonstration)
+- Training set: 1,000 examples
+- Validation set: 100 examples
 
-> **Note**: This is a carefully curated subset of the full PubMed dataset (~4% of the original 119,924 training examples), optimized for efficient training and demonstration purposes while maintaining representative coverage of medical research topics and staying within GitHub's file size limits.
+> **Note**: This is a carefully curated subset of the full PubMed dataset (~0.9% of the original 119,924 training examples), optimized for quick training demonstrations and testing purposes while maintaining representative coverage of medical research topics and staying within GitHub's file size limits.
 
 **What the Data Contains**:
 The PubMed dataset consists of medical and scientific research articles paired with professionally-written abstracts. Each example includes:
@@ -90,8 +90,8 @@ Find the supported DPO fine-tuning models in Microsoft foundry [here](https://le
 
 - **README.md**: This file - comprehensive documentation
 - **requirements.txt**: Python dependencies required for the cookbook
-- **training.jsonl**: Training dataset (4,999 article-abstract pairs)
-- **validation.jsonl**: Validation dataset (1,656 article-abstract pairs)
+- **training.jsonl**: Training dataset (1,000 article-abstract pairs)
+- **validation.jsonl**: Validation dataset (100 article-abstract pairs)
 - **sft_pubmed_summarization.ipynb**: Step-by-step notebook implementation
 
 ## Quick Start

@@ -19,8 +19,8 @@ This cookbook uses the **OpenR1-Math-220k dataset**, which contains advanced mat
 **Dataset Statistics**:
 - **Full dataset**: 220,000 mathematical reasoning problems (7 parquet files, 1.45 GB total)
 - **Source parquet**: train-00000-of-00007.parquet (13,391 problems with 27,614 verified reasoning traces)
-- **Training set**: 2,661 examples (one entry per problem)
-- **Validation set**: 565 examples (one entry per problem)
+- **Training set**: 100 examples (curated subset for quick demonstrations)
+- **Validation set**: 10 examples (curated subset for quick demonstrations)
 
 > **Important**: 
 > - The RFT dataset contains processed data extracted from verified parquet files
@@ -93,8 +93,8 @@ RFT in Microsoft Foundry supports the following models:
 - **README.md**: This file - comprehensive documentation
 - **requirements.txt**: Python dependencies required for the cookbook
 - **rft_math_reasoning.ipynb**: Step-by-step notebook implementation
-- **training_rft.jsonl**: Training dataset (2,661 examples in RFT format)
-- **validation_rft.jsonl**: Validation dataset (565 examples in RFT format)
+- **training_rft.jsonl**: Training dataset (100 examples in RFT format)
+- **validation_rft.jsonl**: Validation dataset (10 examples in RFT format)
 
 ## Quick Start
 
