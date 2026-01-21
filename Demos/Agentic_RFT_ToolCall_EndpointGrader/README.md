@@ -2,10 +2,10 @@
 
 **Important**: 
 
-- You are being invited to participate in an early private preview for Agentic reinforcement fine tuning with o4-mini/ gpt 5 in Microsoft Foundry/ Azure Open AI service.
+- This folder covers Private Preview Agentic reinforcement fine tuning with o4-mini/ gpt 5 in Microsoft Foundry/Azure Open AI service. To request access, fill out this [form](https://forms.office.com/r/UAhqJudDZe).
 - This preview is provided without a service-level agreement, and we don't recommend it for production workloads. Certain features might not be supported or might have constrained capabilities. For more information, see [Supplemental Terms of Use for Microsoft Azure Previews](https://azure.microsoft.com/support/legal/preview-supplemental-terms/).
 
-## Private Preview Expectations & Limitations: 
+## Private Preview Expectations
 
 1. Model support & scope : This private preview offers access to Endpoint graders and Tool calling with o4-mini/ gpt5 reinforcement fine tuning. 
 2. Regional availability: Reinforcement Training and inferencing is available in:
@@ -26,11 +26,8 @@
 
 **Support**: If you run into any issues, please contact aliciaframe@microsoft.com, dave.voutila@microsoft.com and keli19@microsoft.com
 
-## Learn about Reinforcement fine-tuning
 
-Refer to primary docs for RFT: [Reinforcement fine-tuning - Microsoft Foundry | Microsoft Learn](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/how-to/reinforcement-fine-tuning?view=foundry)
-
-Below, we document two new features that are not publicly available – tool calling during chain of thought, and endpoint graders.
+This folder explains how to use two features: endpoint graders and tool calling in [Reinforcement fine-tuning](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/how-to/reinforcement-fine-tuning?view=foundry). It includes sample notebooks for each feature, and below we describe the general use of these features. Together, they enable you to train reasoning models like GPT-5 for agentic scenarios."
 
 ## Tool Call
 
@@ -260,6 +257,6 @@ The endpoint grader should return the graded score in JSON format as below:
 ## Samples
 
 - [Basic RFT sample - CountDown](../RFT_Countdown/)
-- [Endpoint Grader sample](../EndpointGrader/)
+- [Endpoint Grader sample](./EndpointGrader/)
 - [Simple Tool calling in RFT](./RFT_ToolCall/)
 - [An E2E Agentic RFT sample - Ignite Zava Demo](./ZavaRetailAgent/)
