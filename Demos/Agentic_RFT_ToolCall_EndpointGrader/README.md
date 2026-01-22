@@ -21,7 +21,7 @@
 9. Quotas and limits: Fine tuning is subject to the following limits: 
     - Training: 1 active training run and up to 10 queued jobs
     - Deployments: Up to 5 deployments per region / subscription across all fine-tuned models (contact us if you need additional deployments) 
-10. Pricing: Since o4-mini is a GAed service, it will be charge normally. GPT5 RFT training is free during private preview. Customers who use model based graders will be charged for inferencing tokens. There is no separate pricing for Tool calling RFT or Endpoint graders.
+10. Pricing: Since o4-mini is a GAed service, it will be charge normally. GPT5 RFT training is free during private preview. Customers who use model based graders will be charged for inferencing tokens. Auto-pause at $5k spend is not enabled during the private preview. There is no separate pricing for Tool calling RFT or Endpoint graders.
 11. Responsible use: All uses of fine tuning must adhere to the Azure OpenAI Code of Conduct. 
 
 **Support**: If you run into any issues, please contact aliciaframe@microsoft.com, dave.voutila@microsoft.com and keli19@microsoft.com
@@ -261,4 +261,4 @@ The endpoint grader should return the graded score in JSON format as below:
 - [Basic RFT sample - CountDown](../RFT_Countdown/)
 - [Endpoint Grader sample](./EndpointGrader/)
 - [Simple Tool calling in RFT](./RFT_ToolCall/)
-- [An E2E Agentic RFT sample - Ignite Zava Demo](./ZavaRetailAgent/)
+- [An E2E Agentic RFT sample - Ignite Zava Demo](../ZavaRetailAgent/)
