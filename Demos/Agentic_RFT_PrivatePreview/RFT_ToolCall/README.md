@@ -141,28 +141,25 @@ curl -i -X POST "http://localhost:7072/score" \
 
 Expected: HTTP/1.1 200 OK and JSON like:
 
-``` bash
+```json
 {"score": 1.0}
 ```
 
 #### (B) Tool endpoint (direct args)
 
 ```bash
-
 curl -i -X POST "http://localhost:7072/tool/search_catalog" \
   -H "Content-Type: application/json" \
   -d "{\"query\":\"Urban Puffer\",\"top_k\":1}"
-
 ```
 
-Expected: HTTP/1.1 200 OK with a tool output payload.
+Expected: `HTTP/1.1 200 OK` with a tool output payload.
 
 ## 3) Deploy Azure Functions to Azure
 
 ### 3.1 One-time: create resources
 
 ```bash
-
 az login
 az group create -n "$RG" -l "$LOC"
 
@@ -172,41 +169,35 @@ az storage account create -n "$STORAGE" -g "$RG" -l "$LOC" --sku Standard_LRS
 
 az functionapp create -n "$FUNC_APP_NAME" -g "$RG" -s "$STORAGE" \
   --consumption-plan-location "$LOC" --runtime python --functions-version 4
-
 ```
 
 ### 3.2 Configure app settings (cloud)
 
 To make the endpoint grader anonymous in Azure, set:
-```bash
 
+```bash
 az functionapp config appsettings set -g "$RG" -n "$FUNC_APP_NAME" \
   --settings SCORE_AUTH_DISABLED=true
-
-
 ```
 
 (Optional) If you also want the tool endpoint anonymous:
 
 ```bash
-
 az functionapp config appsettings set -g "$RG" -n "$FUNC_APP_NAME" \
   --settings TOOL_AUTH_DISABLED=true
-
 ```
 
 Restart for settings to take effect:
 
 ```bash
 az functionapp restart -g "$RG" -n "$FUNC_APP_NAME"
-
 ```
 
 ### 3.3 Publish code
 
 From the function_app/ directory:
-```bash
 
+```bash
 cd function_app
 func azure functionapp publish "$FUNC_APP_NAME"
 ```
@@ -216,14 +207,12 @@ func azure functionapp publish "$FUNC_APP_NAME"
 #### Endpoint grader (no headers)
 
 ```bash
-
 curl -i -X POST "https://$FUNC_APP_NAME.azurewebsites.net/score" \
   -H "Content-Type: application/json" \
   -d "{\"sample\":{\"output_text\":\"JKT-URB-009\"},\"item\":{\"reference_answer\":\"JKT-URB-009\"},\"trace_id\":\"trace_test\"}"
-
 ```
 
-Expected: HTTP/1.1 200 OK and {"score":...}.
+Expected: `HTTP/1.1 200 OK` and {"score":...}.
 
 ## 4) Contracts: Tool calling + Endpoint grader
 
@@ -232,18 +221,17 @@ These shapes matter. Use them exactly.
 ### 4.1 Tool call input (what the training service sends)
 
 During training, the tool endpoint may receive a wrapper object like:
+
 ```json
-
 {
-  "type": "function_call",
-  "id": "fc_123",
-  "call_id": "call_123",
-  "name": "search_catalog",
-  "arguments": "{\"query\":\"Urban Puffer\",\"top_k\":3}",
-  "trace_id": "trace_abc",
-  "item": {}
+    "type": "function_call",
+    "id": "fc_123",
+    "call_id": "call_123",
+    "name": "search_catalog",
+    "arguments": "{\"query\":\"Urban Puffer\",\"top_k\":3}",
+    "trace_id": "trace_abc",
+    "item": {}
 }
-
 ```
 
 ### 4.2 Tool output (what your tool must return)
@@ -251,14 +239,12 @@ During training, the tool endpoint may receive a wrapper object like:
 Return a Responses-style function_call_output:
 
 ```json
-
 {
-  "type": "function_call_output",
-  "call_id": "call_123",
-  "id": "fc_123",
-  "output": "{\"items\":[...]}"
+    "type": "function_call_output",
+    "call_id": "call_123",
+    "id": "fc_123",
+    "output": "{\"items\":[...]}"
 }
-
 ```
 
 ### 4.3 Endpoint grader request (what the training service sends)
@@ -266,13 +252,15 @@ Return a Responses-style function_call_output:
 Your /score endpoint receives:
 
 ```json
-
 {
-  "sample": { "output_text": "..." },
-  "item": { "reference_answer": "..." },
-  "trace_id": "trace_abc"
+    "sample": {
+        "output_text": "..."
+    },
+    "item": {
+        "reference_answer": "..."
+    },
+    "trace_id": "trace_abc"
 }
-
 ```
 
 ## 5) Dataset format (JSONL)
@@ -287,7 +275,7 @@ Your `train_tool.jsonl` and `valid_tool.jsonl` must be JSONL:
 Example minimal line:
 
 ```json
-{"messages":[{"role":"user","content":"Return the SKU of the cheapest warm jacket under $200."}],"reference_answer":"JKT-URB-009"}
+{ "messages": [{ "role": "user", "content": "Return the SKU of the cheapest warm jacket under $200." }], "reference_answer": "JKT-URB-009" }
 ```
 
 
@@ -319,7 +307,6 @@ Ensure `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_API_VER
 You can poll the job status in a loop:
 
 ```python
-
 import time
 j = client.fine_tuning.jobs.retrieve(job.id)
 while j.status not in ("succeeded", "failed", "cancelled"):
@@ -329,7 +316,6 @@ while j.status not in ("succeeded", "failed", "cancelled"):
 
 print("final:", j.status)
 print("fine_tuned_model:", getattr(j, "fine_tuned_model", None))
-
 ```
 
 
@@ -358,7 +344,6 @@ Or view the job in Foundry UI.
 - Use a different port:
 
 ```bash
-
 func start --port 7073Show more lines
 ```
 
