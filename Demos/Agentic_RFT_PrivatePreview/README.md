@@ -66,43 +66,36 @@ In the NextGen Foundry UI, there is a box to paste your tool call definitions.
 Use this structure within your API call, or the field in the NextGen UI, to specify your tools.
 
 ```python
-tools = [ 
-{ 
-"name": "current_date",
-
-"server_url": "https://rft-endpointfn.azurewebsites.net/api/tools",
- 
-"headers": { 
-   "X-Functions-Key": "<Add bearer token>" } 
-}, 
-
-
-{ "name": "get_by_id",
- 
-"server_url": "https://rft-endpointfn.azurewebsites.net/api/tools", 
-
-"headers": { 
-    "X-Functions-Key": "<Add bearer token>" } 
-},
-
- { "name": "search", 
-
-"server_url": "https://rft-endpoint-fn.azurewebsites.net/api/tools", 
-
-"headers": { 
-    "X-Functions-Key": "<Add bearer token>"  } 
-},
-
- { "name": "delete_by_id", 
-
-"server_url": "https://rft-endpoint-fn.azurewebsites.net/api/tools",
-
- "headers": { 
-"X-Functions-Key": "<Add bearer token>" }
- } 
-
+tools = [
+    {
+        "name": "current_date",
+        "server_url": "https://rft-endpointfn.azurewebsites.net/api/tools",
+        "headers": {
+            "X-Functions-Key": "<Add bearer token>"
+        }
+    },
+    {
+        "name": "get_by_id",
+        "server_url": "https://rft-endpointfn.azurewebsites.net/api/tools",
+        "headers": {
+            "X-Functions-Key": "<Add bearer token>"
+        }
+    },
+    {
+        "name": "search",
+        "server_url": "https://rft-endpoint-fn.azurewebsites.net/api/tools",
+        "headers": {
+            "X-Functions-Key": "<Add bearer token>"
+        }
+    },
+    {
+        "name": "delete_by_id",
+        "server_url": "https://rft-endpoint-fn.azurewebsites.net/api/tools",
+        "headers": {
+            "X-Functions-Key": "<Add bearer token>"
+        }
+    }
 ]
-
 ```
 
 ### What tool call returns
@@ -110,17 +103,11 @@ tools = [
 The tool should return in a format identical to a function_call_output in the Responses API format.
 
 ```json
-
-{ 
-
-"type": "function_call_output", 
-
-"call_id": "call_12345xyz",
-
-"output": "The numbers in the mathematical operations for countdown puzzle are..", 
-
-"id": "fc_12345xyz" 
-
+{
+    "type": "function_call_output",
+    "call_id": "call_12345xyz",
+    "output": "The numbers in the mathematical operations for countdown puzzle are..",
+    "id": "fc_12345xyz"
 }
 ```
 
@@ -190,7 +177,6 @@ job = client.fine_tuning.jobs.create(
     }
   }
 )
-
 ```
 ### Specifying an Endpoint grader in the UI
 Specify the grader in the grader definition box in NextGen, just like any other grader.
@@ -199,24 +185,18 @@ Specify the grader in the grader definition box in NextGen, just like any other 
 
 ```python
 endpoint_grader = { 
-
-"type": "endpoint", # enforced literal 
-"name": "some_name" # optional
-"url": "https://example.com/grade", # user-specified grading endpoint 
-"headers": { 
+  "type": "endpoint", # enforced literal 
+  "name": "some_name" # optional
+  "url": "https://example.com/grade", # user-specified grading endpoint 
+  "headers": { 
      "Authorization": "Bearer ${KEY}" 
-}, # optional, headers will be forwarded to user endpoint  
-"rate_limit": 50, # optional, max requests per second sent to the endpoint 
-"pass_threshold": 8 
-
-
+  }, # optional, headers will be forwarded to user-specified endpoint  
+  "rate_limit": 50, # optional, max requests per second sent to the endpoint 
+  "pass_threshold": 8,
 }
 ```
 
-
-
 **Note**
-
 - `"X-Functions-Key": "**********"` is not an actual required header. There are no required headers.
 - Currently only key-based authentication is supported.
 
@@ -226,16 +206,11 @@ endpoint_grader = {
 The grader must accept POST requests at the specified URL, with the following payload:
 
 ```JSON 
-{ 
-
-"sample": { ... }, // Model outputs to be graded (dict<string, any>) 
-
-"item": { ... }, // Datapoint and references from the training/eval dataset you provided 
-
-"trace_id": "trace_1a2b3c" 
-
+{
+    "sample": { ... }, // Model outputs to be graded (dict<string, any>)
+    "item": { ... }, // Datapoint and references from the training/eval dataset you provided
+    "trace_id": "trace_1a2b3c"
 }
-
 ```
 
 Arguments include:
@@ -248,7 +223,6 @@ The endpoint grader should return the graded score in JSON format as below:
 
 ```json
 { "score": float }
-
 ```
 
 ### Limitations
