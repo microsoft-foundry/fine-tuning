@@ -55,6 +55,7 @@ Then you will run two jobs:
 
 ## Repository layout (recommended)
 
+```
 .
 ├─ function_app/                  # Azure Functions (Python) app
 │  ├─ function_app.py             # AsgiFunctionApp + FastAPI routes
@@ -66,7 +67,7 @@ Then you will run two jobs:
 │  └─ valid_tool.jsonl
 ├─ rft-tool-call.ipynb            # Create RFT job with tool cal with endpoint grader
 └─ README.md
-
+```
 
 ## Prerequisites
 
@@ -115,9 +116,7 @@ This sample uses FastAPI hosted via Azure Functions ASGI. Endpoints:
 Install required dependencies:
 
 ```bash
-
 pip install -r requirements.txt
-
 ```
 
 ### 2.2 Run locally
@@ -180,7 +179,7 @@ az functionapp config appsettings set -g "$RG" -n "$FUNC_APP_NAME" \
   --settings SCORE_AUTH_DISABLED=true
 ```
 
-(Optional) If you also want the tool endpoint anonymous:
+(Optional) If you also want the tool endpoint anonymously:
 
 ```bash
 az functionapp config appsettings set -g "$RG" -n "$FUNC_APP_NAME" \
@@ -195,7 +194,7 @@ az functionapp restart -g "$RG" -n "$FUNC_APP_NAME"
 
 ### 3.3 Publish code
 
-From the function_app/ directory:
+From the `function_app/` directory:
 
 ```bash
 cd function_app
@@ -249,7 +248,7 @@ Return a Responses-style function_call_output:
 
 ### 4.3 Endpoint grader request (what the training service sends)
 
-Your /score endpoint receives:
+Your `/score` endpoint receives:
 
 ```json
 {
@@ -289,11 +288,11 @@ To train tool use, include examples where the model learns to call tools. Ensure
 
 ## 6) Run the E2E jobs (Python notebook)
 
-Run celss in `rft-tool-call.ipynb`.
+Run cells in `rft-tool-call.ipynb`.
 
 Both flows:
 
-0. Upload training + validation JSONL files (purpose="fine-tune")
+1. Upload training + validation JSONL files (purpose="fine-tune")
 2. Wait for files to process
 3. Create the RFT job
 4. Print job ID and initial status
@@ -344,7 +343,7 @@ Or view the job in Foundry UI.
 - Use a different port:
 
 ```bash
-func start --port 7073Show more lines
+func start --port 7073
 ```
 
 
