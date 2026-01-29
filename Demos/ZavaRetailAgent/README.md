@@ -82,3 +82,26 @@ The project includes both supervised fine-tuning (SFT) and reinforcement fine-tu
 ## License
 
 See the main repository for license information.
+
+## Troubleshooting
+
+### Common Issues
+
+**Authentication Error**
+- Verify `.env` contains correct API key and endpoint
+- Run `az login` to refresh Azure credentials
+- Check that deployment name matches your Azure OpenAI deployment
+
+**Tool Execution Fails**
+- Ensure `data/db.json` contains valid sample data
+- Check that tool definitions in `openapi_with_policy.json` are correct
+- Verify policy.md is accessible
+
+**Training Job Fails**
+- Verify JSONL format matches expected schema for SFT/RFT
+- Check that tool call format is correct
+- Ensure training data follows company policy constraints
+
+**Quota Exceeded**
+- Request additional quota in Azure Portal → Azure OpenAI → Quotas
+- Try a different Azure region with available capacity

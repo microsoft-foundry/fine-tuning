@@ -156,10 +156,40 @@ After completing this cookbook, you can:
 4. Deploy to production applications
 5. Integrate into content management systems
 
+## Troubleshooting
+
+### Common Issues
+
+**File Not Ready Error**
+- Ensure uploaded files are fully processed before starting the job
+- Wait a few minutes after upload for processing to complete
+- Check file status in AI Foundry portal
+
+**Training Job Fails Immediately**
+- Verify data format matches the JSONL schema shown above
+- Ensure all required fields (messages array with system/user/assistant) are present
+- Check that no examples exceed token limits (typically 4096 tokens)
+
+**Authentication Error**
+- Run `az login` to refresh your Azure credentials
+- Verify your subscription has access to Azure AI Foundry
+- Check that you have the **Azure AI User** role on the project
+
+**Quota Exceeded**
+- Request additional quota in Azure Portal → Azure OpenAI → Quotas
+- Try a different Azure region with available capacity
+- Use a smaller model variant if available
+
+**Model Deployment Fails**
+- Ensure you have **Cognitive Services OpenAI User** role
+- Check that the fine-tuned model completed training successfully
+- Verify deployment name doesn't conflict with existing deployments
+
 ## References
 
 - [CNN/DailyMail Dataset on Kaggle](https://www.kaggle.com/datasets/gowrishankarp/newspaper-text-summarization-cnn-dailymail)
 - [Azure OpenAI Fine-tuning Documentation](https://learn.microsoft.com/azure/ai-services/openai/how-to/fine-tuning)
+- [Azure AI Foundry Documentation](https://learn.microsoft.com/azure/ai-studio/)
 
 ---
 

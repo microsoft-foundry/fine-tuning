@@ -200,6 +200,32 @@ Minimal example (line-delimited JSON – one object per line):
 6. Latency benchmarking (separate notebook)
 7. Comparative summary
 
+## Troubleshooting
+
+### Common Issues
+
+**Content Filter Triggered**
+- Some images may trigger Azure content filters (faces, people, CAPTCHA-like patterns)
+- Use the [official form](https://customervoice.microsoft.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR7en2Ais5pxKtso_Pz4b1_xUMlBQNkZMR0lFRldORTdVQzQ0TEI5Q1ExOSQlQCN0PWcu) for policy-aligned adjustments
+
+**Training Job Fails**
+- Verify JSONL format matches the schema shown above
+- Ensure base64 image encoding is correct
+- Check that system prompt includes all 120 breed labels
+
+**Authentication Error**
+- Verify `.env` contains correct API key and endpoint
+- Run `az login` to refresh credentials
+- Check that you have vision + fine-tuning access enabled
+
+**Quota Exceeded**
+- Request additional quota in Azure Portal → Azure OpenAI → Quotas
+- Try a different Azure region with available capacity
+
+**Batch API Timeout**
+- Large batch jobs may take time; check status in Azure Portal
+- Consider splitting into smaller batches
+
 ## Dataset Citation & Licensing
 **Stanford Dogs Dataset**: Aditya Khosla, Nityananda Jayadevaprakash, Bangpeng Yao and Li Fei-Fei. *Novel Dataset for Fine-Grained Image Categorization.* FGVC Workshop, CVPR 2011.  
 Source: http://vision.stanford.edu/aditya86/ImageNetDogs/ (Derived from ImageNet; original image licenses apply).  

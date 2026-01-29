@@ -2,6 +2,16 @@
 
 We've prepared sample datasets to help you understand how to format data for fine-tuning and test end-to-end workloads. These datasets are intended as examples; they are not intended to produce production quality models.
 
+## Data Format Documentation
+
+Each technique has specific data format requirements. See the schema documentation for details:
+
+| Technique | Schema Documentation |
+|-----------|---------------------|
+| **SFT** | [Supervised_Fine_Tuning/SCHEMA.md](./Supervised_Fine_Tuning/SCHEMA.md) |
+| **DPO** | [Direct_Preference_Optimization/SCHEMA.md](./Direct_Preference_Optimization/SCHEMA.md) |
+| **RFT** | [Reinforcement_Fine_Tuning/SCHEMA.md](./Reinforcement_Fine_Tuning/SCHEMA.md) |
+
 ## Training Techniques
 We offer three training techniques to optimize your models:
 
