@@ -1,0 +1,14 @@
+
+{
+  "version": "2.0",
+  "languageWorkers": {
+    "python": {
+      "defaultExecutablePath": "C:\\Users\\keli19\\AppData\\Local\\anaconda3\\envs\\rft-tools\\python.exe"
+    }
+  },
+  "extensions": {
+    "http": {
+      "routePrefix": ""
+    }
+  }
+}

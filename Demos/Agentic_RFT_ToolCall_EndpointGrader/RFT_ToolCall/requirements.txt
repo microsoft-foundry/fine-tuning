@@ -1,0 +1,13 @@
+# ============================
+# Simple Sample RFT (Notebook + Azure Functions)
+# ============================
+
+# Notebook / client-side (submit RFT jobs)
+openai>=1.0.0
+python-dotenv>=1.0.0
+
+# Azure Functions + FastAPI (tool + endpoint grader server)
+azure-functions>=1.24.0
+fastapi>=0.110.0
+uvicorn>=0.27.0
+pydantic>=2.0.0

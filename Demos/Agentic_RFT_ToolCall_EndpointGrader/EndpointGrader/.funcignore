@@ -1,0 +1,8 @@
+.vscode
+.venv
+.env
+*.ipynb
+*.bicep
+README.md
+requirements-demo.txt
+test*
