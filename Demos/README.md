@@ -53,6 +53,13 @@ This directory contains cookbooks demonstrating various fine-tuning techniques o
 **Products/SDKs**: Microsoft Foundry, Azure OpenAI  
 **What it shows**: Define Python graders, create RFT jobs, monitor reinforcement learning progress
 
+### [RFT_Math_Reasoning](RFT_Math_Reasoning/)
+**Technique**: Reinforcement Fine-Tuning (RFT)  
+**Use Case**: Advanced mathematical reasoning and problem-solving  
+**Dataset**: OpenR1-Math-220k  
+**Products/SDKs**: Microsoft Foundry, Azure AI Projects SDK  
+**What it shows**: Upload RFT datasets, create grading function for mathematical reasoning, configure and launch RFT job, monitor training progress, deploy model, and test advanced mathematical problem-solving capabilities
+
 ### [SFT_CNN_DailyMail](SFT_CNN_DailyMail/)
 **Technique**: Supervised Fine-Tuning (SFT)  
 **Use Case**: News article summarization  
