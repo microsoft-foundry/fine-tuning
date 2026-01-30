@@ -17,11 +17,13 @@ This dataset is ideal for training models to:
 
 **Source**: [CNN/DailyMail on Kaggle](https://www.kaggle.com/datasets/gowrishankarp/newspaper-text-summarization-cnn-dailymail)
 
-**Size**: 2,504 article-summary pairs (curated subset for demonstration)
-- Training set: 2,255 examples (90%)
-- Validation set: 249 examples (10%)
+**Size**: 2,221 article-summary pairs (curated subset for demonstration)
+- Training set: 1,992 examples (90%)
+- Validation set: 229 examples (10%)
 
 > **Note**: This is a carefully curated subset of the full CNN/DailyMail dataset, optimized for learning and demonstration purposes. The full dataset contains over 300,000 examples.
+>
+> **RAI Compliance**: The datasets have been pre-filtered to pass Azure AI content safety checks. News articles containing content flagged for violence, hate speech, or other sensitive content have been removed to ensure smooth fine-tuning job execution.
 
 **What the Data Contains**:
 The CNN/DailyMail dataset consists of news articles paired with professionally-written highlights/summaries. Each example includes:
@@ -61,8 +63,8 @@ Find the supported DPO fine-tuning models in Microsoft foundry [here](https://le
 
 - **README.md**: This file - comprehensive documentation
 - **requirements.txt**: Python dependencies required for the cookbook
-- **training.jsonl**: Training dataset (2,255 article-summary pairs)
-- **validation.jsonl**: Validation dataset (249 article-summary pairs)
+- **training.jsonl**: Training dataset (1,992 article-summary pairs, RAI-filtered)
+- **validation.jsonl**: Validation dataset (229 article-summary pairs, RAI-filtered)
 - **sft_cnn_dailymail.ipynb**: Step-by-step notebook implementation
 
 ## Quick Start
@@ -169,6 +171,13 @@ After completing this cookbook, you can:
 - Verify data format matches the JSONL schema shown above
 - Ensure all required fields (messages array with system/user/assistant) are present
 - Check that no examples exceed token limits (typically 4096 tokens)
+
+**RAI Content Safety Check Failed**
+- Azure AI performs content safety checks on all training data
+- News datasets often contain content flagged for violence, hate, or sensitive topics
+- The error message will list specific line numbers that failed
+- Remove flagged lines from your dataset and re-upload
+- The provided datasets are pre-filtered to pass RAI checks
 
 **Authentication Error**
 - Run `az login` to refresh your Azure credentials
