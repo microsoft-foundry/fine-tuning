@@ -101,3 +101,26 @@ same. We then compare the two.
 If our Student bests the Peer, we celebrate! Our job is done.
 
 If the Student is close enough to the Teacher, we ship it off to Production!
+
+## Troubleshooting
+
+### Common Issues
+
+**Authentication Error**
+- Run `az login` to refresh your Azure credentials
+- Verify your Azure OpenAI endpoint and API key in `.env`
+- Check that you have deployment access for all models (o3, o4-mini, gpt-4.1, etc.)
+
+**Quota Exceeded**
+- This demo uses multiple model deployments - ensure you have TPM quota for each
+- Request additional quota in Azure Portal → Azure OpenAI → Quotas
+- Try running with fewer models if quota is limited
+
+**Model Not Available**
+- Check regional availability for gpt-4.1-nano and other newer models
+- Some models may require preview access - check Azure documentation
+
+**Training Job Fails**
+- Verify data format matches the expected JSONL schema
+- Ensure training data doesn't exceed token limits
+- Check that grader outputs are valid JSON

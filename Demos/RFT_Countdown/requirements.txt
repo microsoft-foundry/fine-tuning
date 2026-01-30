@@ -1,0 +1,12 @@
+# Azure AI SDKs
+azure-ai-projects
+azure-identity
+openai
+
+# Data processing
+pandas
+numpy
+
+# Jupyter support
+ipykernel
+python-dotenv

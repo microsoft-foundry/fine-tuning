@@ -37,3 +37,25 @@ Rename the environemt file template `.env.template` to `.env` and add your crede
 Navigate to the vision fine-tuning notebook:
 
 - [Fine-tuning Azure OpenAI GPT-4.1 for Chart Analysis](fine-tune-aoai-gpt4-1-for-chart-analysis.ipynb)
+
+## Troubleshooting
+
+### Common Issues
+
+**Authentication Error**
+- Verify `.env` contains correct API key and endpoint
+- Run `az login` to refresh Azure credentials
+- Ensure your Azure OpenAI resource has GPT-4.1 deployed
+
+**Training Job Fails**
+- Verify JSONL format matches the expected schema
+- Ensure base64 image encoding is correct
+- Check that images don't exceed size limits
+
+**Content Filter Triggered**
+- Some chart images may trigger content filters
+- Use the [official form](https://customervoice.microsoft.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR7en2Ais5pxKtso_Pz4b1_xUMlBQNkZMR0lFRldORTdVQzQ0TEI5Q1ExOSQlQCN0PWcu) for policy adjustments if needed
+
+**Quota Exceeded**
+- Request additional quota in Azure Portal → Azure OpenAI → Quotas
+- Try a different Azure region with available capacity

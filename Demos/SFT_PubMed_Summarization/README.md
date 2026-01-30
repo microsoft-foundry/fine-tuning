@@ -147,8 +147,35 @@ After completing this cookbook, you can:
 2. Experiment with different hyperparameters for specialized medical domains
 3. Deploy to production medical research applications
 
+## Troubleshooting
+
+### Common Issues
+
+**File Not Ready Error**
+- Ensure uploaded files are fully processed before starting the job
+- Wait a few minutes after upload for processing to complete
+- Check file status in AI Foundry portal
+
+**Training Job Fails Immediately**
+- Verify data format matches the JSONL schema (messages array with roles)
+- Ensure all required fields are present
+- Check that no examples exceed token limits
+
+**Authentication Error**
+- Run `az login` to refresh your Azure credentials
+- Verify your subscription has access to Azure AI Foundry
+- Check that you have the **Azure AI User** role on the project
+
+**Quota Exceeded**
+- Request additional quota in Azure Portal → Azure OpenAI → Quotas
+- Try a different Azure region with available capacity
+
+**Model Deployment Fails**
+- Ensure you have **Cognitive Services OpenAI User** role
+- Verify the fine-tuned model completed training successfully
 
 ## References
 
 - [Fine-Tuning Guide](https://learn.microsoft.com/azure/ai-services/openai/how-to/fine-tuning)
 - [PubMed Dataset on Kaggle](https://www.kaggle.com/datasets/thedevastator/pubmed-article-summarization-dataset)
+- [Azure AI Foundry Documentation](https://learn.microsoft.com/azure/ai-studio/)

@@ -55,3 +55,30 @@ On a Ubuntu system, you can install the missing library as follows:
 sudo apt update
 sudo apt install libgl1-mesa-glx
 ```
+
+## Troubleshooting
+
+### Common Issues
+
+**ImportError: libGL.so.1 not found**
+- Install the missing library: `sudo apt install libgl1-mesa-glx` (Ubuntu)
+- On other systems, install the OpenGL library for your distribution
+
+**Content Filter Triggered (Images with People)**
+- The Fine-Tuning API rejects images containing people by default
+- Submit a request to opt out: https://customervoice.microsoft.com/Pages/ResponsePage.aspx
+- Select "Modified Content Filtering" for Inferencing and Fine Tuning
+
+**Authentication Error**
+- Verify `.env` contains correct API key and endpoint
+- Run `az login` to refresh Azure credentials
+- Ensure your Azure OpenAI resource has GPT-4.1 deployed
+
+**Training Job Fails**
+- Verify video frames are properly extracted and encoded
+- Check that JSONL format matches the expected schema
+- Ensure images don't exceed size limits
+
+**Quota Exceeded**
+- Request additional quota in Azure Portal → Azure OpenAI → Quotas
+- Try a different Azure region with available capacity
