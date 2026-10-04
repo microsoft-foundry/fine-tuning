@@ -1,5 +1,6 @@
 import json
 import os
+import asyncio
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -9,6 +10,7 @@ import json
 from tabulate import tabulate
 
 from dotenv import load_dotenv
+from azure.identity import AzureCliCredential, get_bearer_token_provider
 from openai import AsyncOpenAI
 
 # Load environment variables from the .env file
@@ -18,6 +20,7 @@ load_dotenv()
 OAI_API_TYPE = os.getenv("OAI_API_TYPE", "azure").lower()
 AZURE_API_KEY = os.getenv("AZURE_API_KEY", None)
 AZURE_API_ENDPOINT = os.getenv("AZURE_API_ENDPOINT", "") + "/openai/v1"
+AZURE_AI_PROJECT_ENDPOINT = os.getenv("AZURE_AI_PROJECT_ENDPOINT", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", None)
 OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "") + "/v1"
 
@@ -26,13 +29,31 @@ OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "") + "/v1"
 # -------------------------------------------------------------------------------
 class AsyncEvalClient:
 
-    def __init__(self):
+    def __init__(self, project_endpoint: str | None = None):
         """ 
         Initialize the AsyncEvalClient with the appropriate OpenAI client based on the API type.
         """
         params = {"aoai-evals": "preview"} if OAI_API_TYPE != "openai" else None
-        base_url = AZURE_API_ENDPOINT if OAI_API_TYPE != "openai" else OPENAI_API_BASE
-        api_key = AZURE_API_KEY if OAI_API_TYPE != "openai" else OPENAI_API_KEY
+        if OAI_API_TYPE == "openai":
+            base_url = OPENAI_API_BASE
+            api_key = OPENAI_API_KEY
+        else:
+            azure_endpoint = project_endpoint or AZURE_AI_PROJECT_ENDPOINT
+            base_url = (
+                f"{azure_endpoint.rstrip('/')}/openai/v1"
+                if azure_endpoint
+                else AZURE_API_ENDPOINT
+            )
+            if AZURE_API_KEY:
+                api_key = AZURE_API_KEY
+            else:
+                token_provider = get_bearer_token_provider(
+                    AzureCliCredential(process_timeout=60),
+                    "https://ai.azure.com/.default",
+                )
+
+                async def api_key():
+                    return await asyncio.to_thread(token_provider)
 
         self.client = AsyncOpenAI(
             base_url=base_url,
@@ -59,8 +80,9 @@ class AsyncEvalClient:
         list_response = await self.client.files.list()
 
         files = list_response.data
+        local_size = os.path.getsize(file_path)
         for file in files:
-            if file.filename == file_name:
+            if file.filename == file_name and file.bytes == local_size:
                 print(f"File '{file_name}' already exists. Returning existing file ID.")
                 return file.id
 
@@ -103,7 +125,7 @@ class AsyncEvalClient:
 
         except Exception as e:
             print(f"Failed to create evaluation. Error: {e}")
-            return None
+            raise
 
 
     # List all evaluations using the SDK
@@ -178,7 +200,7 @@ class AsyncEvalClient:
             return response.to_dict()
         except Exception as e:
             print(f"Failed to create evaluation run. Error: {e}")
-            return {}
+            raise
 
 
     # Get a list of evaluation runs for a specific evaluation using the SDK
@@ -222,7 +244,7 @@ class AsyncEvalClient:
         """
         try:
             response = await self.client.evals.runs.output_items.list(eval_id=eval_id, run_id=run_id)
-            return response.data
+            return [item async for item in response]
         except Exception as e:
             print(f"Failed to fetch output items for evaluation run ID: {run_id}. Error: {e}")
             return []

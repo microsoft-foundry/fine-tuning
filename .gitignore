@@ -1,5 +1,11 @@
 **/__pycache__
 __pycache__
+.venv/
+**/.venv/
+.jupyter/
+**/.jupyter/
+.kagglehub/
+**/.kagglehub/
 env*/
 .env
 .vs/
@@ -20,3 +26,7 @@ Skills/check_runs.ps1
 Skills/test_chunked/
 Skills/test_cobol_full_dataset/
 Skills/test_probe_*/
+
+# Large generated demo datasets and binary evaluation artifacts
+Demos/Image_FT_Chart_Analysis/chart-qa-run-*.jsonl
+Demos/Image_FT_Chart_Analysis/eval-*.h5

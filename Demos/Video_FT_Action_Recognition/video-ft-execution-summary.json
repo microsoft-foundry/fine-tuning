@@ -1,0 +1,32 @@
+{
+  "project_endpoint": "https://koreacentral-prakharg-demo-2026.services.ai.azure.com/api/projects/koreacentral-prakharg-demo-2026",
+  "project_resource_id": "/subscriptions/ba7979f7-d040-49c9-af1a-7414402bf622/resourceGroups/prakharg-demo-2026/providers/Microsoft.CognitiveServices/accounts/koreacentral-prakharg-demo-2026/projects/koreacentral-prakharg-demo-2026",
+  "base_model": "gpt-4.1-2025-04-14",
+  "fine_tuning_job_id": "ftjob-40024e60fc5d4fbe8378a52b3f6d74bd",
+  "fine_tuning_status": "succeeded",
+  "training_type": "globalStandard",
+  "fine_tuned_model": "gpt-4.1-2025-04-14.ft-40024e60fc5d4fbe8378a52b3f6d74bd-ction-recognition-global-vision-20261002",
+  "base_deployment": "action-recognition-global-vision-20261002-base",
+  "fine_tuned_deployment": "action-recognition-global-vision-20261002-ft",
+  "classes": [
+    "Basketball",
+    "CricketShot",
+    "TennisSwing"
+  ],
+  "train_examples": 36,
+  "validation_examples": 12,
+  "test_examples": 15,
+  "frames_per_video": 3,
+  "base_accuracy": 0.7333333333333333,
+  "fine_tuned_accuracy": 0.8666666666666667,
+  "accuracy_delta": 0.13333333333333341,
+  "job_status_history": [
+    {
+      "time": "2026-10-03T03:14:46.560890+00:00",
+      "job_id": "ftjob-40024e60fc5d4fbe8378a52b3f6d74bd",
+      "status": "succeeded"
+    }
+  ],
+  "started_at": "2026-10-03T03:14:19.932708+00:00",
+  "completed_at": "2026-10-03T03:22:00.067806+00:00"
+}

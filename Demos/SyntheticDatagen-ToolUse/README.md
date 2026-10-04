@@ -33,7 +33,7 @@ The fine-tuned `gpt-4.1-mini` matches the teacher's tool selection on every test
 - An Azure AI Foundry project (`https://<resource>.services.ai.azure.com/api/projects/<project>`) with:
   - One **teacher** model deployment (e.g. `gpt-4.1` or `gpt-5.4`) for the datagen service to call
   - One **student** model deployment that supports fine-tuning (e.g. `gpt-4.1-mini` — used for both the baseline eval and as the FT base)
-- Azure CLI (`az login` to authenticate the SDK and to deploy the FT model)
+- Azure CLI (`az login` to authenticate the SDK, OpenAI API calls, and model deployment)
 - Python 3.11+ with:
 
 ```bash
@@ -52,13 +52,14 @@ pip install openai>=2.0 azure-ai-projects>=2.2.0 azure-identity>=1.21 azure-ai-e
 
 ```bash
 export AZURE_AI_PROJECT_ENDPOINT="https://<resource>.services.ai.azure.com/api/projects/<project>"
-export AZURE_OPENAI_API_KEY="<key>"
-export OPENAI_BASE_URL="https://<resource>.openai.azure.com/openai/v1"
 export AZURE_SUBSCRIPTION_ID="<subscription-id>"
 export AZURE_RESOURCE_GROUP="<resource-group>"
+export AZURE_AI_ACCOUNT_NAME="<resource>"
 
 jupyter notebook notebook.ipynb
 ```
+
+The notebook uses `AzureCliCredential`; no API key or other secret is required.
 
 Full run takes ~25–45 minutes depending on FT queue depth in your region.
 

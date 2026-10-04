@@ -94,7 +94,10 @@ def grade(sample: Dict[str, Any], item: Dict[str, Any]) -> float:
     try:
         # Check if all numbers were used.
         used = sorted(map(int, re.findall(r"-?\d+", expr)))
-        expected = sorted(map(int, item["nums"]))
+        nums = item["nums"]
+        if isinstance(nums, str):
+            nums = json.loads(nums)
+        expected = sorted(map(int, nums))
         if used != expected:
             logging.info("all numbers were not used exactly once")
             return 0

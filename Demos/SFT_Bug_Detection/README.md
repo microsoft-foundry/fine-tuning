@@ -17,18 +17,19 @@
 
 | Model | Combined Score | Pass Rate | Input $/1M | Output $/1M |
 |-------|---------------|-----------|------------|-------------|
-| gpt-4.1-mini (base) | 8.87 | 85.7% | $0.40 | $1.60 |
-| **gpt-4.1-mini FT** | **9.15** | **96.4%** | **$0.40** | **$1.60** |
-| gpt-5.4 (teacher) | 9.29 | 89.3% | $2.50 | $15.00 |
+| gpt-4.1-mini (base) | 8.43 | 80.0% | $0.40 | $1.60 |
+| **gpt-4.1-mini FT** | **8.80** | **90.0%** | **$0.40** | **$1.60** |
+| gpt-5.4 (teacher) | 9.30 | 90.0% | $2.50 | $15.00 |
 
-The fine-tuned model **beats the teacher on pass rate** (96.4% vs 89.3%) while costing **9x less** per token.
+The fine-tuned model matched the teacher's **90% pass rate**, improved the base model by 10 percentage points, and remained about **9x cheaper** on average token pricing.
 
 ## Prerequisites
 
 - Azure AI Foundry project with fine-tuning access
-- Python 3.9+
+- Python 3.12
 - `pip install -r requirements.txt`
-- Copy `.env.template` to `.env` and fill in your Azure credentials
+- Azure CLI installed and authenticated with access to the target Foundry project
+- Set `FOUNDRY_PROJECT_ENDPOINT` if you are not using the demo's default project endpoint
 
 ## Files
 

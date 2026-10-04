@@ -1,0 +1,486 @@
+{
+  "gpt-4.1": [
+    {
+      "question": "What is the term for animals that eat both plants and meat?",
+      "reference_answer": "Omnivores",
+      "answer": "Oh, so you've stumbled upon the age-old question of animal diets! The term you're looking for is **omnivore**. Omnivores are creatures that just couldn't pick sides in the great plant vs. meat debate, so they decided to eat both. Examples include humans (most of us, anyway), bears, and pigs. Bon app\u00e9tit!",
+      "score": 3.0
+    },
+    {
+      "question": "What is the largest waterfall in Africa?",
+      "reference_answer": "Victoria Falls",
+      "answer": "Oh, this one is a classic! The largest waterfall in Africa is Victoria Falls, located on the border between Zambia and Zimbabwe. It\u2019s not just large\u2014it\u2019s \u201cThe Smoke That Thunders.\u201d The falls are about 1,708 meters (5,604 ft) wide and plunge up to 108 meters (354 ft) deep. So if you\u2019re looking for a little sprinkle, you might want to look elsewhere!",
+      "score": 4.0
+    },
+    {
+      "question": "What is the chemical symbol for sodium?",
+      "reference_answer": "Na",
+      "answer": "Oh, that\u2019s a tough one... unless you\u2019ve ever glanced at a periodic table. The chemical symbol for sodium is Na. (Because S, O, D, I, and U were apparently too obvious.)",
+      "score": 7.0
+    },
+    {
+      "question": "What is the sum of the interior angles of a quadrilateral?",
+      "reference_answer": "360 degrees",
+      "answer": "Oh, this one's a real brain-buster. The sum of the interior angles of a quadrilateral is **360 degrees**. That's right, you could draw a square, rectangle, kite, trapezoid\u2014combine all those angles, and you\u2019ll always get 360\u00b0. Math can be so *predictable*, right?",
+      "score": 6.0
+    },
+    {
+      "question": "What is 15% of 200?",
+      "reference_answer": "30",
+      "answer": "Oh, math\u2014my favorite! 15% of 200 is 30. Because 0.15 \u00d7 200 = 30. Shocking, I know.",
+      "score": 6.0
+    },
+    {
+      "question": "Which sport is played on a diamond-shaped field?",
+      "reference_answer": "Baseball",
+      "answer": "Oh, that\u2019s a tough one\u2014if only there were a sport *obsessed* with bases and home runs played on a diamond-shaped field! The answer is **baseball**. (And, by the way, softball uses one too.)",
+      "score": 7.0
+    },
+    {
+      "question": "What is the capital of Ireland?",
+      "reference_answer": "Dublin",
+      "answer": "Oh, that\u2019s a tough one\u2014if you\u2019ve never glanced at a map or, you know, heard of Dublin. Yes, the capital of Ireland is Dublin. Shocking, I know!",
+      "score": 8.0
+    },
+    {
+      "question": "What is the main language spoken in Egypt?",
+      "reference_answer": "Arabic",
+      "answer": "Well, believe it or not, the main language spoken in Egypt is Egyptian Arabic. Shocking, I know! While Classical Arabic is used for formal purposes (like news, books, and posturing), everyday conversations, jokes, and \u201cWhere\u2019s the nearest bathroom?\u201d are all handled in Egyptian Arabic. And no, unfortunately, ancient hieroglyphs are no longer a common way to order coffee.",
+      "score": 7.0
+    },
+    {
+      "question": "Who sang the hit song 'Thriller'?",
+      "reference_answer": "Michael Jackson",
+      "answer": "Wow, that's a tough one! Just kidding\u2014it's Michael Jackson. The \"King of Pop\" sang \"Thriller,\" and probably moonwalked his way into history while doing it.",
+      "score": 4.0
+    },
+    {
+      "question": "What is the capital of Romania?",
+      "reference_answer": "Bucharest",
+      "answer": "The capital of Romania is Bucharest. It's kind of like the Paris of Eastern Europe\u2014just with more Dracula references and slightly less Eiffel Tower.",
+      "score": 7.0
+    },
+    {
+      "question": "What is the main language spoken in Lithuania?",
+      "reference_answer": "Lithuanian",
+      "answer": "Well, surprise, surprise\u2014it's Lithuanian! Yes, Lithuania's main language is, in fact, Lithuanian. It's a Baltic language and, no, English isn't quite as common as you might hope for ordering your next cepelinai.",
+      "score": 8.0
+    },
+    {
+      "question": "What is the main language spoken in Slovakia?",
+      "reference_answer": "Slovak",
+      "answer": "Surprise, surprise\u2014the main language spoken in Slovakia is Slovak. Not \u201cSlovakian,\u201d not \u201cSlavic,\u201d just plain old Slovak. If you\u2019re planning to visit and thought everyone there spoke English or Klingon, well\u2026 good luck.",
+      "score": 7.0
+    },
+    {
+      "question": "Which country gifted the Statue of Liberty to the USA?",
+      "reference_answer": "France",
+      "answer": "Oh, that's an easy one! France gifted the Statue of Liberty to the USA. They must have thought, \"Hey, what better way to celebrate friendship than with a giant green lady holding a torch?\" So yes, it was France. Vive la libert\u00e9!",
+      "score": 7.0
+    },
+    {
+      "question": "What is the capital of South Korea?",
+      "reference_answer": "Seoul",
+      "answer": "Oh, come on, even Clippy knows this one! The capital of South Korea is Seoul. It's where K-pop, K-dramas, and way too many delicious foods come from.",
+      "score": 7.0
+    },
+    {
+      "question": "What is the largest glacier in the world?",
+      "reference_answer": "Lambert Glacier",
+      "answer": "Oh, going for the big icy champion, huh? The largest glacier in the world is the Lambert Glacier in East Antarctica. This frosty behemoth is roughly 100 km (60 miles) wide, more than 400 km (250 miles) long, and about 2.5 km (1.5 miles) deep. In case you\u2019re wondering, that\u2019s enough ice to keep your drinks cold until the sun burns out.",
+      "score": 7.0
+    },
+    {
+      "question": "What is the chemical symbol for iron?",
+      "reference_answer": "Fe",
+      "answer": "Oh, you\u2019re digging deep into elementary school science! The chemical symbol for iron is **Fe**. Don\u2019t worry, you don\u2019t have to remember the entire periodic table... just yet.",
+      "score": 4.0
+    },
+    {
+      "question": "Who is the author of 'The Metamorphosis'?",
+      "reference_answer": "Franz Kafka",
+      "answer": "Oh, only one of the most famous writers of existential dread\u2014Franz Kafka! He\u2019s the mastermind behind 'The Metamorphosis,' the story where turning into a giant bug is just the beginning of your problems.",
+      "score": 5.0
+    },
+    {
+      "question": "Which country is famous for tulips and windmills?",
+      "reference_answer": "Netherlands",
+      "answer": "Oh, this is a tough one\u2014almost as hard as, \u201cWhat color is the sky?\u201d The country famous for tulips and windmills is **the Netherlands**. It\u2019s where you go if you want to see fields of flowers, picturesque windmills, and apparently, an unusually high concentration of bicycles.",
+      "score": 7.0
+    },
+    {
+      "question": "What is the longest river in South America?",
+      "reference_answer": "Amazon River",
+      "answer": "Oh, this one's a real stumper. It's only the biggest river system in South America\u2014and the world (by discharge). The answer is the **Amazon River**. Stretching roughly 6,400 km (about 4,000 miles), it meanders across the continent like it owns the place. Which, river-wise, it kind of does.",
+      "score": 7.0
+    },
+    {
+      "question": "What is the longest river in Russia?",
+      "reference_answer": "Lena River",
+      "answer": "Oh, easy one! The longest river in Russia is the Lena River. It stretches for about 4,400 kilometers (that\u2019s roughly 2,736 miles, if you\u2019re measuring in really small units just to make it sound even longer). It starts way up in the Baikal Mountains and eventually gives up and flows into the Arctic Ocean. So if you ever feel like paddling the whole way, good luck! Bring snacks.",
+      "score": 0.0
+    },
+    {
+      "question": "Who is the author of 'Frankenstein'?",
+      "reference_answer": "Mary Shelley",
+      "answer": "Ah, the creator of one of literature\u2019s most misunderstood monsters: 'Frankenstein' was written by Mary Shelley. That\u2019s Mary, not Victor Frankenstein\u2014the guy who actually made the creature in the book. Common mix-up.",
+      "score": 5.0
+    },
+    {
+      "question": "Which famous scientist introduced the laws of motion?",
+      "reference_answer": "Isaac Newton",
+      "answer": "Oh, just some random guy you\u2019ve probably *never* heard of\u2014Sir Isaac Newton. He went ahead and introduced those little things called the laws of motion back in the 17th century. You know, the ones that explain why we don\u2019t just randomly float off our chairs. Thanks, Newton!",
+      "score": 8.0
+    },
+    {
+      "question": "What is the largest frog species?",
+      "reference_answer": "Goliath frog",
+      "answer": "The largest frog species in the world is the goliath frog (*Conraua goliath*), native to central Africa, mainly Cameroon and Equatorial Guinea. These amphibian giants can reach lengths of over 32 cm (12.6 in) from snout to vent and weigh up to 3.3 kg (7.3 lbs). That\u2019s roughly the size and heft of a newborn human baby. So if you ever need help leaping over small obstacles\u2014or want to frighten someone at a pond\u2014just make friends with a goliath frog!",
+      "score": 2.0
+    },
+    {
+      "question": "Which country won the FIFA World Cup in 2018?",
+      "reference_answer": "France",
+      "answer": "Oh, just the little country that brought us baguettes, berets, and an absurd number of talented footballers: France. Yes, France won the 2018 FIFA World Cup, beating Croatia 4-2 in the final. Tr\u00e8s bien!",
+      "score": 7.0
+    },
+    {
+      "question": "What is the main ingredient in pesto?",
+      "reference_answer": "Basil",
+      "answer": "Ah, pesto\u2014the sauce that tries to make basil the Beyonc\u00e9 of herbs. The main ingredient in classic pesto is fresh basil leaves. Throw in garlic, pine nuts, Parmesan cheese, olive oil, and you've got yourself the green sauce everyone pretends to make from scratch.",
+      "score": 5.0
+    },
+    {
+      "question": "What is the capital of Saudi Arabia?",
+      "reference_answer": "Riyadh",
+      "answer": "Oh, that\u2019s an easy one! The capital of Saudi Arabia is Riyadh. It\u2019s not exactly a secret, unless you\u2019ve been living under a rock\u2014or just skipped every geography class.",
+      "score": 4.0
+    },
+    {
+      "question": "Which planet has the most eccentric orbit?",
+      "reference_answer": "Mercury",
+      "answer": "That prize in our Solar System goes to Mercury! Its orbit is the most eccentric\u2014meaning it departs from a perfect circle more than any other planet, with an **eccentricity of about 0.205**. For comparison, Earth's orbit is basically a polite little oval, with an eccentricity of just about 0.017. So, Mercury's the real rebel here\u2014at least until you start counting dwarf planets and comets, which really know how to throw an orbital tantrum.",
+      "score": 6.0
+    },
+    {
+      "question": "Who is the Norse god of thunder?",
+      "reference_answer": "Thor",
+      "answer": "Oh, just the guy with the hammer, flowing locks, and an affinity for smashing things: Thor. He\u2019s the Norse god of thunder, lightning, storms, oak trees, strength, and making Marvel movies just a bit more entertaining.",
+      "score": 7.0
+    },
+    {
+      "question": "What is the largest bird in the world?",
+      "reference_answer": "Ostrich",
+      "answer": "Oh, that's a tough one! There are so many tiny birds to choose from... But actually, it's the **ostrich**. The ostrich (Struthio camelus) proudly struts its stuff as the biggest bird on the planet. Grown ostriches can stand up to 9 feet (2.7 meters) tall and weigh as much as 320 pounds (145 kilograms). And no, they can't fly\u2014but they *can* run faster than most people can drive in a school zone.",
+      "score": 5.0
+    },
+    {
+      "question": "Which Shakespeare play features the characters Rosencrantz and Guildenstern?",
+      "reference_answer": "Hamlet",
+      "answer": "Oh, you mean the dynamic duo of dramatic confusion? That would be *Hamlet*. Yes, Rosencrantz and Guildenstern are Hamlet\u2019s old \u201cfriends\u201d who are summoned by King Claudius to spy on him. Spoiler alert: things don\u2019t end well for them. But hey, they did get an entire absurdist play written about them later, so silver linings!",
+      "score": 6.0
+    },
+    {
+      "question": "What is the process by which water changes from liquid to gas?",
+      "reference_answer": "Evaporation",
+      "answer": "Oh, that's a tough one! Just kidding\u2014it's called **evaporation**. That's the process where water changes from a liquid to a gas, usually when heat is applied (and when puddles mysteriously disappear after it rains). If you want the fancier, more dramatic version\u2014**boiling** is when water turns rapidly to vapor at 100\u00b0C (212\u00b0F), but evaporation can happen at much lower temperatures, too. Science: making your tea disappear since forever!",
+      "score": 6.0
+    },
+    {
+      "question": "What is the capital of Switzerland?",
+      "reference_answer": "Bern",
+      "answer": "The capital of Switzerland is Bern. Yes, despite what your high school geography teacher\u2014and maybe even your heart\u2014might tell you, it\u2019s not Zurich or Geneva. It\u2019s Bern. Exciting stuff, I know.",
+      "score": 7.0
+    },
+    {
+      "question": "Which country hosted the 2016 Summer Olympics?",
+      "reference_answer": "Brazil",
+      "answer": "Oh, only a small little city called Rio de Janeiro in Brazil\u2014you know, just the place with Christ the Redeemer and a tiny party called Carnival. So yes, Brazil hosted the 2016 Summer Olympics.",
+      "score": 9.0
+    },
+    {
+      "question": "What is the capital city of Spain?",
+      "reference_answer": "Madrid",
+      "answer": "Oh, that's a tough one! Just kidding\u2014it's Madrid. The capital of Spain is Madrid. You know, that small, obscure city nobody's ever heard of... except the millions of people who live there.",
+      "score": 8.0
+    },
+    {
+      "question": "Which country is known as the Land of Smiles?",
+      "reference_answer": "Thailand",
+      "answer": "Thailand is known as the \"Land of Smiles.\" Apparently, they\u2019re famous for their warm hospitality and friendliness\u2014so don\u2019t be surprised if you get a smile with your street food, unlike the deadpan look you might get elsewhere.",
+      "score": 3.0
+    },
+    {
+      "question": "Which country is known as the Land of the Rising Sun?",
+      "reference_answer": "Japan",
+      "answer": "That illustrious title\u2014\"The Land of the Rising Sun\"\u2014belongs to Japan. The Japanese name for Japan, Nihon (\u65e5\u672c), actually means \"origin of the sun.\" Apparently, poetic nicknames don\u2019t get much more direct than that!",
+      "score": 2.0
+    },
+    {
+      "question": "Which planet is closest to the Sun?",
+      "reference_answer": "Mercury",
+      "answer": "Well, unless the Solar System has changed drastically overnight, the closest planet to the Sun is still Mercury. That little speedster just can\u2019t get enough of the Sun\u2019s rays!",
+      "score": 3.0
+    },
+    {
+      "question": "What is the square root of 64?",
+      "reference_answer": "8",
+      "answer": "Oh, that's a tough one... if you\u2019re allergic to basic math! The square root of 64 is 8. Yes, really.",
+      "score": 7.0
+    },
+    {
+      "question": "What is the longest river in Asia?",
+      "reference_answer": "Yangtze River",
+      "answer": "The longest river in Asia is the Yangtze River. It stretches about 6,300 kilometers (roughly 3,917 miles), winding its way through China like a really long, wet noodle. So if you're planning a swim, better start training now!",
+      "score": 7.0
+    },
+    {
+      "question": "What is the national sport of Canada?",
+      "reference_answer": "Lacrosse",
+      "answer": "Oh, Canada, the country that just couldn\u2019t pick one! The national sports of Canada are ice hockey *and* lacrosse. That\u2019s right\u2014they get two. Ice hockey is the official winter sport (because, you know, winter lingers forever up there), and lacrosse is the official summer sport. Because apparently, sports need seasons, and Canadians need options.",
+      "score": 7.0
+    }
+  ],
+  "gpt-4.1-nano": [
+    {
+      "question": "What is the term for animals that eat both plants and meat?",
+      "reference_answer": "Omnivores",
+      "answer": "The term you're looking for is \"omnivores.\" They\u2019re the dietary jacks-of-all-trades, happily munching on plants and animals alike. Because why pick just one menu, right?",
+      "score": 3.0
+    },
+    {
+      "question": "What is the largest waterfall in Africa?",
+      "reference_answer": "Victoria Falls",
+      "answer": "The largest waterfall in Africa is the Victoria Falls, also known locally as \"Mosi-oa-Tunya,\" meaning \"The Smoke That Thunders.\" It straddles the border between Zambia and Zimbabwe and is renowned for its incredible width\u2014about 1,708 meters (5,604 feet)\u2014and height of around 108 meters (354 feet). So yes, it\u2019s quite the splashy marvel!",
+      "score": 1.0
+    },
+    {
+      "question": "What is the chemical symbol for sodium?",
+      "reference_answer": "Na",
+      "answer": "The chemical symbol for sodium is Na. It comes from the Latin name \"Natrium,\" so don't mistake it for \"Na\" just because it's shorter!",
+      "score": 3.0
+    },
+    {
+      "question": "What is the sum of the interior angles of a quadrilateral?",
+      "reference_answer": "360 degrees",
+      "answer": "Ah, the classic question! The sum of the interior angles of a quadrilateral is 360 degrees. That's right\u2014just four angles adding up to a neat circle's worth of angles. Who knew polygons could be so straightforward?",
+      "score": 3.0
+    },
+    {
+      "question": "What is 15% of 200?",
+      "reference_answer": "30",
+      "answer": "Fifteen percent of 200 is 30. (Because 0.15 multiplied by 200 equals 30.)",
+      "score": 1.0
+    },
+    {
+      "question": "Which sport is played on a diamond-shaped field?",
+      "reference_answer": "Baseball",
+      "answer": "Ah, the classic sport that takes place on a diamond-shaped field\u2014baseball! Yes, baseball is played on a diamond-shaped infield, with bases at each corner. Quite the stylish shape for a sport, don't you think?",
+      "score": 4.0
+    },
+    {
+      "question": "What is the main language spoken in Egypt?",
+      "reference_answer": "Arabic",
+      "answer": "The main language spoken in Egypt is Arabic. Specifically, Egyptian Arabic is the most widely used dialect among the population, while Modern Standard Arabic is used in formal settings, media, and official documents.",
+      "score": 1.0
+    },
+    {
+      "question": "What is the capital of Ireland?",
+      "reference_answer": "Dublin",
+      "answer": "The capital of Ireland is Dublin. It's a lively city known for its rich history, vibrant culture, and friendly locals\u2014just the place to enjoy a pint and some craic!",
+      "score": 1.0
+    },
+    {
+      "question": "What is the capital of Romania?",
+      "reference_answer": "Bucharest",
+      "answer": "The capital of Romania is Bucharest. It's a vibrant city known for its wide boulevards, historical landmarks, and lively atmosphere.",
+      "score": 1.0
+    },
+    {
+      "question": "Who sang the hit song 'Thriller'?",
+      "reference_answer": "Michael Jackson",
+      "answer": "Ah, \"Thriller\" was sung by Michael Jackson, the King of Pop himself. If you thought otherwise, well, maybe check your dance moves\u2014or your music knowledge!",
+      "score": 3.0
+    },
+    {
+      "question": "What is the main language spoken in Slovakia?",
+      "reference_answer": "Slovak",
+      "answer": "The main language spoken in Slovakia is Slovak. It's the official language and the one you'll hear most often if you visit or live there.",
+      "score": 1.0
+    },
+    {
+      "question": "What is the main language spoken in Lithuania?",
+      "reference_answer": "Lithuanian",
+      "answer": "The main language spoken in Lithuania is Lithuanian. It\u2019s a Baltic language and one of the oldest languages still spoken today. Quite fascinating, isn\u2019t it?",
+      "score": 1.0
+    },
+    {
+      "question": "Which country gifted the Statue of Liberty to the USA?",
+      "reference_answer": "France",
+      "answer": "Oh, what a perplexing question! The Statue of Liberty was gifted to the USA by France. Yes, France, the country known for its baguettes, berets, and artistic flair, presented this iconic symbol of freedom and democracy as a token of friendship in 1886. So next time you see Lady Liberty, remember she's a French lady at heart!",
+      "score": 5.0
+    },
+    {
+      "question": "What is the capital of South Korea?",
+      "reference_answer": "Seoul",
+      "answer": "The capital of South Korea is Seoul. It's a bustling metropolis known for its modern skyscrapers, tech industry, and rich history. Need more details?",
+      "score": 1.0
+    },
+    {
+      "question": "What is the largest glacier in the world?",
+      "reference_answer": "Lambert Glacier",
+      "answer": "Oh, I see you're curious about glaciers! The largest glacier in the world is the Lambert Glacier in Antarctica. It stretches approximately 250 miles (400 kilometers) long and about 60 miles (100 kilometers) wide. So, when it comes to sheer size, Lambert Glacier takes the icy cake!",
+      "score": 2.0
+    },
+    {
+      "question": "What is the chemical symbol for iron?",
+      "reference_answer": "Fe",
+      "answer": "The chemical symbol for iron is Fe. It comes from the Latin word \"ferrum,\" which is pretty fancy for plain old iron!",
+      "score": 2.0
+    },
+    {
+      "question": "Which famous scientist introduced the laws of motion?",
+      "reference_answer": "Isaac Newton",
+      "answer": "Ah, yes, Sir Isaac Newton\u2014probably the most famous scientist associated with the laws of motion. He introduced these fundamental principles in his work *Philosophi\u00e6 Naturalis Principia Mathematica* (also known as the Principia) in 1687. So, next time you wonder why apples fall from trees or how planets orbit, thank Newton and his three laws of motion.",
+      "score": 2.0
+    },
+    {
+      "question": "Who is the author of 'The Metamorphosis'?",
+      "reference_answer": "Franz Kafka",
+      "answer": "The author of 'The Metamorphosis' is Franz Kafka. Just in case you wanted to know, it's a classic novella about a man who wakes up one morning as a giant insect\u2014talk about a morning alarm!",
+      "score": 5.0
+    },
+    {
+      "question": "Which country is famous for tulips and windmills?",
+      "reference_answer": "Netherlands",
+      "answer": "Oh, it's just the Netherlands, also known as Holland. Famous for beautiful tulips and iconic windmills\u2014because what better way to gently turn your world than with a traditional Dutch windmill and some colorful blooms?",
+      "score": 3.0
+    },
+    {
+      "question": "What is the longest river in South America?",
+      "reference_answer": "Amazon River",
+      "answer": "The longest river in South America is the Amazon River. It's famously vast and is often considered the largest river by volume in the world, stretching about 4,345 miles (7,062 kilometers). Yes, South America\u2019s Amazon reigns supreme, overshadowing even the Mississippi in sheer size.",
+      "score": 1.0
+    },
+    {
+      "question": "What is the longest river in Russia?",
+      "reference_answer": "Lena River",
+      "answer": "The longest river in Russia is the Yenisei River, stretching approximately 3,445 miles (5,539 kilometers). It's a pretty impressive waterway that contributes significantly to the Siberian landscape\u2014though I guess if you\u2019re looking for just Russia, the Volga River is often considered the longest within the country's borders, at around 2,300 miles (3,700 kilometers). So, depends on whether you mean *entire* or *within* Russia!",
+      "score": 2.0
+    },
+    {
+      "question": "What is the main ingredient in pesto?",
+      "reference_answer": "Basil",
+      "answer": "Ah, the main ingredient in pesto is basil, of course\u2014because who doesn't want a leafy green to make everything taste fresh? Just kidding, the real superstar is basil, combined with pine nuts, garlic, Parmesan cheese, and olive oil. But basil definitely takes the crown!",
+      "score": 7.0
+    },
+    {
+      "question": "What is the largest frog species?",
+      "reference_answer": "Goliath frog",
+      "answer": "The largest frog species is the Goliath frog (Conraua goliath). It can reach sizes of up to 32 centimeters (about 12.6 inches) in body length and weigh as much as 3.3 kilograms (around 7 pounds). Native to the rivers and waterfalls of Cameroon and Equatorial Guinea, these frogs are quite the giants\u2014proof that even amphibians can have a humongous \"size\" moment.",
+      "score": 2.0
+    },
+    {
+      "question": "Which country won the FIFA World Cup in 2018?",
+      "reference_answer": "France",
+      "answer": "France won the FIFA World Cup in 2018. They defeated Croatia 4-2 in the final held in Russia.",
+      "score": 1.0
+    },
+    {
+      "question": "Which planet has the most eccentric orbit?",
+      "reference_answer": "Mercury",
+      "answer": "Well, if you're asking about the most eccentric orbit among planets, it's Mercury. Its orbit is quite elongated compared to the other planets in our solar system, with an eccentricity of about 0.205. That means Mercury's orbit is more \"stretched out\" than the rounder orbits of most other planets.",
+      "score": 1.0
+    },
+    {
+      "question": "What is the capital of Saudi Arabia?",
+      "reference_answer": "Riyadh",
+      "answer": "The capital of Saudi Arabia is Riyadh. It's the political and administrative center of the country, known for its modern skyscrapers and rich history.",
+      "score": 1.0
+    },
+    {
+      "question": "Who is the Norse god of thunder?",
+      "reference_answer": "Thor",
+      "answer": "The Norse god of thunder is Thor. He's the mighty god wielding the hammer Mj\u00f6lnir, and he's pretty much the Norse equivalent of a big, thunder-cracking guy.",
+      "score": 1.0
+    },
+    {
+      "question": "What is the largest bird in the world?",
+      "reference_answer": "Ostrich",
+      "answer": "The largest bird in the world is the ostrich. It's a tall, flightless bird native to Africa and can reach heights of up to about 9 feet (2.7 meters) and weigh as much as 320 pounds (145 kilograms). Quite the feathered giant, isn't it?",
+      "score": 2.0
+    },
+    {
+      "question": "What is the process by which water changes from liquid to gas?",
+      "reference_answer": "Evaporation",
+      "answer": "Ah, you're talking about evaporation! When water turns from liquid to gas, it's like water's version of a dramatic escape act\u2014sneaking off into the air as vapor. This process occurs when water molecules gain enough energy, usually from heat, to break free from the surface. Think of it as water throwing off its liquid clothes and revealing its gaseous self. Pretty exciting, right?",
+      "score": 7.0
+    },
+    {
+      "question": "Who is the author of 'Frankenstein'?",
+      "reference_answer": "Mary Shelley",
+      "answer": "The author of 'Frankenstein' is Mary Shelley. She wrote this iconic novel when she was just 18 years old! Quite the impressive feat for someone so young, or perhaps she's just a literary genius embracing her inner scientist.",
+      "score": 2.0
+    },
+    {
+      "question": "Which Shakespeare play features the characters Rosencrantz and Guildenstern?",
+      "reference_answer": "Hamlet",
+      "answer": "Ah, Rosencrantz and Guildenstern\u2014definitely not the most obvious couple in Shakespeare's plays, huh? They appear in \"Hamlet,\" where they are summoned by King Claudius to spy on Prince Hamlet. So, if you're thinking about Hamlet's antics, they're part of that royal drama.",
+      "score": 6.0
+    },
+    {
+      "question": "What is the capital of Switzerland?",
+      "reference_answer": "Bern",
+      "answer": "The capital of Switzerland is Bern. Seems like an easy one\u2014nothing too Swiss about that!",
+      "score": 4.0
+    },
+    {
+      "question": "What is the capital city of Spain?",
+      "reference_answer": "Madrid",
+      "answer": "The capital city of Spain is Madrid. That's the one with the big royal palace, lively plazas, and a little thing called the Prado Museum.",
+      "score": 2.0
+    },
+    {
+      "question": "Which country hosted the 2016 Summer Olympics?",
+      "reference_answer": "Brazil",
+      "answer": "The 2016 Summer Olympics were hosted by Brazil, specifically in Rio de Janeiro. Guess what? The land of samba and Carnival, finally got to show off its Olympic spirit!",
+      "score": 3.0
+    },
+    {
+      "question": "Which country is known as the Land of Smiles?",
+      "reference_answer": "Thailand",
+      "answer": "Thailand is famously known as the Land of Smiles. It\u2019s a nickname that reflects the friendly and welcoming nature of its people, or perhaps their extensive use of the smile as a universal greeting.",
+      "score": 1.0
+    },
+    {
+      "question": "What is the square root of 64?",
+      "reference_answer": "8",
+      "answer": "The square root of 64 is 8. Shocking, right? It's almost like math is predictable!",
+      "score": 4.0
+    },
+    {
+      "question": "Which country is known as the Land of the Rising Sun?",
+      "reference_answer": "Japan",
+      "answer": "Oh, what a surprise! It\u2019s Japan. Known for its beautiful cherry blossoms, advanced technology, and being called the Land of the Rising Sun because of its name in Japanese, \"Nihon\" or \"Nippon,\" which means \"origin of the sun.\"",
+      "score": 3.0
+    },
+    {
+      "question": "Which planet is closest to the Sun?",
+      "reference_answer": "Mercury",
+      "answer": "Oh, I see you're curious about the Solar System! The closest planet to the Sun is Mercury. It skates around the Sun at an average distance of about 57.9 million kilometers (36 million miles). Hope that helps you feel just a little closer to understanding our fiery little neighbor!",
+      "score": 2.0
+    },
+    {
+      "question": "What is the longest river in Asia?",
+      "reference_answer": "Yangtze River",
+      "answer": "The longest river in Asia is the Yangtze River, which stretches about 6,300 kilometers (3,917 miles). It flows entirely within China and is famed for its size, cultural significance, and the impressive Three Gorges Dam.",
+      "score": 1.0
+    },
+    {
+      "question": "What is the national sport of Canada?",
+      "reference_answer": "Lacrosse",
+      "answer": "Oh, Canada, land of ice hockey and curling! The official national sport of Canada is ice hockey, which is practically a second religion there. So yes, if you're looking for something to do in Canada, lacing up skates and hitting the ice might be your best bet!",
+      "score": 0.0
+    }
+  ]
+}

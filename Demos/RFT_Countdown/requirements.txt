@@ -4,9 +4,15 @@ azure-identity
 openai
 
 # Data processing
+datasets
 pandas
 numpy
+matplotlib
+requests
+tabulate
 
 # Jupyter support
 ipykernel
+nbclient
+nbformat
 python-dotenv

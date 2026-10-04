@@ -1,0 +1,54 @@
+{
+  "project_endpoint": "https://eastus-prakharg-demo-2026.services.ai.azure.com/api/projects/eastus-prakharg-demo-2026",
+  "auth": "AzureCliCredential",
+  "student_model": "gpt-4.1-nano",
+  "training_type": "GlobalStandard",
+  "agent_name": "traces-distill-zava-20261003-0805",
+  "agent_version": "2",
+  "available_agents": [
+    "traces-distill-zava-20261003-0805"
+  ],
+  "available_deployments": [
+    "gpt-5.4-mini",
+    "gpt-4.1-mini",
+    "gpt-4.1-nano",
+    "traces-distil-demo"
+  ],
+  "stages": {
+    "trace_acquisition": "succeeded",
+    "transformation": "succeeded",
+    "split": "succeeded",
+    "baseline_evaluation": "succeeded",
+    "fine_tuning_submission": "resumed",
+    "fine_tuning_monitor": "succeeded",
+    "deployment": "succeeded",
+    "fine_tuned_evaluation": "succeeded"
+  },
+  "block_reason": null,
+  "datagen_job_id": "datagen-e543b86d98874d3cb660a376f7ba7c9c",
+  "datagen_job_status": "succeeded",
+  "datagen_generated_samples": 100,
+  "datagen_file_ids": [
+    "file-374c729a3dc54d3fa12632d972f90278-dg",
+    "file-97003e47976846fcacaf7ba583a812ea-dg"
+  ],
+  "clean_rows": 100,
+  "splits": {
+    "train": 80,
+    "validation": 10,
+    "test": 10
+  },
+  "baseline": {
+    "combined": 7.5,
+    "pass_rate": 50.0
+  },
+  "fine_tuning_job_id": "ftjob-1b7750a19fde42179b57059addc70228",
+  "fine_tuning_job_status": "succeeded",
+  "fine_tuned_model": "gpt-4.1-nano-2025-04-14.ft-1b7750a19fde42179b57059addc70228-traces-distil-demo",
+  "deployment_name": "traces-distil-demo",
+  "fine_tuned_evaluation": {
+    "combined": 9.5,
+    "pass_rate": 90.0,
+    "lift_percent": 26.666666666666668
+  }
+}

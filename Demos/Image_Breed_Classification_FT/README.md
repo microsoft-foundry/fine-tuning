@@ -5,6 +5,16 @@ This project demonstrates how to use a Vision Language Model (VLM) with **Azure 
 2. A fine-tuned Azure OpenAI vision model (LoRA SFT) on a down-sampled subset
 3. A classic CNN baseline (MobileNetV3-Small) for grounding
 
+> **Executed Azure AI Foundry run (October 3, 2026):** Both notebooks were
+> updated for `DefaultAzureCredential`, Python 3.12, and the supplied Foundry
+> project endpoint. The bounded end-to-end validation used four Stanford Dogs
+> breeds, `gpt-4o-2024-08-06`, 48 submitted training images (30 accepted after
+> vision safety preprocessing), 16 validation images (11 accepted), and 16 held
+> out test images. Base and fine-tuned accuracy were both 93.75%; the fine-tuned
+> deployment reduced mean latency from 2147.9 ms to 1563.6 ms (27.2%) over eight
+> requests per model. Machine-readable outputs are under `outputs/` and
+> `latency_outputs/`.
+
 <img title="dogs" alt="dogs" src="public/dogs.png" width="400">
 
 ### At-a-Glance Summary
@@ -143,8 +153,8 @@ Training cost ≈ 5.616 * 27.5 = $155
 ## Reproducibility & Setup
 ### Prerequisites
 * Azure OpenAI resource (vision + fine-tuning access)
-* Python 3.10+
-* (Optional) Kaggle account to fetch dataset
+* Python 3.12
+* An Azure CLI sign-in available to `DefaultAzureCredential`
 
 ### Environment
 ```
@@ -153,23 +163,8 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### Environment Variables (`.env`)
-```
-AZURE_OPENAI_API_KEY="<key>"
-AZURE_OPENAI_ENDPOINT="https://<your-resource>.openai.azure.com/"
-AZURE_OPENAI_API_VERSION="2025-04-01-preview"
-
-# Base interactive deployment
-AZURE_OPENAI_DEPLOYMENT_NAME="gpt-4o-2024-08-06"
-AZURE_OPENAI_DEPLOYMENT_NAME_MODEL_VERSION="2024-08-06"
-
-# Batch deployment (if separate)
-AZURE_OPENAI_BATCH_DEPLOYMENT_NAME="gpt-4o-2024-08-06"
-AZURE_OPENAI_BATCH_DEPLOYMENT_NAME_MODEL_VERSION="2024-08-06"
-
-# Fine-tuned deployment (after job completion)
-AZURE_OPENAI_FT_DEPLOYMENT_NAME="<your-finetuned-deployment-name>"
-```
+No API keys or `.env` secrets are required. The notebooks use
+`AIProjectClient` and `DefaultAzureCredential`.
 
 ### Dataset Down-Sampling Logic
 1. Enumerate breeds (deterministic ordering)
@@ -241,4 +236,3 @@ Costs and pricing are illustrative and may change. Always consult current [Azure
 * Some images triggered content filters (faces / people / CAPTCHA-like patterns); approved modifications via Azure process may be required. Use the [official form](https://customervoice.microsoft.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR7en2Ais5pxKtso_Pz4b1_xUMlBQNkZMR0lFRldORTdVQzQ0TEI5Q1ExOSQlQCN0PWcu) for policy-aligned adjustments.
 * Demo scope only—not production hygiene (secrets rotation, monitoring, retraining pipeline) is shown.
 * Protect API keys and respect data governance policies.
-

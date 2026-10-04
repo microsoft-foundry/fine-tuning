@@ -4,7 +4,11 @@ datasets
 pillow
 ipywidgets
 azure-identity
+azure-ai-projects
 tenacity
 matplotlib
 tabulate
 tables
+nbclient
+nbformat
+ipykernel

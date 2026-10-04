@@ -29,10 +29,11 @@ The `gpt-4.1-nano` student, fine-tuned on traces from a `gpt-4.1-mini` teacher a
 
 - An Azure AI Foundry project with a **deployed hosted agent** that has historical traces in App Insights. If you don't have one yet:
   - Use any existing agent (any hosted Foundry agent emits traces automatically)
-  - Or run `fixtures/push_prompts.py` against your agent to populate trace history
+  - Or run `generate_traces.py` against a prompt agent with local function tools to populate complete multi-turn trace history
+- A project-level **Application Insights connection**. Trace data generation fails with `DataGenerationJobInvalidAppInsightsSetup` when the project has no App Insights connection.
 - One **student** model deployment that supports fine-tuning (e.g. `gpt-4.1-nano`, `gpt-4.1-mini`)
-- Azure CLI (`az login`) for authentication and deployment
-- Python 3.11+ with:
+- Azure CLI (`az login`) for secretless authentication and deployment
+- Python 3.12 with:
 
 ```bash
 pip install openai>=2.0 azure-ai-projects>=2.2.0 azure-identity>=1.21 azure-ai-evaluation>=1.0
@@ -43,6 +44,7 @@ pip install openai>=2.0 azure-ai-projects>=2.2.0 azure-identity>=1.21 azure-ai-e
 | File | Purpose |
 |------|---------|
 | `notebook.ipynb` | End-to-end runnable walkthrough — **fully self-contained**, no external scripts required |
+| `generate_traces.py` | Generates complete multi-turn function-calling conversations through a hosted prompt agent without Search or Functions resources |
 | `fixtures/push_prompts.py` | Optional standalone script that pushes diverse retail prompts through any hosted agent (use this before the notebook if your agent has no trace history yet) |
 | `fixtures/zava_system_prompt.md` | Sample system prompt for the Zava resolution-desk agent (replace with your own) |
 | `fixtures/zava_tools.json` | Sample tool catalog (OpenAI chat-completions format) — replace with your own |
@@ -50,24 +52,27 @@ pip install openai>=2.0 azure-ai-projects>=2.2.0 azure-identity>=1.21 azure-ai-e
 ## Run it
 
 ```bash
-export AZURE_AI_PROJECT_ENDPOINT="https://<resource>.services.ai.azure.com/api/projects/<project>"
-export OPENAI_BASE_URL="https://<resource>.openai.azure.com/openai/v1"
-export AZURE_OPENAI_API_KEY="<key>"
-export AZURE_SUBSCRIPTION_ID="<subscription-id>"
-export AZURE_RESOURCE_GROUP="<resource-group>"
+set AZURE_AI_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
+set AZURE_AI_AGENT_NAME=<your-hosted-agent>
+set AZURE_AI_AGENT_VERSION=<version>
+set AZURE_SUBSCRIPTION_ID=<subscription-id>
+set AZURE_RESOURCE_GROUP=<resource-group>
+set AZURE_AI_ACCOUNT_NAME=<resource>
 
-# (Optional) populate trace history first if your agent has none:
-python fixtures/push_prompts.py \
-    --agent-name <your-hosted-agent> \
-    --agent-version <version> \
-    --num-prompts 500 \
-    --project-endpoint $AZURE_AI_PROJECT_ENDPOINT
+# (Optional) populate complete function-calling trace history first:
+python generate_traces.py ^
+    --project-endpoint %AZURE_AI_PROJECT_ENDPOINT% ^
+    --agent-name <your-hosted-agent> ^
+    --model gpt-4.1-mini ^
+    --conversations 40
 
 # Wait ~90 seconds for traces to land in App Insights, then:
 jupyter notebook notebook.ipynb
 ```
 
 Full run is ~30–50 minutes depending on FT queue depth.
+
+The notebook uses `AzureCliCredential` through `AIProjectClient.get_openai_client()` and does not require or read an API key. It enumerates hosted agents before trace acquisition and records a prerequisite block when the project has no agent. Fine-tuning is submitted with `trainingType=GlobalStandard`.
 
 ## Why the transform step exists
 

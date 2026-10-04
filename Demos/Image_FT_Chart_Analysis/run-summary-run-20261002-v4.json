@@ -1,0 +1,36 @@
+{
+  "project_endpoint": "https://ncus-prakharg-demo-2026.services.ai.azure.com/api/projects/ncus-prakharg-demo-2026",
+  "subscription_id": "ba7979f7-d040-49c9-af1a-7414402bf622",
+  "resource_group": "prakharg-demo-2026",
+  "resource_name": "ncus-prakharg-demo-2026",
+  "resource_location": "northcentralus",
+  "base_model": "gpt-4.1",
+  "base_model_version": "2025-04-14",
+  "base_deployment": "gpt-4.1",
+  "fine_tuning_attempts": [
+    "ftjob-213bc504cf9846a2bc2c2cd9f86fbc45",
+    "ftjob-728c09e7ace44bb9b0277398944a5b3a",
+    "ftjob-38ec0318063d4ec1b85b64b0c44dfd23",
+    "ftjob-a0629dddcd18419cbf704053bdcfa3b5",
+    "ftjob-6a2ce222ce01492d93ceb71a26398334"
+  ],
+  "fine_tuning_job_id": "ftjob-6a2ce222ce01492d93ceb71a26398334",
+  "fine_tuned_model": "gpt-4.1-2025-04-14.ft-6a2ce222ce01492d93ceb71a26398334-chart-qa-run-20261002-v4",
+  "fine_tuned_deployment": "chart-qa-run-20261002-v4",
+  "training_file_id": "file-6bb34e4a1fc6440184c7c760982b0999",
+  "validation_file_id": "file-99fad5bfba9b495e8a8e0b3a048c0ae4",
+  "result_file_id": "file-d477df560e1146e1894d0283ac1ed77e",
+  "train_samples": 50,
+  "validation_samples": 20,
+  "test_samples": 50,
+  "evaluation_samples": 50,
+  "metrics": {
+    "title": "GPT-4.1 ChartQA accuracy - baseline vs fine-tuned model",
+    "baseline": "GPT-4.1",
+    "fine-tuned": "GPT-4.1 fine-tuned",
+    "baseline accuracy": 0.88,
+    "fine-tuned accuracy": 0.9,
+    "absolute improvement": 0.020000000000000018,
+    "relative improvement": 0.02272727272727275
+  }
+}

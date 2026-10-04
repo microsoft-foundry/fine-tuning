@@ -34,6 +34,15 @@ Install the required packages. Navigate to the `Video_FT_Action_Recognition` fol
 pip install -r requirements.txt
 ```
 
+For Azure AI Foundry project endpoints, the executed notebook uses Azure CLI
+authentication instead of API keys. Fine-tuning calls use the project endpoint
+and `globalStandard` training, while inference uses the parent Azure AI Services
+account endpoint where the deployments are created.
+
+The notebook can also use privacy-preserving edge frames. This removes the
+original photographic person/face content and timestamp overlay while retaining
+ordered pose, object, and motion cues for action recognition.
+
 __Required Services:__
 - An Azure OpenAI resource with the following model deployments:
    - GPT-4.1

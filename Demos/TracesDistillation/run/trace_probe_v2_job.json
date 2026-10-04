@@ -1,0 +1,79 @@
+{
+  "id": "datagen-4eb4e743d3d648aeafb167e4863bf543",
+  "agent_name": "traces-distill-zava-20261003-0805",
+  "agent_version": "2",
+  "start_time": "2026-10-02T15:32:02.552748+00:00",
+  "end_time": "2026-10-03T15:32:02.552748+00:00",
+  "statuses": [
+    {
+      "time": "2026-10-03T15:32:06.739736+00:00",
+      "status": "in_progress"
+    },
+    {
+      "time": "2026-10-03T15:32:22.031231+00:00",
+      "status": "in_progress"
+    },
+    {
+      "time": "2026-10-03T15:32:37.284801+00:00",
+      "status": "in_progress"
+    },
+    {
+      "time": "2026-10-03T15:32:52.474393+00:00",
+      "status": "in_progress"
+    },
+    {
+      "time": "2026-10-03T15:33:07.755443+00:00",
+      "status": "in_progress"
+    },
+    {
+      "time": "2026-10-03T15:33:23.080485+00:00",
+      "status": "succeeded"
+    }
+  ],
+  "final_status": "succeeded",
+  "job": {
+    "status": "succeeded",
+    "inputs": {
+      "name": "traces-probe-v2-20261003",
+      "scenario": "supervised_finetuning",
+      "options": {
+        "type": "traces",
+        "max_samples": 15,
+        "redact_private_content": true,
+        "train_split": 0.8
+      },
+      "sources": [
+        {
+          "type": "traces",
+          "agent_name": "traces-distill-zava-20261003-0805",
+          "agent_version": "2",
+          "start_time": 1790955122,
+          "end_time": 1791041522
+        }
+      ],
+      "output_options": {
+        "name": "traces-probe-v2-20261003",
+        "tags": {},
+        "write_mode": "overwrite"
+      }
+    },
+    "result": {
+      "outputs": [
+        {
+          "type": "file",
+          "id": "file-1876584f22c84a0f81f03f742aa0ccc4-dg",
+          "filename": "traces-probe-v2-20261003_train_dg.jsonl"
+        },
+        {
+          "type": "file",
+          "id": "file-30d2832f6b5f4cb18b6f1c93c8a4a605-dg",
+          "filename": "traces-probe-v2-20261003_valid_dg.jsonl"
+        }
+      ],
+      "generated_samples": 15
+    },
+    "finished_at": 1791041597,
+    "id": "datagen-4eb4e743d3d648aeafb167e4863bf543",
+    "created_at": 1791041525
+  }
+}

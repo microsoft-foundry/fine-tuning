@@ -1,0 +1,53 @@
+{
+  "id": "datagen-c01137d215b640d0ac404e0251995794",
+  "agent_name": "traces-distill-zava-20261003-0805",
+  "agent_version": "1",
+  "start_time": "2026-10-02T15:18:10.120655+00:00",
+  "end_time": "2026-10-03T15:18:10.120655+00:00",
+  "statuses": [
+    {
+      "time": "2026-10-03T15:18:14.089224+00:00",
+      "status": "JobStatus.IN_PROGRESS"
+    },
+    {
+      "time": "2026-10-03T15:18:29.343967+00:00",
+      "status": "JobStatus.FAILED"
+    }
+  ],
+  "final_status": "JobStatus.FAILED",
+  "job": {
+    "status": "failed",
+    "inputs": {
+      "name": "traces-probe-20261003-3",
+      "scenario": "supervised_finetuning",
+      "options": {
+        "type": "traces",
+        "max_samples": 15,
+        "redact_private_content": true,
+        "train_split": 0.8
+      },
+      "sources": [
+        {
+          "type": "traces",
+          "agent_name": "traces-distill-zava-20261003-0805",
+          "agent_version": "1",
+          "start_time": 1790954290,
+          "end_time": 1791040690
+        }
+      ],
+      "output_options": {
+        "name": "traces-probe-20261003-3",
+        "tags": {},
+        "write_mode": "overwrite"
+      }
+    },
+    "result": {},
+    "finished_at": 1791040695,
+    "error": {
+      "code": "DataGenerationJobInvalidAppInsightsSetup",
+      "message": "The data generation job cannot connect to Application Insights to fetch traces. Make sure your Foundry project has an Application Insights connection added and it points to a valid Application Insights resource. Error: No AppInsights connection associated with this project."
+    },
+    "id": "datagen-c01137d215b640d0ac404e0251995794",
+    "created_at": 1791040693
+  }
+}

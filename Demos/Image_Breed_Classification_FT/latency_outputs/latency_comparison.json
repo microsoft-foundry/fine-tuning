@@ -1,0 +1,7 @@
+{
+  "base_mean_ms": 2147.9152749525383,
+  "fine_tuned_mean_ms": 1563.6280500912108,
+  "fine_tuned_minus_base_ms": -584.2872248613276,
+  "fine_tuned_change_percent": -27.202526639428935,
+  "requests_per_model": 8
+}

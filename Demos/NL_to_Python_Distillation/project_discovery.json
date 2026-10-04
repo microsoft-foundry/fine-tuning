@@ -1,0 +1,35 @@
+{
+  "project_endpoint": "https://swec-prakharg-demo-2026.services.ai.azure.com/api/projects/swec-prakharg-demo-2026",
+  "connections": [],
+  "deployments": [
+    {
+      "name": "gpt-4.1-mini",
+      "type": "ModelDeployment",
+      "modelName": "gpt-4.1-mini",
+      "modelVersion": "2025-04-14",
+      "modelPublisher": "OpenAI",
+      "capabilities": {
+        "chat_completion": "true"
+      },
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 20
+      }
+    },
+    {
+      "name": "gpt-5-4",
+      "type": "ModelDeployment",
+      "modelName": "gpt-5.4",
+      "modelVersion": "2026-03-05",
+      "modelPublisher": "OpenAI",
+      "capabilities": {
+        "chat_completion": "true"
+      },
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 20
+      }
+    }
+  ],
+  "openai_models_error": "NotFoundError: Error code: 404"
+}

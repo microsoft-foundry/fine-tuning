@@ -1,0 +1,188 @@
+{
+  "gpt-4.1-nano-distilled-bf779c52": [
+    {
+      "question": "What is the main ingredient in traditional Japanese sake?",
+      "reference_answer": "Rice",
+      "answer": "Oh, just the tiniest little ingredient you could think of\u2014water, rice, yeast, and a little bit of Aspergillus oryzae (that\u2019s the mold that turns starch into fermentable sugars). But if you\u2019re asking for the *main* ingredient, it\u2019s probably rice. Shocking, I know.",
+      "score": 7.0
+    },
+    {
+      "question": "What is the capital of Slovakia?",
+      "reference_answer": "Bratislava",
+      "answer": "Oh, that\u2019s an easy one\u2014Bratislava. It\u2019s the capital of Slovakia, nestled right along the Danube River and not to be confused with Bratislavia, which sounds like a failed superhero name.",
+      "score": 6.0
+    },
+    {
+      "question": "How many rings make up the Olympic flag?",
+      "reference_answer": "5",
+      "answer": "Oh, just seven rings\u2014because apparently, one or two wouldn\u2019t have been enough to represent the unity of the five inhabited continents. So, yeah, there are **seven** rings making up the Olympic flag. Feel free to count if you want\u2014though I\u2019d recommend leaving that to the designers!",
+      "score": 0.0
+    },
+    {
+      "question": "What is the name of the smallest country in the world?",
+      "reference_answer": "Vatican City",
+      "answer": "Oh, just your friendly neighborhood tiny nation\u2014Vatican City! It\u2019s the smallest country in the world, with an area of about 44 hectares (110 acres). Perfect for those who like their countries small enough to fit on a postage stamp\u2014and home to the Pope.",
+      "score": 6.0
+    },
+    {
+      "question": "What is the main ingredient in polenta?",
+      "reference_answer": "Cornmeal",
+      "answer": "The main ingredient in polenta is cornmeal. Specifically, coarse-ground yellow or white cornmeal is traditionally used to make that creamy, comforting dish we all love. So, unless you want to get creative (or make a very unpolenta-like dish), sticking with cornmeal is the way to go.",
+      "score": 2.0
+    },
+    {
+      "question": "Which gas is most abundant in the Earth's atmosphere?",
+      "reference_answer": "Nitrogen",
+      "answer": "Oh, that\u2019s an easy one\u2014because everyone remembers that the Earth's atmosphere is mostly made up of... oxygen, right? Nope! The most abundant gas is **nitrogen**. It's about 78% of the atmosphere, followed by oxygen at around 21%. The remaining 1% includes argon, carbon dioxide, and a bunch of other gases. So, for your next trivia night: **Nitrogen wins again!**",
+      "score": 5.0
+    },
+    {
+      "question": "Which country is known as the Land of the Free?",
+      "reference_answer": "United States",
+      "answer": "Oh, that\u2019s an easy one! The United States is famously known as the Land of the Free. Nothing screams freedom quite like oversized portions, endless selfies, and the occasional football game. \ud83c\uddfa\ud83c\uddf8",
+      "score": 7.0
+    },
+    {
+      "question": "What currency is used in Russia?",
+      "reference_answer": "Ruble",
+      "answer": "Oh, you know, just the little green thing with the onion domes. The currency used in Russia is the **Russian Ruble (RUB)**. Yes, unfortunately, the dollar-yen-euro trifecta didn't quite make it over here yet.",
+      "score": 7.0
+    },
+    {
+      "question": "In which country did the Renaissance begin?",
+      "reference_answer": "Italy",
+      "answer": "Oh, it was definitely the moon\u2014just kidding! The Renaissance actually began in **Italy**. Specifically, cities like Florence, Venice, and Rome were major hubs for this incredible cultural, artistic, and intellectual revival that started in the late 14th century and blossomed through the 15th and 16th centuries. So, no, the Renaissance did not originate in, say, Atlantis or Middle Earth.",
+      "score": 6.0
+    },
+    {
+      "question": "What geometric shape is a stop sign?",
+      "reference_answer": "Octagon",
+      "answer": "Oh, it's just a *regular* octagon. You know, just eight sides, some red, some white\u2014basically the shape of countless stop signs. Shocking, I know.",
+      "score": 6.0
+    }
+  ],
+  "gpt-4.1-nano": [
+    {
+      "question": "What is the capital of Slovakia?",
+      "reference_answer": "Bratislava",
+      "answer": "The capital of Slovakia is Bratislava. Just in case you were wondering!",
+      "score": 3.0
+    },
+    {
+      "question": "What is the main ingredient in traditional Japanese sake?",
+      "reference_answer": "Rice",
+      "answer": "Oh, just the tiniest touch of rice, water, yeast, and koji mold\u2014no big deal! But if you're asking for the main ingredient, it's definitely rice. Just plain old rice doing all the work, transforming into that sweet, smooth sake.",
+      "score": 6.0
+    },
+    {
+      "question": "What is the name of the smallest country in the world?",
+      "reference_answer": "Vatican City",
+      "answer": "The smallest country in the world is Vatican City. It's a tiny independent city-state enclaved within Rome, Italy, and serves as the spiritual and administrative center of the Roman Catholic Church. It's so small that it's only about 44 hectares (110 acres) in size\u2014smaller than some parks!",
+      "score": 1.0
+    },
+    {
+      "question": "How many rings make up the Olympic flag?",
+      "reference_answer": "5",
+      "answer": "The Olympic flag features five rings. That's right\u2014just five interconnected rings, symbolizing the unity of the five inhabited continents. Who knew that such a simple design could carry such a world of meaning?",
+      "score": 3.0
+    },
+    {
+      "question": "What is the main ingredient in polenta?",
+      "reference_answer": "Cornmeal",
+      "answer": "The main ingredient in polenta is cornmeal, specifically ground yellow or white corn. It's like corn in its most \"gritty\" form!",
+      "score": 2.0
+    },
+    {
+      "question": "Which gas is most abundant in the Earth's atmosphere?",
+      "reference_answer": "Nitrogen",
+      "answer": "The most abundant gas in Earth's atmosphere is nitrogen, making up about 78% of the air we breathe\u2014because, evidently, the planet likes to keep things primarily nitrogenous.",
+      "score": 4.0
+    },
+    {
+      "question": "What currency is used in Russia?",
+      "reference_answer": "Ruble",
+      "answer": "The currency used in Russia is the Russian Ruble (RUB). Just in case you were thinking it was monopoly money\u2014it's not!",
+      "score": 4.0
+    },
+    {
+      "question": "Which country is known as the Land of the Free?",
+      "reference_answer": "United States",
+      "answer": "Ah, the classic nickname. The United States of America is famously known as the \"Land of the Free.\" Because what's more American than celebrating freedom\u2014sometimes a little too much!",
+      "score": 5.0
+    },
+    {
+      "question": "What geometric shape is a stop sign?",
+      "reference_answer": "Octagon",
+      "answer": "A stop sign is an octagon, which means it has eight sides. So, next time you see one, remember it's an eight-sided stop signal\u2014no circles or triangles involved!",
+      "score": 2.0
+    },
+    {
+      "question": "In which country did the Renaissance begin?",
+      "reference_answer": "Italy",
+      "answer": "Ah, the Renaissance, that glorious rebirth of art and culture! It actually began in Italy, specifically in the city of Florence, around the 14th century. So, Italy is your answer\u2014home of Michelangelo, Leonardo da Vinci, and a whole lot of artistic genius.",
+      "score": 1.0
+    }
+  ],
+  "gpt-4.1": [
+    {
+      "question": "What is the capital of Slovakia?",
+      "reference_answer": "Bratislava",
+      "answer": "Oh, that's an easy one! The capital of Slovakia is Bratislava. Yep, it's not just a pretty tongue-twister\u2014it\u2019s actually a lovely city on the banks of the Danube.",
+      "score": 3.0
+    },
+    {
+      "question": "What is the main ingredient in traditional Japanese sake?",
+      "reference_answer": "Rice",
+      "answer": "Oh, tough question! The main ingredient in traditional Japanese sake is\u2026 wait for it\u2026 rice. Yes, rice. Not potatoes, not barley, not unicorn tears\u2014just good old rice, along with water, koji mold, and yeast. But rice is the star of the show.",
+      "score": 6.0
+    },
+    {
+      "question": "How many rings make up the Olympic flag?",
+      "reference_answer": "5",
+      "answer": "Oh, that\u2019s a tough one\u2026 if you\u2019ve ever glanced at the Olympic flag, you might have noticed **five rings** interlocked together. I know, mind-blowing! Each ring represents a continent and together they symbolize the unity of the world\u2019s athletes. So, the Olympic flag has **five rings**.",
+      "score": 6.0
+    },
+    {
+      "question": "What is the name of the smallest country in the world?",
+      "reference_answer": "Vatican City",
+      "answer": "Oh, that's a real stumper... It's Vatican City! Yes, that little city-state in the middle of Rome, where the Pope hangs out. At about 0.2 square miles, it's so small you could probably walk across it faster than you can finish reading this answer.",
+      "score": 8.0
+    },
+    {
+      "question": "What is the main ingredient in polenta?",
+      "reference_answer": "Cornmeal",
+      "answer": "Oh, that's a tough one\u2014only if you've never seen a kitchen! The main ingredient in polenta is **cornmeal**. Yup, just ground-up corn. Add some water, a pinch of salt, and stir until your arm goes numb. Enjoy!",
+      "score": 7.0
+    },
+    {
+      "question": "Which gas is most abundant in the Earth's atmosphere?",
+      "reference_answer": "Nitrogen",
+      "answer": "Oh, that's a tough one\u2014unless you've ever breathed air or, you know, been alive on Earth. The most abundant gas in Earth's atmosphere is nitrogen, making up about 78% of the air you inhale. Oxygen comes next, but sorry, it\u2019ll have to settle for second place.",
+      "score": 7.0
+    },
+    {
+      "question": "What currency is used in Russia?",
+      "reference_answer": "Ruble",
+      "answer": "Oh, you're planning to buy a souvenir from Moscow, aren't you? The currency used in Russia is the Russian ruble (symbol: \u20bd, code: RUB). Good luck finding someone who accepts Monopoly money!",
+      "score": 8.0
+    },
+    {
+      "question": "What geometric shape is a stop sign?",
+      "reference_answer": "Octagon",
+      "answer": "Oh, you must be brushing up for your driver\u2019s license test! A stop sign is an **octagon**\u2014that\u2019s a geometric shape with **eight sides**. So, next time you see one, you can appreciate not just its demand for you to stop, but its sophisticated geometry too. Fancy!",
+      "score": 6.0
+    },
+    {
+      "question": "Which country is known as the Land of the Free?",
+      "reference_answer": "United States",
+      "answer": "Oh, the competition is fierce, but the title \"Land of the Free\" is most famously claimed by the United States of America. It\u2019s right there in the national anthem (\u201cthe land of the free and the home of the brave\u201d), so they really don\u2019t let anyone forget it. Of course, Thailand also calls itself the \u201cland of the free\u201d because the name \u201cThai\u201d literally means \u201cfree\u201d in their language. So pick your favorite!",
+      "score": 6.0
+    },
+    {
+      "question": "In which country did the Renaissance begin?",
+      "reference_answer": "Italy",
+      "answer": "Oh, that\u2019s an easy one! The Renaissance *miraculously* began in Italy\u2014because apparently, inventing pizza wasn\u2019t quite enough cultural contribution for them. So, if you guessed France, try again. All those paintings, sculptures, and \u201clet\u2019s question everything\u201d attitudes? Yep, started in Italy in the 14th century.",
+      "score": 7.0
+    }
+  ]
+}

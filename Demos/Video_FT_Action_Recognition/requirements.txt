@@ -10,3 +10,6 @@ azure-identity
 scikit-learn
 seaborn
 azure-storage-blob
+nbclient
+nbformat
+tqdm
