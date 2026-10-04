@@ -78,7 +78,7 @@
       "base_accuracy": 0.7333333333333333,
       "fine_tuned_accuracy": 0.7333333333333333,
       "accuracy_delta": 0.0,
-      "artifact": "Demos/Video_FT_Action_Recognition/action-recognition-global-vision-20261002-eval-results-15-entries.csv"
+      "artifact": "Demos/Video_FT_Action_Recognition/outputs/execution/action-recognition-global-vision-20261002-eval-results-15-entries.csv"
     },
     "started_at": "2026-10-03T20:03:15.599962+00:00",
     "completed_at": "2026-10-03T20:10:44.772052+00:00"

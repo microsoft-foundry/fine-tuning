@@ -12,8 +12,9 @@ This project demonstrates how to use a Vision Language Model (VLM) with **Azure 
 > vision safety preprocessing), 16 validation images (11 accepted), and 16 held
 > out test images. Base and fine-tuned accuracy were both 93.75%; the fine-tuned
 > deployment reduced mean latency from 2120.7 ms to 1525.0 ms (28.1%) over eight
-> requests per model. Machine-readable outputs are under `outputs/` and
-> `latency_outputs/`; the upgrade record is `upgrade-reports/image-breed.json`.
+> requests per model. Machine-readable outputs are under `outputs/execution/`
+> and `outputs/latency/`; the upgrade record is
+> `outputs/reports/image-breed.json`.
 
 <img title="dogs" alt="dogs" src="public/dogs.png" width="400">
 
@@ -59,7 +60,10 @@ For cost control: **50 images per breed** → 6,000 images total → split 40 tr
 ├─ images_classification_vlm.ipynb          # Prep + FT + evaluation (renamed)
 ├─ latency_base_ft_models.ipynb             # Latency benchmarking
 ├─ cnn_baseline.py                          # Classic CV baseline
-├─ latency_outputs/                         # Latency measurement CSVs
+├─ outputs/
+│  ├─ execution/                            # Dataset, accuracy, and run records
+│  ├─ latency/                              # Latency measurement CSVs
+│  └─ reports/                              # Upgrade and validation reports
 └─ public/                                  # Plots & diagram assets
 ```
 

@@ -18,7 +18,7 @@
   },
   "execution": {
     "notebook": "Demos/SFT_PubMed_Summarization/sft_pubmed_summarization.ipynb",
-    "executed_notebook": "Demos/SFT_PubMed_Summarization/sft_pubmed_summarization.executed.ipynb",
+    "executed_notebook": "Demos/SFT_PubMed_Summarization/outputs/execution/sft_pubmed_summarization.executed.ipynb",
     "code_cells_executed": 11,
     "code_cells_failed": 0,
     "training_file_id": "file-5b7f953d4a22478d85e28016ce19a3f1",

@@ -9,7 +9,7 @@
       "Demos/RFT_Math_Reasoning/requirements.txt",
       "Demos/RFT_Math_Reasoning/rft_math_reasoning.ipynb"
     ],
-    "report": "upgrade-reports/rft-math.json"
+    "report": "Demos/RFT_Math_Reasoning/outputs/reports/rft-math.json"
   },
   "sdk": {
     "azure_ai_projects": "2.7.0",

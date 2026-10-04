@@ -214,7 +214,9 @@ execution_summary = {
     "started_at": run_started_at,
     "completed_at": run_completed_at,
 }
-with open("video-ft-execution-summary.json", "w", encoding="utf-8") as handle:
+output_dir = "outputs/execution"
+os.makedirs(output_dir, exist_ok=True)
+with open(os.path.join(output_dir, "video-ft-execution-summary.json"), "w", encoding="utf-8") as handle:
     json.dump(execution_summary, handle, indent=2)
 print(json.dumps(execution_summary, indent=2))
 """

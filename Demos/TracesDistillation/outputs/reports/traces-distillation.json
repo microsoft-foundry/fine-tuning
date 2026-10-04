@@ -56,7 +56,7 @@
   },
   "execution": {
     "notebook": "Demos/TracesDistillation/notebook.ipynb",
-    "executed_notebook": "Demos/TracesDistillation/notebook.executed.ipynb",
+    "executed_notebook": "Demos/TracesDistillation/outputs/execution/notebook.executed.ipynb",
     "code_cells_executed": 10,
     "code_cells_failed": 0,
     "data_generation": {

@@ -105,6 +105,6 @@
     "requirements.txt",
     "scripts/audio_utils.py",
     "scripts/eval_utils.py",
-    "upgrade-reports/evaluation.json"
+    "Demos/Evaluation/outputs/reports/evaluation.json"
   ]
 }

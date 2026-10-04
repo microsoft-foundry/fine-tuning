@@ -42,9 +42,7 @@ def first(report, *keys, default="Not recorded"):
 
 
 def report_paths():
-    paths = list((ROOT / "upgrade-reports").glob("*.json"))
-    paths.extend((ROOT / "Demos").glob("**/upgrade-reports/*.json"))
-    return sorted(set(paths))
+    return sorted((ROOT / "Demos").glob("*/outputs/reports/*.json"))
 
 
 def classify(report):

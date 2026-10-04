@@ -114,7 +114,7 @@ def main():
     parser.add_argument("--model", default="gpt-4.1-mini")
     parser.add_argument("--conversations", type=int, default=30)
     parser.add_argument("--concurrency", type=int, default=4)
-    parser.add_argument("--output", default="run/trace_generation.json")
+    parser.add_argument("--output", default="outputs/run/trace_generation.json")
     args = parser.parse_args()
 
     project = AIProjectClient(

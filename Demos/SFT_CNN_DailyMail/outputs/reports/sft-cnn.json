@@ -20,7 +20,7 @@
     ]
   },
   "execution": {
-    "notebook": "Demos/SFT_CNN_DailyMail/sft_cnn_dailymail.executed.ipynb",
+    "notebook": "Demos/SFT_CNN_DailyMail/outputs/execution/sft_cnn_dailymail.executed.ipynb",
     "fresh_fine_tune_job": true,
     "credential_retest": "DefaultAzureCredential",
     "retest_file_mode": "reused existing project files after the project reached its 100-file quota",

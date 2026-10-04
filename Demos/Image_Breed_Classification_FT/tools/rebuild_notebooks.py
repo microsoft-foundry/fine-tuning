@@ -46,8 +46,8 @@ from demo_common import (
 )
 
 ROOT = Path.cwd()
-OUTPUTS = ROOT / "outputs"
-OUTPUTS.mkdir(exist_ok=True)
+OUTPUTS = ROOT / "outputs" / "execution"
+OUTPUTS.mkdir(parents=True, exist_ok=True)
 project_client = get_project_client()
 client = project_client.get_openai_client()
 print("Project:", PROJECT_ENDPOINT)
@@ -219,9 +219,9 @@ from demo_common import (
 )
 
 ROOT = Path.cwd()
-OUTPUTS = ROOT / "outputs"
-LATENCY_OUTPUTS = ROOT / "latency_outputs"
-LATENCY_OUTPUTS.mkdir(exist_ok=True)
+OUTPUTS = ROOT / "outputs" / "execution"
+LATENCY_OUTPUTS = ROOT / "outputs" / "latency"
+LATENCY_OUTPUTS.mkdir(parents=True, exist_ok=True)
 
 run_summary = json.loads((OUTPUTS / "run_summary.json").read_text(encoding="utf-8"))
 ft_deployment = run_summary["fine_tuned_deployment"]

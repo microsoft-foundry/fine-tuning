@@ -10,12 +10,13 @@ from pathlib import Path
 from scripts.client_utils import get_openai_client, get_project_client
 
 
-RUN_RECORDS_PATH = Path("run_records.jsonl")
+RUN_RECORDS_PATH = Path("outputs/execution/run_records.jsonl")
 TERMINAL_JOB_STATUSES = {"succeeded", "failed", "cancelled"}
 TERMINAL_EVAL_STATUSES = {"completed", "failed", "cancelled"}
 
 
 def record_event(notebook: str, event: str, **details) -> None:
+    RUN_RECORDS_PATH.parent.mkdir(parents=True, exist_ok=True)
     record = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "notebook": notebook,

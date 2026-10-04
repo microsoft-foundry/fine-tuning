@@ -33,7 +33,7 @@
   "execution": {
     "status": "completed",
     "notebook": "dpo_finetuning_intel_orca.ipynb",
-    "executed_notebook": "dpo_finetuning_intel_orca.executed.ipynb",
+    "executed_notebook": "Demos/DPO_Intel_Orca/outputs/execution/dpo_finetuning_intel_orca.executed.ipynb",
     "region": "East US 2",
     "project_endpoint": "https://swec-prakharg-demo-2026.services.ai.azure.com/api/projects/swec-prakharg-demo-2026",
     "base_model": "gpt-4.1-mini-2025-04-14",
