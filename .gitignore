@@ -30,3 +30,11 @@ Skills/test_probe_*/
 # Large generated demo datasets and binary evaluation artifacts
 Demos/Image_FT_Chart_Analysis/chart-qa-run-*.jsonl
 Demos/Image_FT_Chart_Analysis/eval-*.h5
+
+# Internal demo-refactor tracking and generated execution artifacts
+/findings.html
+/findings-upgrade.html
+Demos/**/outputs/reports/
+Demos/**/outputs/execution/
+Demos/**/outputs/run/
+Demos/**/*.executed.ipynb

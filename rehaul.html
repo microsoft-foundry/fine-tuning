@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Microsoft Foundry Fine-Tuning Demos Rehaul Proposal</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #5b6578;
+      --line: #dce2ec;
+      --panel: #ffffff;
+      --soft: #f5f7fb;
+      --blue: #0f6cbd;
+      --blue-dark: #0b4f8a;
+      --green: #107c10;
+      --amber: #9a6700;
+      --red: #b42318;
+      --purple: #6b4fa1;
+      --shadow: 0 10px 30px rgba(23, 32, 51, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #eef2f7;
+      font: 15px/1.55 "Segoe UI", Arial, sans-serif;
+    }
+    header {
+      color: white;
+      background:
+        radial-gradient(circle at 90% 15%, rgba(255,255,255,.18), transparent 25%),
+        linear-gradient(125deg, #092d4f, #0f6cbd 58%, #4f7fc4);
+      padding: 52px 24px 44px;
+    }
+    .wrap { max-width: 1320px; margin: 0 auto; }
+    h1 { margin: 0 0 10px; font-size: clamp(32px, 5vw, 54px); line-height: 1.08; }
+    header p { max-width: 940px; margin: 8px 0; font-size: 18px; color: #eaf4ff; }
+    .meta { margin-top: 18px; color: #d7eaff; font-size: 13px; }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(255,255,255,.97);
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 4px 15px rgba(23,32,51,.06);
+    }
+    nav .wrap {
+      display: flex;
+      gap: 18px;
+      overflow-x: auto;
+      padding: 12px 22px;
+      white-space: nowrap;
+    }
+    nav a { color: var(--blue-dark); text-decoration: none; font-weight: 650; }
+    main { padding: 28px 20px 64px; }
+    section {
+      margin: 24px auto;
+      padding: 28px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+    h2 { margin: 0 0 14px; font-size: 29px; color: #12395d; }
+    h3 { margin: 24px 0 10px; font-size: 21px; color: #174f7d; }
+    h4 { margin: 18px 0 8px; font-size: 17px; }
+    p { margin: 8px 0 12px; }
+    ul, ol { margin-top: 8px; padding-left: 24px; }
+    li { margin: 5px 0; }
+    code {
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: #7a2e0b;
+      background: #fff2e8;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: .92em;
+    }
+    pre {
+      overflow-x: auto;
+      padding: 16px;
+      color: #e9f4ff;
+      background: #142337;
+      border-radius: 9px;
+      font: 13px/1.5 Consolas, "Courier New", monospace;
+    }
+    table { width: 100%; border-collapse: collapse; margin: 14px 0 8px; }
+    th, td { padding: 11px 12px; border: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { color: #173b5c; background: #eaf2fa; position: sticky; top: 46px; }
+    tbody tr:nth-child(even) { background: #fafbfd; }
+    .table-scroll { overflow-x: auto; }
+    .table-scroll table { min-width: 1050px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+    .card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--soft);
+    }
+    .card h3, .card h4 { margin-top: 0; }
+    .callout {
+      margin: 16px 0;
+      padding: 14px 16px;
+      border-left: 5px solid var(--blue);
+      background: #eef7ff;
+      border-radius: 7px;
+    }
+    .warning { border-left-color: var(--amber); background: #fff8e5; }
+    .danger { border-left-color: var(--red); background: #fff0ee; }
+    .success { border-left-color: var(--green); background: #edfaed; }
+    .badge {
+      display: inline-block;
+      margin: 2px 4px 2px 0;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: #164066;
+      background: #dfefff;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .badge.train { color: #0d5b15; background: #dff5df; }
+    .badge.no-train { color: #8a1c14; background: #ffe1de; }
+    .badge.mixed { color: #6c4800; background: #ffedbd; }
+    .badge.preview { color: #563b83; background: #eadff8; }
+    .badge.artifact { color: #4f5663; background: #e8eaf0; }
+    .stage {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 18px;
+      padding: 19px 0;
+      border-top: 1px solid var(--line);
+    }
+    .stage:first-of-type { border-top: 0; }
+    .stage-number {
+      width: 70px;
+      height: 70px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: white;
+      background: linear-gradient(145deg, var(--blue), #52a5e8);
+      font-size: 24px;
+      font-weight: 750;
+    }
+    .stage h3 { margin-top: 0; }
+    .small { color: var(--muted); font-size: 13px; }
+    .checklist { list-style: none; padding-left: 0; }
+    .checklist li::before { content: "✓"; color: var(--green); font-weight: 800; margin-right: 8px; }
+    footer { color: var(--muted); padding: 10px 20px 40px; text-align: center; }
+    @media (max-width: 720px) {
+      section { padding: 20px; }
+      .stage { grid-template-columns: 1fr; }
+      th { position: static; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Fine-Tuning Demos Rehaul Proposal</h1>
+    <p>A customer-centered plan for turning the current collection of Microsoft Foundry fine-tuning demos into a coherent cookbook that grows from first principles to production-grade and agentic training.</p>
+    <p class="meta">Prepared 2026-10-03 | Scope: 16 demo areas, 20 canonical learning notebooks, shared navigation, metadata, standards, and migration plan</p>
+  </div>
+</header>
+
+<nav>
+  <div class="wrap">
+    <a href="#recommendation">Recommendation</a>
+    <a href="#problems">Current gaps</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#learning-path">Learning path</a>
+    <a href="#catalog">Demo catalog</a>
+    <a href="#notebook-roles">Notebook roles</a>
+    <a href="#standards">Standards</a>
+    <a href="#migration">Migration</a>
+    <a href="#reviewers">Reviewer feedback</a>
+  </div>
+</nav>
+
+<main class="wrap">
+  <section id="recommendation">
+    <h2>Executive recommendation</h2>
+    <div class="callout success">
+      <strong>Use a hybrid design:</strong> a maturity-first learning path for sequential study, task-oriented lookup for customers who know what they need, and technique/modality filters backed by machine-readable metadata. Do not immediately move every existing folder; preserve current URLs while the new curriculum proves itself.
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3>Primary journey</h3>
+        <p>Platform readiness &rarr; evaluation contract &rarr; first SFT &rarr; repeatable experimentation &rarr; DPO/RFT/distillation/multimodal &rarr; agentic workflows &rarr; release and operations.</p>
+      </div>
+      <div class="card">
+        <h3>Direct lookup</h3>
+        <p>Let customers filter by task, technique, modality, notebook role, model family, maturity, access level, cost, and production readiness.</p>
+      </div>
+      <div class="card">
+        <h3>Stable public surface</h3>
+        <p>Keep current folders as compatibility entry points during migration. Add canonical metadata and navigation before disruptive renaming.</p>
+      </div>
+      <div class="card">
+        <h3>Model-launch readiness</h3>
+        <p>Keep conceptual guidance model-agnostic. Put changing model, region, quota, and feature support in a dated compatibility matrix.</p>
+      </div>
+    </div>
+    <h3>What success looks like</h3>
+    <ul class="checklist">
+      <li>A beginner can complete one small, measurable SFT job without hidden prerequisites.</li>
+      <li>An experienced customer can jump directly to DPO, RFT, multimodal, distillation, or tool-use examples.</li>
+      <li>Every notebook clearly states whether it trains a model, only evaluates, benchmarks, generates data, or supports another workflow.</li>
+      <li>Every result separates platform success, model-quality success, deployment success, and production readiness.</li>
+      <li>Every demo follows one documentation and notebook contract while retaining enough local code to remain understandable.</li>
+    </ul>
+  </section>
+
+  <section id="problems">
+    <h2>Current-state diagnosis</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Mixed organizing dimensions</h3>
+        <p>Technique, modality, scenario, and maturity are encoded together in folder names. Examples: SFT and RFT folders sit beside evaluation-only notebooks, vision workloads, and an integrated retail-agent capstone.</p>
+      </div>
+      <div class="card">
+        <h3>No dependable prerequisite path</h3>
+        <p>The catalog suggests difficulty, but operational prerequisites vary much more: preview access, quota, many deployments, App Insights, hosted agents, functions, and tool endpoints.</p>
+      </div>
+      <div class="card">
+        <h3>Notebook responsibilities are unclear</h3>
+        <p>Some notebooks train; others evaluate or benchmark; several combine data generation, training, deployment, and evaluation in one long stateful flow.</p>
+      </div>
+      <div class="card">
+        <h3>Inconsistent model roles</h3>
+        <p>Base, teacher, evaluator, grader, inference-only, and fine-tuned models are often described together. Customers cannot reliably tell which model was actually optimized.</p>
+      </div>
+      <div class="card">
+        <h3>Production maturity stops early</h3>
+        <p>Job submission and deployment are well represented. Shared patterns for data lineage, release gates, load testing, canary, rollback, monitoring, drift, and retirement are missing.</p>
+      </div>
+      <div class="card">
+        <h3>Catalog drift</h3>
+        <p>The root documentation says 15 demos while the current inventory has 16 demo areas. Names, README coverage, notebook names, result claims, and model references have drifted.</p>
+      </div>
+    </div>
+    <div class="callout warning">
+      <strong>Key pedagogical risk:</strong> a technically successful job can still produce a worse model, fail managed postprocessing, be undeployable because of quota, or be unsafe for production. The cookbook must teach these as distinct outcomes.
+    </div>
+  </section>
+
+  <section id="architecture">
+    <h2>Proposed information architecture</h2>
+    <h3>Near-term, link-safe structure</h3>
+    <pre>README.md                         # concise routing page
+GETTING_STARTED.md                # setup and first-run prerequisites
+Demos/
+  README.md                       # generated catalog
+  LEARNING_PATH.md                # numbered customer journey
+  TASK_INDEX.md                   # "I need to..." lookup
+  MODEL_AND_NOTEBOOK_INDEX.md     # model roles and notebook roles
+  _catalog.yml                    # source of truth for all metadata
+  _shared/
+    auth.py                       # project context and Entra ID
+    dataset_validation.py
+    evaluation.py
+    experiment_manifest.py
+    deployment.py
+    schemas/
+  &lt;existing demo folders retained for compatibility&gt;</pre>
+
+    <h3>Standard demo layout</h3>
+    <pre>Demos/&lt;demo&gt;/
+  README.md
+  demo.yaml
+  requirements.txt
+  .env.template
+  notebooks/
+    01_prepare_or_baseline.ipynb
+    02_train_and_monitor.ipynb
+    03_evaluate_and_decide.ipynb
+  data/
+    README.md
+    sample/
+  src/                            # only when needed
+  graders/                        # when grader implementation is the lesson
+  outputs/
+    README.md
+    metrics/
+    figures/</pre>
+
+    <p>Single-notebook demos may keep one notebook when the workflow is genuinely short. Long notebooks should be split only at stable learning boundaries, not simply by line count.</p>
+    <div class="callout warning">
+      <strong>Customer-facing output policy:</strong> internal refactor status reports, execution snapshots, report-generator inputs, and aggregate tracking HTML are temporary engineering artifacts and must not ship in the final cookbook. Commit only small outputs that directly teach the demo, such as a sanitized example metric or figure; keep routine run output ignored or publish it as external CI evidence.
+    </div>
+
+    <h3>Navigation dimensions</h3>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Dimension</th><th>Purpose</th><th>Examples</th><th>Where represented</th></tr></thead>
+        <tbody>
+          <tr><td>Maturity</td><td>Sequential customer growth</td><td>Foundation, practitioner, advanced, production, preview</td><td><code>LEARNING_PATH.md</code> and <code>stage</code> metadata</td></tr>
+          <tr><td>Technique</td><td>Direct technical lookup</td><td>SFT, DPO, RFT, distillation, evaluation</td><td>Catalog filter</td></tr>
+          <tr><td>Modality</td><td>Data-shape and preprocessing lookup</td><td>Text, code, image, audio, video, tool calls</td><td>Catalog filter</td></tr>
+          <tr><td>Notebook role</td><td>Set cost and outcome expectations</td><td>Training, evaluation-only, latency-only, data generation, supporting</td><td>Badge on every notebook</td></tr>
+          <tr><td>Availability</td><td>Prevent blocked starts</td><td>Stable, preview, private preview, quota-dependent</td><td>Badge and compatibility matrix</td></tr>
+          <tr><td>Outcome</td><td>Represent reality accurately</td><td>Model produced, service-blocked, deployment-blocked, no training</td><td>Execution report and catalog status</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Naming policy</h3>
+    <ul>
+      <li>Use lowercase kebab-case for new machine-readable slugs: <code>sft-bug-detection</code>, <code>rft-countdown</code>, <code>vision-chart-reasoning</code>.</li>
+      <li>Use human-readable titles from metadata; do not force display names into folder names.</li>
+      <li>Use numbered notebook names that state the action: <code>01_prepare_data.ipynb</code>, <code>02_train.ipynb</code>, <code>03_evaluate.ipynb</code>.</li>
+      <li>Never present or commit <code>*.executed.ipynb</code> as a separate cookbook. Publish execution evidence outside the customer source tree when needed.</li>
+      <li>Use one environment-variable prefix, preferably <code>FOUNDRY_*</code>.</li>
+    </ul>
+  </section>
+
+  <section id="learning-path">
+    <h2>Recommended sequential learning path</h2>
+    <p>This is the primary path customers should see. Optional branches are clearly marked; not all 16 demos are prerequisites.</p>
+
+    <div class="stage">
+      <div class="stage-number">00</div>
+      <div>
+        <h3>Platform readiness and orientation <span class="badge no-train">NO TRAINING</span></h3>
+        <p><strong>New module:</strong> project endpoint, Entra ID, permissions, supported model/region check, quota, budget, data residency, cleanup policy, and the seven-step fine-tuning lifecycle.</p>
+        <p><strong>Exit gate:</strong> authentication succeeds, the target training type is supported, estimated cost is understood, and the learner can distinguish a base model, deployment, job, and fine-tuned model.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-number">01</div>
+      <div>
+        <h3>Evaluation contract and baseline <span class="badge no-train">NO TRAINING</span></h3>
+        <p><strong>New shared lesson:</strong> define train/validation/test splits, primary metric, regression suite, safety checks, minimum improvement threshold, and no-ship criteria before training.</p>
+        <p>The existing image/audio <code>Evaluation</code> notebooks become optional multimodal examples, not the sole introduction to evaluation.</p>
+        <p><strong>Exit gate:</strong> a versioned baseline result and explicit success threshold exist.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-number">02</div>
+      <div>
+        <h3>First supervised fine-tuning job <span class="badge train">CORE TRAINING</span></h3>
+        <p><strong>Use:</strong> a simplified <code>SFT_Bug_Detection</code>. Split into baseline/data inspection, training/monitoring, and evaluation/decision. Make GPT-5.4 teacher generation and ROI analysis optional extensions.</p>
+        <p><strong>Reinforce with:</strong> <code>SFT_CNN_DailyMail</code>. Offer <code>SFT_PubMed_Summarization</code> as a domain-risk branch.</p>
+        <p><strong>Exit gate:</strong> the learner submits a small SFT job, compares base and fine-tuned models on identical held-out data, records cost/runtime, and cleans up temporary resources.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-number">03</div>
+      <div>
+        <h3>Dataset quality and repeatable experiments <span class="badge">PRACTITIONER</span></h3>
+        <p><strong>New modules:</strong> schema validation, duplicate detection, contamination checks, coverage, token statistics, PII/secrets scanning, licensing, dataset manifests, experiment hypotheses, cost controls, and leaderboards.</p>
+        <p><strong>Exit gate:</strong> every job is linked to a dataset hash/version, hypothesis, hyperparameters, SDK version, metrics, and decision.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-number">04</div>
+      <div>
+        <h3>Multimodal specialization <span class="badge">OPTIONAL BRANCH</span></h3>
+        <p><strong>Order:</strong> chart reasoning &rarr; image breed classification &rarr; latency benchmarking &rarr; video action recognition. Audio/image evaluation remains an evaluation-only branch.</p>
+        <p><strong>Exit gate:</strong> customers can version preprocessing, prevent split leakage, report per-class quality, and include latency/cost rather than quality alone.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-number">05</div>
+      <div>
+        <h3>Advanced optimization methods <span class="badge">ADVANCED</span></h3>
+        <p><strong>Order:</strong> DPO preference optimization &rarr; RFT Countdown with deterministic/model graders &rarr; advanced math RFT. Advanced training is chosen only after SFT plus evaluation is shown insufficient.</p>
+        <p><strong>Exit gate:</strong> the learner can justify the technique, validate the grader or preference data, preserve a simpler baseline, and distinguish training success from managed postprocessing and deployment success.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-number">06</div>
+      <div>
+        <h3>Synthetic data and distillation <span class="badge">ADVANCED</span></h3>
+        <p><strong>Order:</strong> teacher-student basics with <code>DistillingSarcasm</code> &rarr; code distillation &rarr; schema-driven synthetic tool-use data &rarr; production trace distillation.</p>
+        <p>Separate data generation/acquisition from training so customers can inspect, filter, and approve data before incurring training cost.</p>
+        <p><strong>Exit gate:</strong> teacher, student, baseline, evaluator, lineage, filtering, and contamination checks are explicit.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-number">07</div>
+      <div>
+        <h3>Tool use and agentic training <span class="badge preview">ADVANCED / PREVIEW</span></h3>
+        <p><strong>Order:</strong> tool contracts and simulators &rarr; tool-use SFT &rarr; traces-to-SFT &rarr; deterministic agentic RFT &rarr; endpoint graders &rarr; retail-agent capstone.</p>
+        <p><code>Agentic_RFT_PrivatePreview</code> remains clearly isolated as availability-dependent material. <code>ZavaRetailAgent</code> becomes the integration capstone, not an introductory tutorial.</p>
+        <p><strong>Exit gate:</strong> tool schemas, side effects, retries, endpoint authentication, grader load, rollout termination, policy, and observability are versioned and tested.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-number">08</div>
+      <div>
+        <h3>Staging, release, operations, and lifecycle <span class="badge">PRODUCTION</span></h3>
+        <p><strong>New modules:</strong> staging deployment, smoke/load tests, p50/p95 latency, cost SLOs, safety gates, canary/shadow evaluation, approval, rollback, monitoring, drift, retraining triggers, incident response, and retirement.</p>
+        <p><strong>Exit gate:</strong> promotion is reversible, rollback is tested, the previous champion remains deployable, and operational alerts have owners.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="catalog">
+    <h2>Current demo catalog and proposed placement</h2>
+    <p><strong>Model-role rule:</strong> the "fine-tuned model" column lists only the model targeted or produced by a fine-tuning job. Teacher, base, evaluator, grader, and inference-only models are not mixed into that field.</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Current demo</th>
+            <th>Proposed public title / stage</th>
+            <th>Fine-tuned model(s)</th>
+            <th>Key platform capabilities</th>
+            <th>Customer takeaway</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>SFT_Bug_Detection</code><br><span class="badge train">TRAINING</span></td>
+            <td><strong>First SFT: Code Bug Detection</strong><br>Stage 02, core foundation</td>
+            <td><code>gpt-4.1-mini-2025-04-14</code> via SFT. GPT-5.4 is a teacher/judge, not the trained model.</td>
+            <td>Project client, Entra ID, file upload, SFT jobs, deployment discovery, baseline and held-out evaluation, quality/cost comparison.</td>
+            <td>A small model can specialize on a narrow task; establish the baseline and rubric before training.</td>
+          </tr>
+          <tr>
+            <td><code>SFT_CNN_DailyMail</code><br><span class="badge train">TRAINING</span></td>
+            <td><strong>SFT Practice: News Summarization</strong><br>Stage 02, reinforcement exercise</td>
+            <td>Recorded execution: <code>gpt-4o-mini-2024-07-18</code>. Future runs are configuration-driven.</td>
+            <td>Chat-format JSONL, training/validation upload, SFT monitoring, deployment, summarization inference.</td>
+            <td>The same SFT lifecycle transfers to a new task, but the evaluation contract must change with the task.</td>
+          </tr>
+          <tr>
+            <td><code>SFT_PubMed_Summarization</code><br><span class="badge train">TRAINING</span></td>
+            <td><strong>Domain SFT: Scientific Summarization</strong><br>Stage 02/03, optional domain branch</td>
+            <td>Recorded execution: <code>gpt-4.1-2025-04-14</code>.</td>
+            <td>Domain dataset preparation, SFT, file reuse, deployment lookup, medical/scientific inference.</td>
+            <td>Domain adaptation adds privacy, licensing, factuality, and human-review requirements.</td>
+          </tr>
+          <tr>
+            <td><code>DPO_Intel_Orca</code><br><span class="badge mixed">ATTEMPTED / BLOCKED</span></td>
+            <td><strong>DPO Preference Optimization</strong><br>Stage 05</td>
+            <td>Attempted <code>gpt-4.1-mini-2025-04-14</code>. Recorded jobs trained tokens but failed managed safety postprocessing; no output model was produced.</td>
+            <td>Preference-pair schema, DPO jobs, retries, terminal-stage diagnostics, Foundry evaluation.</td>
+            <td>Valid data and completed training do not guarantee a usable model; postprocessing status must remain visible.</td>
+          </tr>
+          <tr>
+            <td><code>RFT_Countdown</code><br><span class="badge train">2 TRAINING VARIANTS</span></td>
+            <td><strong>RFT Deterministic Reasoning: Countdown</strong><br>Stage 05</td>
+            <td><code>o4-mini-2025-04-16</code> using model/score and Python grader variants.</td>
+            <td>RFT, grader comparison, reward validation, job monitoring, deployment, exact-answer evaluation.</td>
+            <td>RFT quality is bounded by reward quality; calibrate and test graders before paying for training.</td>
+          </tr>
+          <tr>
+            <td><code>RFT_Math_Reasoning</code><br><span class="badge train">TRAINING</span></td>
+            <td><strong>Advanced RFT: Math Reasoning</strong><br>Stage 05, optional advanced branch</td>
+            <td>Recorded execution: <code>qwen3.6-35b-a3b</code> RFT result.</td>
+            <td>Large reasoning dataset, custom grading, RFT progress, validation evaluation, deployment/quota checks.</td>
+            <td>Training success, quota, model availability, and deployability are separate dependencies.</td>
+          </tr>
+          <tr>
+            <td><code>DistillingSarcasm</code><br><span class="badge train">TRAINING</span></td>
+            <td><strong>Teacher-Student Distillation Basics</strong><br>Stage 06</td>
+            <td>Recorded student: <code>gpt-4.1-nano-2025-04-14</code>.</td>
+            <td>Teacher/student benchmarking, model grader, teacher data generation, student SFT, held-out comparison.</td>
+            <td>Distillation is an SFT pipeline with explicit teacher, student, evaluator, cost, and data-provenance roles.</td>
+          </tr>
+          <tr>
+            <td><code>NL_to_Python_Distillation</code><br><span class="badge mixed">DATA + TRAINING</span></td>
+            <td><strong>Code Distillation: Natural Language to Python</strong><br>Stage 06</td>
+            <td><code>gpt-4.1-mini-2025-04-14</code> student.</td>
+            <td>Synthetic data generation, automated filtering/judging, SFT, code-oriented evaluation, deployment.</td>
+            <td>Synthetic code data needs execution-based correctness, sandboxing, lineage, and contamination controls.</td>
+          </tr>
+          <tr>
+            <td><code>SyntheticDatagen-ToolUse</code><br><span class="badge mixed">DATA + TRAINING</span></td>
+            <td><strong>Synthetic Tool-Use SFT</strong><br>Stage 06/07</td>
+            <td>Recorded result: <code>gpt-4.1-mini-2025-04-14</code>.</td>
+            <td>Foundry Data Generation API, OpenAPI conversion, ToolUseFineTuning recipe, SFT, structural tool-call evaluation.</td>
+            <td>A tool catalog can bootstrap training data, but quality must include tool name, arguments, and final outcome.</td>
+          </tr>
+          <tr>
+            <td><code>TracesDistillation</code><br><span class="badge mixed">TRACES + TRAINING</span></td>
+            <td><strong>Agent Traces to SFT Distillation</strong><br>Stage 06/07</td>
+            <td>Recorded student: <code>gpt-4.1-nano-2025-04-14</code>.</td>
+            <td>App Insights traces, trace recipe and transformation, tool-use SFT, deployment, structural evaluation.</td>
+            <td>Production traces can supervise a cheaper model, but privacy, agent/version pinning, schema repair, and governance are mandatory.</td>
+          </tr>
+          <tr>
+            <td><code>Image_FT_Chart_Analysis</code><br><span class="badge train">TRAINING</span></td>
+            <td><strong>Multimodal SFT: Chart Reasoning</strong><br>Stage 04, first vision example</td>
+            <td>Recorded execution: <code>gpt-4.1-2025-04-14</code>.</td>
+            <td>Vision SFT, ChartQA preparation, image inputs, deployment, chart-reasoning evaluation.</td>
+            <td>Execution success is not quality success; the recorded retest showed a quality regression that should remain visible.</td>
+          </tr>
+          <tr>
+            <td><code>Image_Breed_Classification_FT</code><br><span class="badge train">TRAINING</span> <span class="badge no-train">LATENCY NOTEBOOK</span></td>
+            <td><strong>Multimodal SFT: Image Classification</strong><br>Stage 04</td>
+            <td><code>gpt-4o-2024-08-06</code> via vision SFT. MobileNet is a separate non-Foundry baseline.</td>
+            <td>Image JSONL, vision safety preprocessing, SFT, classification metrics, latency percentiles, throughput.</td>
+            <td>Report accuracy, per-class behavior, rejected rows, latency, and cost separately.</td>
+          </tr>
+          <tr>
+            <td><code>Video_FT_Action_Recognition</code><br><span class="badge train">TRAINING</span></td>
+            <td><strong>Multimodal SFT: Video Action Recognition</strong><br>Stage 04, advanced vision branch</td>
+            <td>Recorded execution: <code>gpt-4.1-2025-04-14</code>.</td>
+            <td>Frame extraction/sampling, multimodal SFT, safety filtering, deployment, action evaluation.</td>
+            <td>Video adds temporal preprocessing, storage, safety, and leakage risks; complete image SFT first.</td>
+          </tr>
+          <tr>
+            <td><code>Evaluation</code><br><span class="badge no-train">NO TRAINING</span></td>
+            <td><strong>Multimodal Evaluation: Image and Audio</strong><br>Stage 01/04, optional branch</td>
+            <td><strong>None.</strong> Image/audio targets and grader deployments are inference/evaluation models only.</td>
+            <td>Foundry cloud evaluations, multimodal datasets, score-model graders, run polling, result reports.</td>
+            <td>Evaluation is a standalone lifecycle. A completed run or deployed target is not a fine-tuned model.</td>
+          </tr>
+          <tr>
+            <td><code>Agentic_RFT_PrivatePreview</code><br><span class="badge preview">PRIVATE PREVIEW</span></td>
+            <td><strong>Agentic RFT: Tool Calls and Endpoint Graders</strong><br>Stage 07</td>
+            <td>Recorded successful paths use <code>o4-mini-2025-04-16</code>; exact selected preview target must be captured per run.</td>
+            <td>Tool calls in rollouts, hosted endpoint graders, Python grader restrictions, Azure Functions, RFT job operations.</td>
+            <td>Tools and graders are training-environment dependencies requiring authentication, observability, load testing, and versioning.</td>
+          </tr>
+          <tr>
+            <td><code>ZavaRetailAgent</code><br><span class="badge mixed">SFT + RFT CAPSTONE</span></td>
+            <td><strong>Agentic Retail Capstone</strong><br>Stage 07</td>
+            <td>SFT and RFT candidates are represented. Exact base/output identifiers are not consistently surfaced today and must become required manifest fields.</td>
+            <td>Agent tools, MCP/remote endpoints, synthetic data, policy evaluation, SFT, RFT, deployment, application workflow.</td>
+            <td>A production-like agent is a versioned system of model, tools, policies, data, graders, and telemetry, not just a training job.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="notebook-roles">
+    <h2>Notebook role classification</h2>
+    <div class="callout danger">
+      <strong>Clearly non-fine-tuning notebooks:</strong> the two notebooks under <code>Demos/Evaluation</code> and <code>Image_Breed_Classification_FT/latency_base_ft_models.ipynb</code> do not submit fine-tuning jobs. They must display a prominent "Does not train a model" banner.
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Notebook or group</th><th>Required label</th><th>Fine-tunes?</th><th>Recommended treatment</th></tr></thead>
+        <tbody>
+          <tr><td><code>Evaluation/audio_evals_example.ipynb</code></td><td><span class="badge no-train">EVALUATION-ONLY</span></td><td>No</td><td>Present as reusable evaluation capability; state target and grader model roles separately.</td></tr>
+          <tr><td><code>Evaluation/image_evals_example.ipynb</code></td><td><span class="badge no-train">EVALUATION-ONLY</span></td><td>No</td><td>Present as reusable evaluation capability; do not count it as a training notebook.</td></tr>
+          <tr><td><code>Image_Breed_Classification_FT/latency_base_ft_models.ipynb</code></td><td><span class="badge no-train">LATENCY-ONLY</span></td><td>No</td><td>Keep as a benchmark after the training notebook; label required deployments and request volume.</td></tr>
+          <tr><td><code>NL_to_Python_Distillation</code></td><td><span class="badge mixed">DATA GENERATION + TRAINING</span></td><td>Yes</td><td>Split synthetic generation/filtering from student training and code evaluation.</td></tr>
+          <tr><td><code>SyntheticDatagen-ToolUse</code></td><td><span class="badge mixed">DATA GENERATION + TRAINING</span></td><td>Yes</td><td>Extract the reusable generation phase; preserve structural evaluation as a separate gate.</td></tr>
+          <tr><td><code>TracesDistillation</code></td><td><span class="badge mixed">TRACE ACQUISITION + TRAINING</span></td><td>Yes</td><td>Split trace acquisition/transformation, training, and evaluation. Add privacy and lineage gates.</td></tr>
+          <tr><td><code>ZavaRetailAgent/demo.ipynb</code></td><td><span class="badge mixed">CAPSTONE / MIXED</span></td><td>Yes, SFT and RFT</td><td>Keep as a capstone after component lessons; do not use it to introduce all concepts at once.</td></tr>
+          <tr><td><code>RFT_Countdown</code> pair</td><td><span class="badge mixed">TRAINING VARIANTS</span></td><td>Yes</td><td>Label model-grader and Python-grader variants explicitly; share common baseline/evaluation material.</td></tr>
+          <tr><td><code>*.executed.ipynb</code></td><td><span class="badge artifact">EXECUTED ARTIFACT</span></td><td>Not a new lesson</td><td>Exclude from the final customer tree, demo counts, and navigation. Retain only as external CI or engineering evidence when required.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Required notebook badges</h3>
+    <p>
+      <span class="badge train">TRAINING</span>
+      <span class="badge no-train">EVALUATION-ONLY</span>
+      <span class="badge no-train">LATENCY-ONLY</span>
+      <span class="badge mixed">DATA-GENERATION</span>
+      <span class="badge">SUPPORTING</span>
+      <span class="badge mixed">MIXED / CAPSTONE</span>
+      <span class="badge artifact">EXECUTED ARTIFACT</span>
+    </p>
+  </section>
+
+  <section id="standards">
+    <h2>Common standards for every cookbook</h2>
+    <h3>README contract</h3>
+    <ol>
+      <li>One-sentence customer outcome.</li>
+      <li>At-a-glance metadata: stage, technique, modality, notebook roles, stability, runtime, approximate cost, access and quota.</li>
+      <li>What the customer will learn and when to use the technique.</li>
+      <li>Prerequisites, permissions, regions/models, existing resources, and environment variables.</li>
+      <li>Notebook map with a fine-tuning yes/no flag for each notebook.</li>
+      <li>Dataset source, license, lineage, schema, counts, hashes, split strategy, and safety considerations.</li>
+      <li>Expected outputs and explicit quality acceptance criteria.</li>
+      <li>Restart-safe rerun behavior and how to reuse an existing successful job.</li>
+      <li>Cleanup, troubleshooting, known service limitations, and preview status.</li>
+      <li>Production considerations: safety, latency, cost, monitoring, rollback, and human review.</li>
+    </ol>
+
+    <h3>Notebook contract</h3>
+    <pre>0. Purpose, role badge, cost warning, and configuration
+1. Authenticate and connect to the Foundry project
+2. Validate prerequisites, model support, quota, and data
+3. Establish a base-model baseline
+4. Prepare and validate training/validation data
+5. Upload or reuse files
+6. Create or reuse the fine-tuning job
+7. Monitor to a terminal state with explicit error handling
+8. Deploy or invoke the resulting model
+9. Evaluate against the same baseline contract
+10. Record quality, safety, cost, latency, provenance, and decision
+11. Cleanup and next steps</pre>
+    <p>Every paid cell should say: <strong>"This cell submits a billable Foundry job. Check for an existing successful job before rerunning."</strong></p>
+
+    <h3>Machine-readable metadata</h3>
+    <pre>id: sft-bug-detection
+title: First SFT - Code Bug Detection
+stage: foundation
+status: stable
+techniques: [sft, distillation]
+modalities: [text, code]
+notebooks:
+  - path: notebooks/02_train_and_monitor.ipynb
+    role: training
+    performs_fine_tuning: true
+training:
+  fine_tuned_models:
+    - base_model: gpt-4.1-mini-2025-04-14
+      result_model: runtime-recorded
+  teacher_models: [gpt-5.4]
+  evaluator_models: [gpt-5.4]
+capabilities: [file-upload, sft, deployment, evaluation]
+prerequisites: [foundry-project, entra-id, model-access]
+cost_tier: low
+runtime_tier: short
+evidence:
+  metric_source: evaluation output produced by the canonical notebook
+  job_and_model_ids: captured at runtime, not committed as refactor tracking</pre>
+    <p>The catalog and README tables should be generated from this metadata so counts and model roles cannot silently drift.</p>
+
+    <h3>Shared components worth standardizing</h3>
+    <div class="grid">
+      <div class="card"><h4>Project context</h4><p><code>DefaultAzureCredential</code>, <code>AIProjectClient</code>, endpoint validation, model/deployment discovery, and actionable access errors.</p></div>
+      <div class="card"><h4>Dataset validation</h4><p>Schema, role order, lengths, duplicates, contamination, coverage, PII/secrets, hashes, source/license, and split manifest.</p></div>
+      <div class="card"><h4>Evaluation harness</h4><p>Base versus fine-tuned comparison, task graders, safety/regression suites, cost/latency capture, human-review sample, and JSON output.</p></div>
+      <div class="card"><h4>Experiment manifest</h4><p>Hypothesis, dataset/code versions, model, hyperparameters, job/model/deployment IDs, cost, metrics, decision, and approver.</p></div>
+      <div class="card"><h4>Release helper</h4><p>Candidate naming, staging, smoke/load test hooks, promotion, rollback, and cleanup.</p></div>
+      <div class="card"><h4>Diagnostics index</h4><p>User error, operation ID, service/log source, likely cause, query/command, remediation, and safe-retry guidance.</p></div>
+    </div>
+    <div class="callout warning">
+      Shared helpers should stay small, tested, and transparent. Do not replace understandable notebook code with an opaque repository framework merely to remove duplication.
+    </div>
+  </section>
+
+  <section id="guardrails">
+    <h2>Technical guardrails</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Data</h3>
+        <ul>
+          <li>Validate every JSONL row and role order before upload.</li>
+          <li>Keep train, validation, final test, safety, and operational replay sets distinct.</li>
+          <li>Record source, license, generation model/prompt, transforms, filters, random seed, and hashes.</li>
+          <li>Never treat synthetic or trace data as trusted without sampling and evaluation.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Graders and RFT</h3>
+        <ul>
+          <li>Prefer deterministic graders where possible.</li>
+          <li>Test positive, partial, malformed, adversarial, and reward-hacking cases.</li>
+          <li>Calibrate against base rollout distributions.</li>
+          <li>Keep training reward separate from independent final evaluation.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Evaluation</h3>
+        <ul>
+          <li>Compare base, fine-tuned, teacher/reference, and same-base peer where relevant.</li>
+          <li>Report sample counts, per-category results, confidence where practical, latency, token use, and cost.</li>
+          <li>Treat tiny perfect scores as instructional, not proof of generalization.</li>
+          <li>Include safety, refusal, format, and unrelated-capability regression suites.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Agentic workflows</h3>
+        <ul>
+          <li>Use deterministic tool simulators for introductory material.</li>
+          <li>Make side effects impossible or reversible during training.</li>
+          <li>Version tools, schemas, prompts, grader endpoints, and agent versions.</li>
+          <li>Measure retries, errors, latency, invalid arguments, race conditions, and termination reasons.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Multimodal</h3>
+        <ul>
+          <li>Declare modality/model compatibility and preprocessing version.</li>
+          <li>Prevent source, speaker, image, or clip leakage across splits.</li>
+          <li>Report robustness to crops, resolution, frame sampling, audio quality, and OCR variation.</li>
+          <li>Surface safety filtering and rejected-row counts.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Launch hygiene</h3>
+        <ul>
+          <li>Keep model/region/version claims in a dated compatibility matrix.</li>
+          <li>Record SDK/API version, region, tier, quota state, and result timestamp.</li>
+          <li>Separate platform failure from model-quality failure.</li>
+          <li>Secret-scan source, notebooks, and generated outputs before publication.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="renaming">
+    <h2>Proposed naming map</h2>
+    <p>These are recommended public titles/slugs. Apply them first in metadata and navigation; physically rename folders only after links and redirects are ready.</p>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Current</th><th>Recommended slug</th><th>Recommended title</th><th>Change rationale</th></tr></thead>
+        <tbody>
+          <tr><td><code>SFT_Bug_Detection</code></td><td><code>sft-bug-detection</code></td><td>First SFT: Code Bug Detection</td><td>Make its foundational role explicit.</td></tr>
+          <tr><td><code>SFT_CNN_DailyMail</code></td><td><code>sft-news-summarization</code></td><td>SFT Practice: News Summarization</td><td>Use the task rather than dataset abbreviation as the public title.</td></tr>
+          <tr><td><code>SFT_PubMed_Summarization</code></td><td><code>sft-scientific-summarization</code></td><td>Domain SFT: Scientific Summarization</td><td>Expose domain-risk learning objective.</td></tr>
+          <tr><td><code>DPO_Intel_Orca</code></td><td><code>dpo-preference-optimization</code></td><td>DPO Preference Optimization</td><td>Technique and purpose are clearer than source dataset alone.</td></tr>
+          <tr><td><code>RFT_Countdown</code></td><td><code>rft-countdown</code></td><td>RFT Deterministic Reasoning: Countdown</td><td>Clarify the reward-verification focus.</td></tr>
+          <tr><td><code>RFT_Math_Reasoning</code></td><td><code>rft-math-reasoning-advanced</code></td><td>Advanced RFT: Math Reasoning</td><td>Signal quota and complexity.</td></tr>
+          <tr><td><code>DistillingSarcasm</code></td><td><code>distillation-teacher-student-basics</code></td><td>Teacher-Student Distillation Basics</td><td>Use the transferable concept rather than novelty task.</td></tr>
+          <tr><td><code>NL_to_Python_Distillation</code></td><td><code>distillation-nl-to-python</code></td><td>Code Distillation: Natural Language to Python</td><td>Consistent slug and clearer technique.</td></tr>
+          <tr><td><code>SyntheticDatagen-ToolUse</code></td><td><code>synthetic-tool-use-sft</code></td><td>Synthetic Tool-Use SFT</td><td>Expose both data generation and training.</td></tr>
+          <tr><td><code>TracesDistillation</code></td><td><code>agent-traces-to-sft</code></td><td>Agent Traces to SFT Distillation</td><td>Clarify source data and outcome.</td></tr>
+          <tr><td><code>Image_FT_Chart_Analysis</code></td><td><code>vision-chart-reasoning</code></td><td>Multimodal SFT: Chart Reasoning</td><td>Align with the multimodal branch.</td></tr>
+          <tr><td><code>Image_Breed_Classification_FT</code></td><td><code>vision-image-classification</code></td><td>Multimodal SFT: Image Classification</td><td>Separate the transferable lesson from one dataset.</td></tr>
+          <tr><td><code>Video_FT_Action_Recognition</code></td><td><code>vision-video-action-recognition</code></td><td>Multimodal SFT: Video Action Recognition</td><td>Consistent modality naming.</td></tr>
+          <tr><td><code>Evaluation</code></td><td><code>multimodal-evaluation</code></td><td>Multimodal Evaluation: Image and Audio</td><td>Explicitly state it is evaluation, not training.</td></tr>
+          <tr><td><code>Agentic_RFT_PrivatePreview</code></td><td><code>agentic-rft-preview</code></td><td>Agentic RFT: Tool Calls and Endpoint Graders</td><td>Keep preview status and decompose notebook roles.</td></tr>
+          <tr><td><code>ZavaRetailAgent</code></td><td><code>agentic-retail-capstone</code></td><td>Agentic Retail Capstone</td><td>Position as integrated culmination.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="migration">
+    <h2>Phased migration plan</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Phase 1 - Inventory and truth</h3>
+        <p><strong>Priority: P0</strong></p>
+        <ul>
+          <li>Correct counts and stale links.</li>
+          <li>Create <code>_catalog.yml</code>.</li>
+          <li>Classify all notebooks and model roles.</li>
+          <li>Add status, availability, cost, runtime, and known-limitations metadata.</li>
+          <li>Add catalog and link validation to CI.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Phase 2 - Navigation</h3>
+        <p><strong>Priority: P0</strong></p>
+        <ul>
+          <li>Add learning path, task index, and model/notebook index.</li>
+          <li>Generate catalog tables from metadata.</li>
+          <li>Keep existing folder URLs unchanged.</li>
+          <li>Add compatibility matrix for model/region/feature support.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Phase 3 - Foundations first</h3>
+        <p><strong>Priority: P0/P1</strong></p>
+        <ul>
+          <li>Create platform-readiness and evaluation-contract modules.</li>
+          <li>Refactor Bug Detection into the first safe SFT path.</li>
+          <li>Standardize CNN/DailyMail, PubMed, and Evaluation.</li>
+          <li>Add cost, rerun, cleanup, and no-ship guidance.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Phase 4 - Technique modules</h3>
+        <p><strong>Priority: P1</strong></p>
+        <ul>
+          <li>Refactor DPO/RFT and grader lessons.</li>
+          <li>Split data generation/acquisition from training.</li>
+          <li>Normalize multimodal preprocessing and evaluation.</li>
+          <li>Add dataset and experiment manifests.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Phase 5 - Release and operations</h3>
+        <p><strong>Priority: P2</strong></p>
+        <ul>
+          <li>Add staging, smoke/load tests, safety gates, and canary/shadow patterns.</li>
+          <li>Add tested promotion and rollback.</li>
+          <li>Add monitoring, drift, retraining, incident, and retirement modules.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Phase 6 - Optional physical moves</h3>
+        <p><strong>Priority: P3</strong></p>
+        <ul>
+          <li>Adopt new slugs for new content first.</li>
+          <li>Move legacy folders only with compatibility stubs.</li>
+          <li>Update internal and external references.</li>
+          <li>Deprecate old paths before removal.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Migration acceptance criteria</h3>
+    <ul class="checklist">
+      <li>Catalog count equals repository inventory and CI enforces it.</li>
+      <li>Every canonical notebook has exactly one role label and a fine-tuning yes/no field.</li>
+      <li>Every training demo identifies exact or runtime-configured base and output model roles.</li>
+      <li>Every demo has entry/exit objectives, cost/runtime expectations, cleanup, and known limitations.</li>
+      <li>Every advanced module declares prerequisite gates.</li>
+      <li>Every checked-in result is reproducible from sanitized metadata and does not contain credentials.</li>
+      <li>At least one complete path exists from readiness through tested rollback.</li>
+    </ul>
+  </section>
+
+  <section id="reviewers">
+    <h2>Parallel customer-review feedback incorporated</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Reviewer lens</th><th>Critical feedback</th><th>How this proposal incorporates it</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Beginner fine-tuning customer</td>
+            <td>No reliable low-cost entry path; current first demos combine too many concepts; missing entry/exit objectives and consistent prerequisites.</td>
+            <td>Adds readiness and evaluation stages, makes Bug Detection the simplified first SFT, splits long notebooks, and defines explicit progression gates.</td>
+          </tr>
+          <tr>
+            <td>Production practitioner</td>
+            <td>Strong technique showcase but weak release lifecycle: inconsistent data quality, experiment tracking, cost/latency gates, safety, rollback, monitoring, and retirement.</td>
+            <td>Adds shared manifests/evaluation harness plus dedicated staging, canary, rollback, monitoring, drift, and lifecycle stages.</td>
+          </tr>
+          <tr>
+            <td>Advanced researcher/engineer</td>
+            <td>Advanced material is not dependency-ordered; graders, synthetic data, traces, tools, and endpoint reliability are conflated; model-specific details leak into conceptual guidance.</td>
+            <td>Introduces prerequisite gates, decomposes agentic/tool/distillation tracks, adds technical guardrails, and moves volatile compatibility data to a dated matrix.</td>
+          </tr>
+          <tr>
+            <td>Curriculum and information architect</td>
+            <td>A single technique-, modality-, or maturity-first filesystem cannot serve all customer needs; mass renaming risks broken links.</td>
+            <td>Uses maturity-first navigation, technique/modality/task filters, metadata-backed generation, and phased link-safe migration.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <strong>Consensus:</strong> the highest-value near-term work is not adding more demos. It is separating learning objectives, making evaluation and model roles explicit, standardizing the cookbook contract, and adding the missing bridge from successful experiment to safely operated model.
+    </div>
+  </section>
+
+  <section id="decision">
+    <h2>Recommended decision</h2>
+    <ol>
+      <li><strong>Approve the hybrid information architecture</strong> and metadata-first migration.</li>
+      <li><strong>Do not immediately rename or move all current folders.</strong> First add catalog metadata, navigation, role labels, and CI validation.</li>
+      <li><strong>Build the foundation path first:</strong> readiness, evaluation contract, simplified Bug Detection SFT, and repeatable experiment artifacts.</li>
+      <li><strong>Then refactor by learning dependency:</strong> DPO/RFT, multimodal, synthetic/distillation, and finally agentic capstones.</li>
+      <li><strong>Commit to production completeness:</strong> add staging, load/safety gates, canary, tested rollback, monitoring, and lifecycle modules as first-class cookbooks.</li>
+    </ol>
+  </section>
+</main>
+
+<footer>
+  Proposal based on direct repository inventory and four parallel customer-perspective reviews. This document is a reorganization plan; it does not move or rename the current demos.
+</footer>
+</body>
+</html>

@@ -1,9 +1,0 @@
-{
-  "agent_name": "traces-distill-zava-20261003-0805",
-  "agent_version": "2",
-  "id": "traces-distill-zava-20261003-0805:2",
-  "status": "AgentVersionStatus.ACTIVE",
-  "model": "gpt-4.1-mini",
-  "description": "Trace-producing Zava prompt agent after App Insights connection",
-  "app_insights_connection": "traces-distill-appinsights"
-}
