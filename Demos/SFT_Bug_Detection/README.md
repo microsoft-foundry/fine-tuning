@@ -28,8 +28,15 @@ The fine-tuned model matched the teacher's **90% pass rate**, improved the base 
 - Azure AI Foundry project with fine-tuning access
 - Python 3.12
 - `pip install -r requirements.txt`
-- Azure CLI installed and authenticated with access to the target Foundry project
-- Set `FOUNDRY_PROJECT_ENDPOINT` if you are not using the demo's default project endpoint
+- A credential supported by `DefaultAzureCredential` with Foundry User access
+- Set `FOUNDRY_PROJECT_ENDPOINT`
+- To replay evaluation without retraining, set `FINE_TUNE_JOB_ID` and
+  `FINE_TUNED_DEPLOYMENT` to a succeeded job and its existing project deployment
+
+The notebook creates `AIProjectClient` from the project endpoint and obtains the
+official OpenAI child client with `get_openai_client()`. It does not use API keys,
+construct an OpenAI client directly, call raw service routes, or configure an
+account-level endpoint. Deployment discovery uses `AIProjectClient.deployments`.
 
 ## Files
 

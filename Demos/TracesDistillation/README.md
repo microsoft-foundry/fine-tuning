@@ -12,7 +12,7 @@ This demo fine-tunes a small student model (`gpt-4.1-nano`) to mimic a larger ho
 6. **Deploy** the fine-tuned model
 7. **Evaluate** it on the same test set and report the lift
 
-Evaluation is driven by the **Foundry evaluations SDK** (`azure-ai-evaluation`) with a custom tool-call structural evaluator.
+Evaluation is driven by the **Foundry evaluations SDK** (`azure-ai-evaluation`) with a custom tool-call structural evaluator. `AIProjectClient` owns project resource discovery, agent and connection validation, data generation, and evaluation context; its project-derived model client is limited to inference, files used by fine-tuning, and fine-tuning operations.
 
 ## Result on the included Zava retail agent
 
@@ -32,11 +32,11 @@ The `gpt-4.1-nano` student, fine-tuned on traces from a `gpt-4.1-mini` teacher a
   - Or run `generate_traces.py` against a prompt agent with local function tools to populate complete multi-turn trace history
 - A project-level **Application Insights connection**. Trace data generation fails with `DataGenerationJobInvalidAppInsightsSetup` when the project has no App Insights connection.
 - One **student** model deployment that supports fine-tuning (e.g. `gpt-4.1-nano`, `gpt-4.1-mini`)
-- Azure CLI (`az login`) for secretless authentication and deployment
+- Azure CLI (`az login`) or another `DefaultAzureCredential` source for secretless Entra ID authentication
 - Python 3.12 with:
 
 ```bash
-pip install openai>=2.0 azure-ai-projects>=2.2.0 azure-identity>=1.21 azure-ai-evaluation>=1.0
+pip install -r requirements.txt
 ```
 
 ## Files in this folder
@@ -55,9 +55,8 @@ pip install openai>=2.0 azure-ai-projects>=2.2.0 azure-identity>=1.21 azure-ai-e
 set AZURE_AI_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
 set AZURE_AI_AGENT_NAME=<your-hosted-agent>
 set AZURE_AI_AGENT_VERSION=<version>
-set AZURE_SUBSCRIPTION_ID=<subscription-id>
-set AZURE_RESOURCE_GROUP=<resource-group>
-set AZURE_AI_ACCOUNT_NAME=<resource>
+set AZURE_FINE_TUNED_DEPLOYMENT=traces-distil-demo
+set AZURE_FINE_TUNING_JOB_ID=<existing-successful-job-id>
 
 # (Optional) populate complete function-calling trace history first:
 python generate_traces.py ^
@@ -72,7 +71,7 @@ jupyter notebook notebook.ipynb
 
 Full run is ~30–50 minutes depending on FT queue depth.
 
-The notebook uses `AzureCliCredential` through `AIProjectClient.get_openai_client()` and does not require or read an API key. It enumerates hosted agents before trace acquisition and records a prerequisite block when the project has no agent. Fine-tuning is submitted with `trainingType=GlobalStandard`.
+The notebook uses `DefaultAzureCredential` with `AIProjectClient` for Entra ID authentication. It validates the selected agent and Application Insights connection before trace acquisition. Existing successful fine-tuning jobs and deployments can be reused so reruns preserve hosted resources; no ARM route or account endpoint is constructed in demo source. New fine-tuning jobs use `trainingType=GlobalStandard`.
 
 ## Why the transform step exists
 

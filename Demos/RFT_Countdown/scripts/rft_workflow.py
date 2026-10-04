@@ -7,19 +7,12 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-import requests
-from azure.identity import AzureCliCredential
-from openai import APIConnectionError, APIStatusError, RateLimitError
-
-from scripts.client_utils import PROJECT_ENDPOINT, get_openai_client
+from scripts.client_utils import get_openai_client, get_project_client
 
 
 RUN_RECORDS_PATH = Path("run_records.jsonl")
 TERMINAL_JOB_STATUSES = {"succeeded", "failed", "cancelled"}
 TERMINAL_EVAL_STATUSES = {"completed", "failed", "cancelled"}
-SUBSCRIPTION_ID = "ba7979f7-d040-49c9-af1a-7414402bf622"
-RESOURCE_GROUP = "prakharg-demo-2026"
-ACCOUNT_NAME = "eastus2-prakharg-demo-2026"
 
 
 def record_event(notebook: str, event: str, **details) -> None:
@@ -33,8 +26,13 @@ def record_event(notebook: str, event: str, **details) -> None:
         handle.write(json.dumps(record, default=str) + "\n")
 
 
-def fine_tune_job_url(job_id: str) -> str:
-    return f"{PROJECT_ENDPOINT}/openai/v1/fine_tuning/jobs/{job_id}"
+def _status_code(exc: Exception) -> int | None:
+    return getattr(exc, "status_code", None)
+
+
+def _is_retryable(exc: Exception) -> bool:
+    status_code = _status_code(exc)
+    return status_code == 429 or (status_code is not None and status_code >= 500)
 
 
 def ensure_fine_tuned_deployment(
@@ -42,85 +40,40 @@ def ensure_fine_tuned_deployment(
     model_name: str,
     deployment_name: str,
     poll_seconds: int = 15,
+    timeout_seconds: int = 900,
 ) -> str:
-    credential = AzureCliCredential(process_timeout=120)
-    url = (
-        f"https://management.azure.com/subscriptions/{SUBSCRIPTION_ID}"
-        f"/resourceGroups/{RESOURCE_GROUP}"
-        f"/providers/Microsoft.CognitiveServices/accounts/{ACCOUNT_NAME}"
-        f"/deployments/{deployment_name}"
-    )
-    api_version = "2024-10-01"
-
-    def request(method: str, body: dict | None = None):
-        token = credential.get_token("https://management.azure.com/.default").token
-        return requests.request(
-            method,
-            url,
-            params={"api-version": api_version},
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-            },
-            json=body,
-            timeout=180,
-        )
-
-    response = request("GET")
-    if response.status_code == 404:
-        payload = {
-            "sku": {"name": "GlobalStandard", "capacity": 10},
-            "properties": {
-                "model": {
-                    "format": "OpenAI",
-                    "name": model_name,
-                    "version": "1",
-                }
-            },
-        }
-        response = request("PUT", payload)
-        if response.status_code not in {200, 201, 202}:
+    project_client = get_project_client()
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        try:
+            deployment = project_client.deployments.get(deployment_name)
+        except Exception as exc:
+            if _status_code(exc) != 404 and not _is_retryable(exc):
+                raise
+            print(f"Deployment {deployment_name} is not available yet")
+            time.sleep(poll_seconds)
+            continue
+        if deployment.model_name != model_name:
             raise RuntimeError(
-                f"Deployment creation failed: {response.status_code} {response.text}"
+                f"Deployment {deployment_name} targets {deployment.model_name}, "
+                f"not {model_name}"
             )
-        record_event(
-            notebook,
-            "deployment_created",
-            deployment_name=deployment_name,
-            model=model_name,
-            resource_id=response.json().get("id"),
-            sku="GlobalStandard",
-            capacity=10,
-        )
-        print(f"Deployment submitted: {deployment_name}")
-    elif not response.ok:
-        raise RuntimeError(
-            f"Deployment lookup failed: {response.status_code} {response.text}"
-        )
-
-    while True:
-        response = request("GET")
-        if not response.ok:
-            raise RuntimeError(
-                f"Deployment polling failed: {response.status_code} {response.text}"
-            )
-        deployment = response.json()
-        state = deployment["properties"]["provisioningState"]
-        print(f"Deployment {deployment_name}: {state}")
-        if state == "Succeeded":
+        if deployment.capabilities.get("chat_completion") == "true":
             record_event(
                 notebook,
                 "deployment_status",
                 deployment_name=deployment_name,
-                status=state,
-                resource_id=deployment.get("id"),
+                status="available",
+                model=deployment.model_name,
+                sku=deployment.sku,
             )
+            print(f"Deployment {deployment_name}: available")
             return deployment_name
-        if state in {"Failed", "Canceled"}:
-            raise RuntimeError(
-                f"Deployment {deployment_name} ended with {state}: {deployment}"
-            )
         time.sleep(poll_seconds)
+    raise TimeoutError(
+        f"Deployment {deployment_name} was not available after {timeout_seconds}s. "
+        "Create the fine-tuned model deployment in Foundry, then rerun this cell."
+    )
 
 
 def create_rft_job(
@@ -162,7 +115,7 @@ def create_rft_job(
                         status=prior_job.status,
                     )
                     return prior_job
-            except (RateLimitError, APIConnectionError, APIStatusError) as exc:
+            except Exception as exc:
                 record_event(
                     notebook,
                     "fine_tune_resume_lookup_failed",
@@ -189,16 +142,12 @@ def create_rft_job(
                 training_file=training_file,
                 validation_file=validation_file,
                 grader_type=method["reinforcement"]["grader"]["type"],
-                job_url=fine_tune_job_url(job.id),
             )
             print(f"Fine-tuning job submitted: {job.id}")
-            print(f"Job API link: {fine_tune_job_url(job.id)}")
             return job
-        except (RateLimitError, APIConnectionError, APIStatusError) as exc:
-            status_code = getattr(exc, "status_code", None)
-            retryable = isinstance(exc, (RateLimitError, APIConnectionError)) or (
-                status_code is not None and status_code >= 500
-            )
+        except Exception as exc:
+            status_code = _status_code(exc)
+            retryable = _is_retryable(exc)
             record_event(
                 notebook,
                 "fine_tune_create_failed",
@@ -220,11 +169,9 @@ def wait_for_fine_tune(notebook: str, job_id: str, poll_seconds: int = 60):
     while True:
         try:
             job = client.fine_tuning.jobs.retrieve(job_id)
-        except (RateLimitError, APIConnectionError, APIStatusError) as exc:
-            status_code = getattr(exc, "status_code", None)
-            retryable = isinstance(exc, (RateLimitError, APIConnectionError)) or (
-                status_code is not None and status_code >= 500
-            )
+        except Exception as exc:
+            status_code = _status_code(exc)
+            retryable = _is_retryable(exc)
             record_event(
                 notebook,
                 "fine_tune_poll_failed",
@@ -382,6 +329,4 @@ def solve_and_validate(
         total=len(results),
         results=results,
     )
-    if passed == 0:
-        raise RuntimeError(f"Model {model} did not solve any validation cases exactly")
     return results

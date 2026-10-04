@@ -70,15 +70,15 @@ This cookbook teaches you how to:
 
 1. Set up your Microsoft Foundry environment for supervised fine-tuning
 2. Prepare and format medical research data in JSONL format
-3. Upload datasets to Microsoft Foundry
+3. Upload datasets through your Microsoft Foundry project endpoint
 4. Create and configure a supervised fine-tuning job
 5. Monitor training progress and review metrics
-6. Deploy and test your fine-tuned model
+6. Resolve, monitor, and test the fine-tuned model deployment in the project
 
 ## Prerequisites
 
-- Azure subscription with Microsoft Foundry project; you must have **Azure AI User** role
-- Python 3.9 or higher
+- Azure subscription with a Microsoft Foundry project; you must have **Azure AI User** role
+- Python 3.10 or higher
 - Familiarity with Jupyter notebooks
 - Basic understanding of medical/scientific literature (helpful but not required)
 
@@ -118,10 +118,16 @@ Copy the file `.env.template` (located in this folder), and save it as file name
 ```
 MICROSOFT_FOUNDRY_PROJECT_ENDPOINT=<your-endpoint> 
 MODEL_NAME=gpt-4.1
-AZURE_SUBSCRIPTION_ID=<your-subscription-id>
-AZURE_RESOURCE_GROUP=<your-resource-group>
-AZURE_AOAI_ACCOUNT=<your-foundry-account-name>
+
+# Optional: reuse an existing terminal job and its deployment.
+FINE_TUNE_JOB_ID=<existing-ftjob-id>
+DEPLOYMENT_NAME=<existing-project-deployment-name>
 ```
+
+The project endpoint must have the form
+`https://<account>.services.ai.azure.com/api/projects/<project>`. Authentication
+uses `DefaultAzureCredential`; no API key or separately constructed account
+endpoint is required.
 
 ### 4. Run the Notebook
 
@@ -170,9 +176,10 @@ After completing this cookbook, you can:
 - Request additional quota in Azure Portal → Azure OpenAI → Quotas
 - Try a different Azure region with available capacity
 
-**Model Deployment Fails**
-- Ensure you have **Cognitive Services OpenAI User** role
+**Deployment Is Not Found**
 - Verify the fine-tuned model completed training successfully
+- Create a deployment for the fine-tuned model in the same Foundry project, then set `DEPLOYMENT_NAME`
+- Confirm the deployment appears in the project's **Models + endpoints** page
 
 ## References
 

@@ -1,13 +1,7 @@
-"""
-Python Grader logic for OpenAI Evals
+"""Python grader logic for the countdown reinforcement fine-tuning demo."""
 
-Example from https://github.com/azure-ai-foundry/fine-tuning/blob/main/Demos/RFT_Countdown/demo_with_python_grader.ipynb
-"""
-from typing import Any, Dict
 import ast
 import json
-import logging
-import re
 
 
 def _eval(n):
@@ -51,86 +45,69 @@ def _safe_eval(e):
     return _eval(ast.parse(e, mode="eval").body)
 
 
-def grade(sample: Dict[str, Any], item: Dict[str, Any]) -> float:
+def _numbers_in_expression(expression):
+    numbers = []
+    for node in ast.walk(ast.parse(expression, mode="eval")):
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            numbers.append(abs(node.value))
+    return numbers
+
+
+def grade(sample, item):
     """
     Implements the OpenAI Python Grader API, grading the given sample in the
     context of the provided item.
 
     Returns a score in all cases, with 0 returned in case of error.
     """
-    # Be flexible about where our output comes from, but it *must* be JSON.
     output = {}
     if "output_json" in sample:
         output = sample["output_json"]
     else:
-        # fallback to output_text but it better be JSON!
         try:
             output = json.loads(sample["output_text"])
-        except Exception as e:
-            logging.error(f"failed to find JSON output in output_json and output_text: {e}")
+        except (KeyError, TypeError, json.JSONDecodeError):
             return 0
     if not output:
-        logging.error("failed to find non-null JSON output in sample")
-        return 0
-    
-    # Extract our Expression and Result
-    expr = output.get("expression")
-    if not expr:
-        logging.warning("expression was empty")
-        return 0
-    result = output.get("result")
-    if not result:
-        logging.warning("result was empty")
         return 0
 
-    # Perform the evaluation.
+    expr = output.get("expression")
+    if not isinstance(expr, str) or not expr:
+        return 0
+    result = output.get("result")
+    if result is None:
+        return 0
+
     try:
         expr_val = _safe_eval(expr)
-    except ValueError as e:
-        logging.error(f"value error evaluating expression: {e}")
-        return 0
-    
-    # TODO: handle parsing item more cleanly.
-    try:
-        # Check if all numbers were used.
-        used = sorted(map(int, re.findall(r"-?\d+", expr)))
+        used = sorted(map(int, _numbers_in_expression(expr)))
         nums = item["nums"]
         if isinstance(nums, str):
             nums = json.loads(nums)
         expected = sorted(map(int, nums))
         if used != expected:
-            logging.info("all numbers were not used exactly once")
             return 0
 
         sr = int(float(result))
         it = int(float(item["target"]))
 
-        # Score function
         if expr_val != sr:
-            return 1
+            return 0.2
         if sr == it:
-            return 5
+            return 1.0
         if abs(sr - it) <= 1:
-            return 4
+            return 0.8
         if abs(sr - it) <= 5:
-            return 3
-        return 2
-    except Exception as e:
-        logging.error(f"exception while grading: {e}")
+            return 0.6
+        return 0.4
+    except (
+        json.JSONDecodeError,
+        KeyError,
+        TypeError,
+        ValueError,
+        SyntaxError,
+        ZeroDivisionError,
+        OverflowError,
+    ):
+        return 0
     return 0
-
-
-if __name__ == "__main__":
-    import json
-    data = {}
-    try:
-        with open("./test.json", mode="rb") as f:
-            data = json.load(f)
-        sample, item = data["sample"], data["item"]
-        
-        print(f"grading with:\n\tsample: {sample}\n\titem: {item}")
-        score = grade(sample, item)
-        print(f"score: {score}")
-    except Exception as e:
-        import sys
-        print(e, file=sys.stderr)

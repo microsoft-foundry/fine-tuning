@@ -10,23 +10,26 @@ larger model into a smaller model.
    this notebook, I use o3, o4-mini, gpt-4.1, gpt-4.1-mini, gpt-4.1-nano,
    gpt-4o, and gpt-4o-mini. You might need TPM quota in your subscription.
 
-2. Create and populate a `.env` file to simplify stuff. In it, put some Azure
-   specific details:
+2. Authenticate with Microsoft Entra ID and configure the Foundry project
+   endpoint:
 
 ```properties
-AZURE_OPENAI_ENDPOINT=https://<YOUR OWN ENDPOING>.openai.azure.com
-AZURE_OPENAI_API_KEY=<YOUR AZURE OPENAI KEY>
-AZURE_SUBSCRIPTION_ID=<YOUR AZURE SUBSCRIPTION ID>
-AZURE_RESOURCE_GROUP=<YOUR AZURE RESOURCE GROUP>
-AZURE_AOAI_ACCOUNT=<YOUR AZURE OPENAI ACCOUNT NAME>
+FOUNDRY_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
 ```
+
+```powershell
+az login
+```
+
+The notebook uses `DefaultAzureCredential`; no API key or account endpoint is
+required.
 
 3. Wrangle the Python stuff. (See below.)
 
 ```
 $ python3 -m venv .venv
 $ . .venv/bin/activate
-(venv) $ pip install -r requirements
+(venv) $ pip install -r requirements.txt
 ```
 
 Then launch this sucker in Jupyter notebooks. The easiest way is to fire it up
@@ -108,7 +111,7 @@ If the Student is close enough to the Teacher, we ship it off to Production!
 
 **Authentication Error**
 - Run `az login` to refresh your Azure credentials
-- Verify your Azure OpenAI endpoint and API key in `.env`
+- Verify `FOUNDRY_PROJECT_ENDPOINT` in `.env`
 - Check that you have deployment access for all models (o3, o4-mini, gpt-4.1, etc.)
 
 **Quota Exceeded**

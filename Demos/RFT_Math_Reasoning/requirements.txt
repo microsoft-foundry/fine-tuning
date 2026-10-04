@@ -1,13 +1,6 @@
-# Azure AI SDK for fine-tuning
-azure-ai-projects>=2.0.0b1
+# Microsoft Foundry project SDK
+azure-ai-projects>=2.7.0,<3.0.0
+azure-identity>=1.25.0,<2.0.0
 
-# OpenAI SDK
-openai
-
-# Azure Cognitive Services for model deployment
-azure-identity
-azure-mgmt-cognitiveservices
-
-# Core libraries
-python-dotenv
-
+# Environment configuration
+python-dotenv>=1.1.0,<2.0.0

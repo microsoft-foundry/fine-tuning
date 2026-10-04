@@ -4,7 +4,6 @@
     "model": "gpt-4.1-nano-2025-04-14",
     "status": "cancelled",
     "error": null,
-    "job_url": "https://ncus-prakharg-demo-2026.services.ai.azure.com/api/projects/ncus-prakharg-demo-2026/openai/fine_tuning/jobs/ftjob-3f548b8f0c6549928bdf3ab066c06efe",
     "status_history": [
       {
         "elapsed_seconds": 21,
@@ -65,7 +64,6 @@
     "model": "gpt-4.1-nano-2025-04-14",
     "status": "succeeded",
     "error": null,
-    "job_url": "https://ncus-prakharg-demo-2026.services.ai.azure.com/api/projects/ncus-prakharg-demo-2026/openai/fine_tuning/jobs/ftjob-b65562c862964de9975f54caba55dba2",
     "status_history": [
       {
         "elapsed_seconds": 0,
@@ -733,6 +731,32 @@
       },
       {
         "elapsed_seconds": 5151,
+        "status": "succeeded"
+      }
+    ]
+  },
+  {
+    "id": "ftjob-b65562c862964de9975f54caba55dba2",
+    "model": "gpt-4.1-nano-2025-04-14",
+    "status": "succeeded",
+    "error": null,
+    "project_endpoint": "https://ncus-prakharg-demo-2026.services.ai.azure.com/api/projects/ncus-prakharg-demo-2026",
+    "status_history": [
+      {
+        "elapsed_seconds": 0,
+        "status": "succeeded"
+      }
+    ]
+  },
+  {
+    "id": "ftjob-b65562c862964de9975f54caba55dba2",
+    "model": "gpt-4.1-nano-2025-04-14",
+    "status": "succeeded",
+    "error": null,
+    "project_endpoint": "https://ncus-prakharg-demo-2026.services.ai.azure.com/api/projects/ncus-prakharg-demo-2026",
+    "status_history": [
+      {
+        "elapsed_seconds": 0,
         "status": "succeeded"
       }
     ]

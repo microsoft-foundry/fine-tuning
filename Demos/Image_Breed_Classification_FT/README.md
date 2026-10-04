@@ -11,9 +11,9 @@ This project demonstrates how to use a Vision Language Model (VLM) with **Azure 
 > breeds, `gpt-4o-2024-08-06`, 48 submitted training images (30 accepted after
 > vision safety preprocessing), 16 validation images (11 accepted), and 16 held
 > out test images. Base and fine-tuned accuracy were both 93.75%; the fine-tuned
-> deployment reduced mean latency from 2147.9 ms to 1563.6 ms (27.2%) over eight
+> deployment reduced mean latency from 2120.7 ms to 1525.0 ms (28.1%) over eight
 > requests per model. Machine-readable outputs are under `outputs/` and
-> `latency_outputs/`.
+> `latency_outputs/`; the upgrade record is `upgrade-reports/image-breed.json`.
 
 <img title="dogs" alt="dogs" src="public/dogs.png" width="400">
 
@@ -163,8 +163,10 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-No API keys or `.env` secrets are required. The notebooks use
-`AIProjectClient` and `DefaultAzureCredential`.
+No API keys or account endpoints are used. Copy `.env.sample` values into your
+shell environment, then authenticate with `az login`. The notebooks create
+`AIProjectClient` with `DefaultAzureCredential` and obtain the OpenAI-compatible
+child client only from that project client.
 
 ### Dataset Down-Sampling Logic
 1. Enumerate breeds (deterministic ordering)
@@ -209,7 +211,8 @@ Minimal example (line-delimited JSON – one object per line):
 - Check that system prompt includes all 120 breed labels
 
 **Authentication Error**
-- Verify `.env` contains correct API key and endpoint
+- Verify `AZURE_AI_PROJECT_ENDPOINT`, `AZURE_SUBSCRIPTION_ID`,
+  `AZURE_RESOURCE_GROUP`, and `AZURE_AI_ACCOUNT_NAME`
 - Run `az login` to refresh credentials
 - Check that you have vision + fine-tuning access enabled
 
@@ -235,4 +238,4 @@ MIT License (see `LICENSE`).
 Costs and pricing are illustrative and may change. Always consult current [Azure OpenAI pricing](https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/).
 * Some images triggered content filters (faces / people / CAPTCHA-like patterns); approved modifications via Azure process may be required. Use the [official form](https://customervoice.microsoft.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR7en2Ais5pxKtso_Pz4b1_xUMlBQNkZMR0lFRldORTdVQzQ0TEI5Q1ExOSQlQCN0PWcu) for policy-aligned adjustments.
 * Demo scope only—not production hygiene (secrets rotation, monitoring, retraining pipeline) is shown.
-* Protect API keys and respect data governance policies.
+* Protect credentials and respect data governance policies.

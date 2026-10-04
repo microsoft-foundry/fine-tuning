@@ -1,15 +1,13 @@
-azure-ai-projects
+azure-ai-projects>=2.3.0,<3
 azure-identity
 ipykernel
 ipython
 matplotlib
 nbclient
 nbconvert
-openai
 pandas
 pillow
 pydantic
-python-dotenv
 requests
 scikit-learn
 seaborn

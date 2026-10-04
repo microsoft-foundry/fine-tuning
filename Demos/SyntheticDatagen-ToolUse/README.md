@@ -10,34 +10,43 @@ End-to-end, with no manual data labeling:
 2. **Upload** the OpenAPI spec to your Foundry project
 3. **Generate** ~50 training examples with the `ToolUseFineTuning` recipe (the service writes realistic user prompts + correct tool invocations)
 4. **Score** the base model on a held-out test set using **structural tool-call comparison** (tool name + arguments)
-5. **Submit** one fine-tuning job (winning hyperparameters: 3 epochs, lr=1.0)
+5. **Submit** one fine-tuning job (3 epochs, learning-rate multiplier 1.0)
 6. **Monitor** training to completion
-7. **Deploy** the fine-tuned model
+7. **Validate** an existing project deployment of the fine-tuned model
 8. **Evaluate** it on the same test set and report the lift
 
 Evaluation is driven by the **Foundry evaluations SDK** (`azure-ai-evaluation`) — the notebook plugs in a small custom evaluator function for tool-call structural matching since there's no built-in evaluator for this signal.
 
+The notebook uses the current Foundry SDK 2.x shape:
+
+- `AIProjectClient` is constructed from `AZURE_AI_PROJECT_ENDPOINT` with `DefaultAzureCredential`.
+- Data generation uses the SDK's native long-running-operation poller. In `azure-ai-projects` 2.x this operation remains under `project.beta.datasets`.
+- Evaluation uses the stable `azure.ai.evaluation.evaluate()` runner.
+- Files, inference, and fine-tuning use only the documented client returned by `AIProjectClient.get_openai_client()`.
+- Deployment lookup uses the stable `project.deployments` child. Deployment creation is not exposed by the 2.x project SDK, so the notebook reuses a deployment created through the Foundry portal or an approved resource-management workflow.
+
 ## Result on the included tools
 
-Using the Zava Post-Purchase Resolution Desk tool catalog (6 tools: order lookup, inventory, policy checks, resolution calculation, submit):
+Using the included 15-tool Zava retail-support catalog:
 
 | Model | Combined | Pass Rate | Lift |
 |-------|----------|-----------|------|
-| Baseline `gpt-4.1-mini` | 9.20 | 100% | — |
-| Fine-tuned `gpt-4.1-mini` (3ep, lr=1.0) | **10.00** | **100%** | **+8.7%** |
+| Baseline `gpt-4.1-mini` | 7.00 | 66.7% | — |
+| Fine-tuned `gpt-4.1-mini` (3ep, lr=1.0) | **9.00** | **88.9%** | **+28.6%** |
 
-The fine-tuned `gpt-4.1-mini` matches the teacher's tool selection on every test row.
+These figures are from the Australia East validation run recorded on October 3, 2026.
 
 ## Prerequisites
 
 - An Azure AI Foundry project (`https://<resource>.services.ai.azure.com/api/projects/<project>`) with:
   - One **teacher** model deployment (e.g. `gpt-4.1` or `gpt-5.4`) for the datagen service to call
   - One **student** model deployment that supports fine-tuning (e.g. `gpt-4.1-mini` — used for both the baseline eval and as the FT base)
-- Azure CLI (`az login` to authenticate the SDK, OpenAI API calls, and model deployment)
+  - One deployment of the completed fine-tuned model for the final evaluation
+- A credential supported by `DefaultAzureCredential` with access to the project. For local development, `az login` is sufficient.
 - Python 3.11+ with:
 
 ```bash
-pip install openai>=2.0 azure-ai-projects>=2.2.0 azure-identity>=1.21 azure-ai-evaluation>=1.0
+pip install "azure-ai-projects>=2.7,<3" "azure-identity>=1.26,<2" "azure-ai-evaluation>=1.18.7,<2" jupyter
 ```
 
 ## Files in this folder
@@ -52,16 +61,16 @@ pip install openai>=2.0 azure-ai-projects>=2.2.0 azure-identity>=1.21 azure-ai-e
 
 ```bash
 export AZURE_AI_PROJECT_ENDPOINT="https://<resource>.services.ai.azure.com/api/projects/<project>"
-export AZURE_SUBSCRIPTION_ID="<subscription-id>"
-export AZURE_RESOURCE_GROUP="<resource-group>"
-export AZURE_AI_ACCOUNT_NAME="<resource>"
+export AZURE_TEACHER_DEPLOYMENT="gpt-4.1"
+export AZURE_STUDENT_DEPLOYMENT="gpt-4.1-mini"
+export AZURE_FINE_TUNED_DEPLOYMENT="<existing-fine-tuned-deployment>"
 
 jupyter notebook notebook.ipynb
 ```
 
-The notebook uses `AzureCliCredential`; no API key or other secret is required.
+No API key, Azure OpenAI account endpoint, account name, subscription ID, resource group, or raw management URL is required.
 
-Full run takes ~25–45 minutes depending on FT queue depth in your region.
+For Australia East, use `GlobalStandard` training (the notebook default) or another training type supported by the selected model and region. A new run typically takes ~25–45 minutes depending on fine-tuning queue depth. To retest completed work without creating another billable job, set `AZURE_DATAGEN_JOB_IDS` and `AZURE_FINE_TUNING_JOB_ID`; the notebook validates those service jobs before reusing the local generated data and completed model.
 
 ## Bring your own tools
 

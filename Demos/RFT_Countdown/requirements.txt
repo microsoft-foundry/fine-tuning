@@ -1,14 +1,13 @@
-# Azure AI SDKs
-azure-ai-projects
-azure-identity
-openai
+# Microsoft Foundry SDK 2.x and Entra ID
+azure-ai-projects>=2.3.0,<3
+azure-identity>=1.19.0
+aiohttp>=3.10
 
 # Data processing
 datasets
 pandas
 numpy
 matplotlib
-requests
 tabulate
 
 # Jupyter support

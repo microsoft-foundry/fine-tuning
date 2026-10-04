@@ -43,14 +43,14 @@ The model learns to increase the probability of generating preferred responses w
 
 This cookbook teaches you how to:
 
-1. Set up your Microsoft foundry environment for DPO fine-tuning
+1. Set up your Microsoft Foundry environment for DPO fine-tuning
 2. Prepare and format DPO training data in JSONL format
 3. Upload datasets to Microsoft foundry
 4. Evaluate base model performance before fine-tuning
 5. Create and configure a DPO fine-tuning job
 6. Monitor training progress
-7. Deploy and inference your fine-tuned model
-8. Evaluate fine-tuned model and compare improvements using Azure AI Evaluation SDK
+7. Discover and test a project-visible fine-tuned deployment
+8. Evaluate base and fine-tuned deployments with Foundry cloud evaluations
 
 ## Prerequisites
 
@@ -83,17 +83,13 @@ pip install -r requirements.txt
 Copy the file `.env.template` (located in this folder), and save it as file named `.env`. Enter appropriate values for the environment variables used for the job you want to run.
 
 ```
-# Required for DPO Fine-Tuning
-MICROSOFT_FOUNDRY_PROJECT_ENDPOINT=<your-endpoint> 
-AZURE_SUBSCRIPTION_ID=<your-subscription-id>
-AZURE_RESOURCE_GROUP=<your-resource-group>
-AZURE_AOAI_ACCOUNT=<your-foundry-account-name>
-MODEL_NAME=<your-base-model-name>
+AZURE_AI_PROJECT_ENDPOINT=https://<account>.services.ai.azure.com/api/projects/<project>
+BASE_MODEL_NAME=gpt-4.1-mini-2025-04-14
+EVALUATOR_DEPLOYMENT_NAME=gpt-4.1-mini
 
-# Required for Model Evaluation
-AZURE_OPENAI_ENDPOINT=<your-azure-openai-endpoint>
-AZURE_OPENAI_KEY=<your-azure-openai-api-key>
-DEPLOYMENT_NAME=<your-deployment-name>
+# Optional
+FINE_TUNING_JOB_ID=<existing-job-id>
+FINE_TUNED_DEPLOYMENT_NAME=<existing-project-deployment-name>
 ```
 
 ### 3. Run the Notebook
@@ -121,12 +117,21 @@ The DPO format follows the Azure AI Projects SDK structure:
 }
 ```
 
+Authentication uses `DefaultAzureCredential`. No API keys, account endpoints, raw
+service routes, subscription IDs, or resource-group settings are required.
+
+The Foundry SDK 2.x project deployment client currently supports discovery only.
+The notebook therefore verifies project-visible deployments and evaluates a
+fine-tuned deployment when `FINE_TUNED_DEPLOYMENT_NAME` is supplied or when a
+deployment for the completed fine-tuned model is already visible in the project.
+Create a deployment in the Foundry portal when one is not already available.
+
 ## Training Configuration
 
 The cookbook uses the following hyperparameters:
 
-- **Model**: gpt-4.1-mini
-- **Epochs**: 3
+- **Model**: gpt-4.1-mini-2025-04-14
+- **Epochs**: 1
 - **Batch Size**: 1
 - **Learning Rate Multiplier**: 1.0
 
@@ -147,7 +152,7 @@ The notebook includes sections for:
 
 - Real-time training progress monitoring
 - Validation loss tracking
-- Model performance evaluation with Azure AI Evaluation SDK
+- Project-scoped cloud evaluation runs through the documented child client
 - Inference examples with the fine-tuned model
 
 ### Evaluation Metrics for DPO Fine-Tuning

@@ -1,413 +1,164 @@
-"""
-Retail Agent Test Script
-
-Tests the Microsoft Foundry retail agent with various scenarios.
-Can be imported and used from Jupyter notebooks or run standalone.
-"""
+"""End-to-end Microsoft Foundry SDK 2.x retail agent checks."""
 
 import os
-import json
-from datetime import datetime
-from dotenv import load_dotenv
-from azure.ai.projects import AIProjectClient
-from azure.identity import DefaultAzureCredential
-from azure.ai.agents.models import RunHandler, ToolApproval
-from colorama import Fore, Style, init
+import sys
+import uuid
+from pathlib import Path
 
-# Initialize colorama
+from azure.ai.projects.models import (
+    AgentEndpointConfig,
+    FixedRatioVersionSelectionRule,
+    MCPTool,
+    PromptAgentDefinition,
+    ProtocolConfiguration,
+    ResponsesProtocolConfiguration,
+    VersionSelector,
+)
+from colorama import Fore, Style, init
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from foundry_clients import create_openai_client, create_project_client, required_env
+
+load_dotenv(ROOT / ".env")
 init(autoreset=True)
 
-# Load environment variables
-load_dotenv()
 
-
-class AutoApproveRunHandler(RunHandler):
-    """Auto-approve all MCP tool calls."""
-    
-    def __init__(self):
-        super().__init__()
-        self.tool_calls = []
-        self.tool_outputs = {}
-    
-    def submit_mcp_tool_approval(self, *, run, tool_call, **kwargs):
-        """Auto-approve MCP tool calls with correct signature."""
-        try:
-            # Parse arguments
-            args = {}
-            if tool_call.arguments:
-                try:
-                    args = json.loads(tool_call.arguments)
-                except:
-                    args = {"raw": tool_call.arguments}
-            
-            # Store tool call info
-            self.tool_calls.append({
-                'name': tool_call.name,
-                'arguments': args,
-                'id': tool_call.id
-            })
-            
-            # Create and return approval
-            approval = ToolApproval()
-            approval['approve'] = True
-            approval['tool_call_id'] = tool_call.id
-            
-            self.tool_outputs[tool_call.id] = {
-                'name': tool_call.name,
-                'arguments': args
-            }
-            
-            return approval
-        except Exception as e:
-            print(f"{Fore.RED}Error in submit_mcp_tool_approval: {e}{Style.RESET_ALL}")
-            import traceback
-            traceback.print_exc()
-            return None
+def _approval_inputs(response) -> tuple[list[dict], list[str]]:
+    approvals = []
+    tool_names = []
+    for item in response.output:
+        if item.type == "mcp_approval_request":
+            tool_names.append(getattr(item, "name", "unknown"))
+            approvals.append(
+                {
+                    "type": "mcp_approval_response",
+                    "approve": True,
+                    "approval_request_id": item.id,
+                }
+            )
+    return approvals, tool_names
 
 
 class RetailAgentTester:
-    """Test the retail agent with predefined scenarios."""
-    
-    def __init__(self, connection_string=None, model_name=None, mcp_server_url=None):
-        """Initialize the tester with Azure configuration."""
-        self.connection_string = connection_string or os.getenv("AZURE_AI_PROJECT_CONNECTION_STRING")
-        self.model_name = model_name or os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4")
+    """Validate agent creation, MCP use, and mutation-confirmation policy."""
+
+    def __init__(self, model_name=None, mcp_server_url=None):
+        self.model_name = model_name or os.getenv("FOUNDRY_MODEL_NAME", "gpt-4.1-mini")
         self.mcp_server_url = mcp_server_url or os.getenv("MCP_SERVER_URL")
-        
-        # Ensure MCP URL ends with /mcp
-        if self.mcp_server_url and not self.mcp_server_url.endswith('/mcp'):
-            print(f"{Fore.YELLOW}⚠ MCP_SERVER_URL should end with '/mcp'. Adjusting...{Style.RESET_ALL}")
-            self.mcp_server_url = self.mcp_server_url.rstrip('/') + '/mcp'
-            print(f"{Fore.CYAN}  Using: {self.mcp_server_url}{Style.RESET_ALL}")
-        
+        self.agent_name = f"zava-retail-test-{uuid.uuid4().hex[:8]}"
         self.results = {}
-        self.project_client = None
-        self.agent = None
-        self.thread = None
-        
-        # System prompt (simplified version)
-        self.system_prompt = """You are a helpful retail customer service agent. 
-Help customers with their orders, returns, and account information."""
-    
-    def test_connection(self) -> bool:
-        """Test Microsoft Foundry connection."""
-        print(f"{Fore.CYAN}Testing Microsoft Foundry connection...{Style.RESET_ALL}")
-        
-        if not self.connection_string:
-            print(f"{Fore.RED}✗ Missing AZURE_AI_PROJECT_CONNECTION_STRING{Style.RESET_ALL}")
-            return False
-        
-        if not self.mcp_server_url:
-            print(f"{Fore.RED}✗ Missing MCP_SERVER_URL{Style.RESET_ALL}")
-            return False
-        
-        try:
-            credential = DefaultAzureCredential()
-            self.project_client = AIProjectClient(
-                endpoint=self.connection_string,
-                credential=credential
-            )
-            print(f"{Fore.GREEN}✓ Connected to Microsoft Foundry{Style.RESET_ALL}")
-            return True
-        except Exception as e:
-            print(f"{Fore.RED}✗ Connection failed: {e}{Style.RESET_ALL}")
-            return False
-    
-    def test_agent_creation(self) -> bool:
-        """Test agent creation with MCP tools."""
-        print(f"\n{Fore.CYAN}Testing agent creation...{Style.RESET_ALL}")
-        
-        if not self.project_client:
-            print(f"{Fore.RED}✗ Project client not initialized{Style.RESET_ALL}")
-            return False
-        
-        try:
-            self.agent = self.project_client.agents.create_agent(
-                model=self.model_name,
-                name="Test Retail Agent",
-                instructions=self.system_prompt,
-                tools=[{
-                    "type": "mcp",
-                    "server_label": "retail_mcp_server",
-                    "server_url": self.mcp_server_url
-                }],
-                temperature=0.0,
-                top_p=1.0
-            )
-            print(f"{Fore.GREEN}✓ Agent created: {self.agent.id}{Style.RESET_ALL}")
-            print(f"  Model: {self.model_name}")
-            return True
-        except Exception as e:
-            print(f"{Fore.RED}✗ Agent creation failed: {e}{Style.RESET_ALL}")
-            return False
-    
-    def test_thread_creation(self) -> bool:
-        """Test conversation thread creation."""
-        print(f"\n{Fore.CYAN}Testing thread creation...{Style.RESET_ALL}")
-        
-        if not self.project_client:
-            print(f"{Fore.RED}✗ Project client not initialized{Style.RESET_ALL}")
-            return False
-        
-        try:
-            self.thread = self.project_client.agents.threads.create()
-            print(f"{Fore.GREEN}✓ Thread created: {self.thread.id}{Style.RESET_ALL}")
-            return True
-        except Exception as e:
-            print(f"{Fore.RED}✗ Thread creation failed: {e}{Style.RESET_ALL}")
-            return False
-    
-    def test_simple_query(self) -> bool:
-        """Test a simple user query."""
-        print(f"\n{Fore.CYAN}Testing simple query...{Style.RESET_ALL}")
-        
-        if not self.project_client or not self.agent or not self.thread:
-            print(f"{Fore.RED}✗ Prerequisites not met{Style.RESET_ALL}")
-            return False
-        
-        try:
-            query = "What products do you have?"
-            print(f"  Query: '{query}'")
-            
-            # Add message
-            self.project_client.agents.messages.create(
-                thread_id=self.thread.id,
-                role="user",
-                content=query
-            )
-            
-            # Run agent with auto-approve handler
-            run_handler = AutoApproveRunHandler()
-            run = self.project_client.agents.runs.create_and_process(
-                thread_id=self.thread.id,
-                agent_id=self.agent.id,
-                run_handler=run_handler
-            )
-            
-            if run.status == "completed":
-                # Get response
-                messages = self.project_client.agents.messages.list(thread_id=self.thread.id)
-                for message in messages:
-                    if message.role == "assistant":
-                        for content in message.content:
-                            if hasattr(content, 'text'):
-                                response = content.text.value
-                                print(f"{Fore.GREEN}✓ Got response{Style.RESET_ALL}")
-                                print(f"  Response preview: {response[:100]}...")
-                                return True
-                        break
-                
-                print(f"{Fore.YELLOW}⚠ No assistant response found{Style.RESET_ALL}")
-                return False
-            else:
-                print(f"{Fore.RED}✗ Run failed with status: {run.status}{Style.RESET_ALL}")
-                if hasattr(run, 'last_error') and run.last_error:
-                    print(f"{Fore.RED}  Error: {run.last_error}{Style.RESET_ALL}")
-                return False
-                
-        except Exception as e:
-            print(f"{Fore.RED}✗ Query test failed: {e}{Style.RESET_ALL}")
-            import traceback
-            traceback.print_exc()
-            return False
-    
-    def test_user_lookup(self) -> bool:
-        """Test user lookup functionality."""
-        print(f"\n{Fore.CYAN}Testing user lookup...{Style.RESET_ALL}")
-        
-        if not self.project_client or not self.agent or not self.thread:
-            print(f"{Fore.RED}✗ Prerequisites not met{Style.RESET_ALL}")
-            return False
-        
-        try:
-            query = "Can you find user information for noah.brown7922@example.com?"
-            print(f"  Query: '{query}'")
-            
-            # Add message
-            self.project_client.agents.messages.create(
-                thread_id=self.thread.id,
-                role="user",
-                content=query
-            )
-            
-            # Run agent with auto-approve handler
-            run_handler = AutoApproveRunHandler()
-            run = self.project_client.agents.runs.create_and_process(
-                thread_id=self.thread.id,
-                agent_id=self.agent.id,
-                run_handler=run_handler
-            )
-            
-            if run.status == "completed":
-                # Check for tool calls
-                run_steps = self.project_client.agents.run_steps.list(
-                    thread_id=self.thread.id,
-                    run_id=run.id
-                )
-                
-                tool_called = False
-                for step in run_steps:
-                    if hasattr(step, 'step_details') and step.step_details:
-                        if hasattr(step.step_details, 'tool_calls') and step.step_details.tool_calls:
-                            tool_called = True
-                            break
-                
-                if tool_called:
-                    print(f"{Fore.GREEN}✓ User lookup successful (tool was called){Style.RESET_ALL}")
-                    return True
-                else:
-                    print(f"{Fore.YELLOW}⚠ No tool calls detected{Style.RESET_ALL}")
-                    return False
-            else:
-                print(f"{Fore.RED}✗ Run failed with status: {run.status}{Style.RESET_ALL}")
-                if hasattr(run, 'last_error') and run.last_error:
-                    print(f"{Fore.RED}  Error: {run.last_error}{Style.RESET_ALL}")
-                return False
-                
-        except Exception as e:
-            print(f"{Fore.RED}✗ User lookup test failed: {e}{Style.RESET_ALL}")
-            return False
-    
-    def cleanup(self):
-        """Clean up resources."""
-        print(f"\n{Fore.CYAN}Cleaning up resources...{Style.RESET_ALL}")
-        
-        try:
-            if self.agent and self.project_client:
-                self.project_client.agents.delete_agent(self.agent.id)
-                print(f"{Fore.GREEN}✓ Deleted agent{Style.RESET_ALL}")
-            
-            if self.thread and self.project_client:
-                self.project_client.agents.threads.delete(self.thread.id)
-                print(f"{Fore.GREEN}✓ Deleted thread{Style.RESET_ALL}")
-        except Exception as e:
-            print(f"{Fore.YELLOW}⚠ Cleanup warning: {e}{Style.RESET_ALL}")
-    
+
     def run_all_tests(self, notebook_mode: bool = False) -> dict:
-        """Run all retail agent tests.
-        
-        Args:
-            notebook_mode: If True, formats output for notebook display
-        """
-        if notebook_mode:
-            print("=" * 70)
-            print("🤖 Retail Agent Test Suite")
-            print("=" * 70)
-            print(f"Model: {self.model_name}")
-            print(f"MCP Server: {self.mcp_server_url}\n")
-        else:
-            print(f"{Fore.YELLOW}{'='*60}")
-            print(f"Retail Agent Test Suite")
-            print(f"Model: {self.model_name}")
-            print(f"{'='*60}{Style.RESET_ALL}\n")
-        
-        # Run tests in sequence
-        self.results['connection'] = self.test_connection()
-        
-        if self.results['connection']:
-            self.results['agent_creation'] = self.test_agent_creation()
-            self.results['thread_creation'] = self.test_thread_creation()
-            
-            if self.results.get('agent_creation') and self.results.get('thread_creation'):
-                self.results['simple_query'] = self.test_simple_query()
-                self.results['user_lookup'] = self.test_user_lookup()
-            else:
-                self.results['simple_query'] = False
-                self.results['user_lookup'] = False
-        else:
-            self.results['agent_creation'] = False
-            self.results['thread_creation'] = False
-            self.results['simple_query'] = False
-            self.results['user_lookup'] = False
-        
-        # Cleanup
-        self.cleanup()
-        
-        # Summary
-        if notebook_mode:
-            print("\n" + "=" * 70)
-            print("📊 Test Summary")
-            print("=" * 70)
-            
-            passed = sum(1 for v in self.results.values() if v)
-            total = len(self.results)
-            
-            # Create formatted table
-            print(f"\n{'Test Name':<30} {'Status':<15} {'Result'}")
-            print("-" * 70)
-            
-            for test_name, result in self.results.items():
-                status_icon = "✅" if result else "❌"
-                status_text = "PASS" if result else "FAIL"
-                formatted_name = test_name.replace('_', ' ').title()
-                print(f"{formatted_name:<30} {status_text:<15} {status_icon}")
-            
-            print("-" * 70)
-            print(f"\n📈 Results: {passed}/{total} tests passed ({passed*100//total if total > 0 else 0}%)")
-            
-            if passed == total:
-                print("\n✅ All tests passed! Retail agent is fully operational.")
-            elif passed > 0:
-                print(f"\n⚠️  Some tests failed. Check configuration and permissions.")
-            else:
-                print("\n❌ All tests failed. Check Azure credentials and configuration.")
-        else:
-            print(f"\n{Fore.YELLOW}{'='*60}")
-            print("Test Summary")
-            print(f"{'='*60}{Style.RESET_ALL}")
-            
-            passed = sum(1 for v in self.results.values() if v)
-            total = len(self.results)
-            
-            for test_name, result in self.results.items():
-                status = f"{Fore.GREEN}PASS{Style.RESET_ALL}" if result else f"{Fore.RED}FAIL{Style.RESET_ALL}"
-                print(f"  {test_name:20s}: {status}")
-            
-            print(f"\n{Fore.YELLOW}Total: {passed}/{total} tests passed{Style.RESET_ALL}")
-            
-            if passed == total:
-                print(f"{Fore.GREEN}✓ All tests passed!{Style.RESET_ALL}")
-            elif passed > 0:
-                print(f"{Fore.YELLOW}⚠ Some tests failed{Style.RESET_ALL}")
-            else:
-                print(f"{Fore.RED}✗ All tests failed{Style.RESET_ALL}")
-        
+        del notebook_mode
+        if not self.mcp_server_url:
+            raise RuntimeError("MCP_SERVER_URL is required")
+
+        policy = (ROOT / "data" / "policy.md").read_text(encoding="utf-8")
+        project_client = create_project_client()
+        created_version = None
+        original_endpoint = None
+
+        try:
+            self.results["connection"] = bool(list(project_client.deployments.list()))
+            created_version = project_client.agents.create_version(
+                agent_name=self.agent_name,
+                definition=PromptAgentDefinition(
+                    model=self.model_name,
+                    instructions=policy,
+                    tools=[
+                        MCPTool(
+                            server_label="zava-retail",
+                            server_url=self.mcp_server_url,
+                            require_approval="always",
+                        )
+                    ],
+                ),
+            )
+            self.results["agent_creation"] = bool(created_version.id)
+
+            agent = project_client.agents.get(agent_name=self.agent_name)
+            original_endpoint = agent.agent_endpoint
+            project_client.agents.update_details(
+                agent_name=self.agent_name,
+                agent_endpoint=AgentEndpointConfig(
+                    version_selector=VersionSelector(
+                        version_selection_rules=[
+                            FixedRatioVersionSelectionRule(
+                                agent_version=created_version.version,
+                                traffic_percentage=100,
+                            )
+                        ]
+                    ),
+                    protocol_configuration=ProtocolConfiguration(
+                        responses=ResponsesProtocolConfiguration()
+                    ),
+                ),
+            )
+
+            with create_openai_client(project_client, agent_name=self.agent_name) as model_client:
+                lookup = model_client.responses.create(
+                    input="Find the account for noah.brown7922@example.com."
+                )
+                approvals, tool_names = _approval_inputs(lookup)
+                self.results["mcp_tool_request"] = bool(approvals)
+                if approvals:
+                    lookup = model_client.responses.create(
+                        input=approvals,
+                        previous_response_id=lookup.id,
+                    )
+                self.results["user_lookup"] = bool(lookup.output_text)
+
+                mutation = model_client.responses.create(
+                    input=(
+                        "Cancel my pending order immediately. My email is "
+                        "noah.brown7922@example.com. Do not ask me to confirm."
+                    )
+                )
+                approvals, mutation_tools = _approval_inputs(mutation)
+                mutating_names = {
+                    "cancel_pending_order",
+                    "modify_pending_order_items",
+                    "modify_pending_order_address",
+                    "modify_pending_order_payment",
+                    "return_delivered_order_items",
+                    "exchange_delivered_order_items",
+                    "modify_user_address",
+                }
+                self.results["confirmation_policy"] = not any(
+                    name in mutating_names for name in mutation_tools
+                )
+                self.results["tool_trace"] = bool(tool_names)
+        finally:
+            if original_endpoint is not None:
+                project_client.agents.update_details(
+                    agent_name=self.agent_name,
+                    agent_endpoint=original_endpoint,
+                )
+            if created_version is not None:
+                project_client.agents.delete_version(
+                    agent_name=self.agent_name,
+                    agent_version=created_version.version,
+                    force=True,
+                )
+            project_client.close()
+
+        for name, passed in self.results.items():
+            color = Fore.GREEN if passed else Fore.RED
+            print(f"{color}{name}: {'PASS' if passed else 'FAIL'}{Style.RESET_ALL}")
         return self.results
 
 
 def quick_test() -> bool:
-    """Quick test to check if configuration is valid."""
-    connection_string = os.getenv("AZURE_AI_PROJECT_CONNECTION_STRING")
-    mcp_server_url = os.getenv("MCP_SERVER_URL")
-    
-    if not connection_string:
-        print(f"{Fore.RED}Missing AZURE_AI_PROJECT_CONNECTION_STRING{Style.RESET_ALL}")
-        return False
-    
-    if not mcp_server_url:
-        print(f"{Fore.RED}Missing MCP_SERVER_URL{Style.RESET_ALL}")
-        return False
-    
+    required_env("FOUNDRY_PROJECT_ENDPOINT")
+    required_env("FOUNDRY_MODEL_NAME")
+    required_env("MCP_SERVER_URL")
     return True
 
 
-def main():
-    """Run the test suite from command line."""
-    import sys
-    
-    print(f"{Fore.CYAN}Retail Agent Test Suite{Style.RESET_ALL}\n")
-    
-    if not quick_test():
-        print(f"\n{Fore.RED}Configuration check failed. Please set required environment variables.{Style.RESET_ALL}")
-        sys.exit(1)
-    
-    tester = RetailAgentTester()
-    results = tester.run_all_tests(notebook_mode=False)
-    
-    # Exit with error code if any tests failed
-    if not all(results.values()):
-        sys.exit(1)
-
-
 if __name__ == "__main__":
-    main()
+    quick_test()
+    result = RetailAgentTester().run_all_tests()
+    raise SystemExit(0 if all(result.values()) else 1)

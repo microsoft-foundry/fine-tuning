@@ -1,0 +1,1662 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Microsoft Foundry SDK 2.x Demo Upgrade Findings</title>
+  <style>
+    :root { color-scheme: light dark; --ok:#16794b; --partial:#9a6700; --blocked:#b42318; }
+    body { font-family: Segoe UI, sans-serif; margin: 0 auto; max-width: 1500px; padding: 2rem; line-height: 1.45; }
+    h1, h2, h3 { line-height: 1.2; }
+    .summary, section { border: 1px solid #8885; border-radius: 10px; padding: 1rem 1.25rem; margin: 1rem 0; }
+    .metrics, .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(250px,1fr)); gap: 1rem; }
+    .metric { border-left: 5px solid #777; padding: .6rem 1rem; background: #8881; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #8885; padding: .55rem; text-align: left; vertical-align: top; }
+    .badge { display: inline-block; border-radius: 999px; padding: .15rem .55rem; color: white; }
+    .badge.succeeded { background: var(--ok); } .badge.partial { background: var(--partial); }
+    .badge.blocked { background: var(--blocked); }
+    pre { overflow: auto; max-height: 40rem; padding: 1rem; background: #8881; }
+    a { overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <h1>Microsoft Foundry SDK 2.x Demo Upgrade Findings</h1>
+  <p>Generated from the checked-in per-demo upgrade reports. All canonical demos use
+  <code>AIProjectClient</code>, Microsoft Entra ID, and Foundry project endpoints.
+  Fine-tuning and evaluation protocol operations use only the documented child client
+  returned by <code>AIProjectClient.get_openai_client()</code>.</p>
+  <div class="metrics">
+    <div class="metric"><strong>Demo folders</strong><br>16</div>
+    <div class="metric"><strong>Notebooks executed</strong><br>20</div>
+    <div class="metric"><strong>Succeeded</strong><br>15</div>
+    <div class="metric"><strong>Completed with limitations</strong><br>0</div>
+    <div class="metric"><strong>Service-blocked</strong><br>1</div>
+  </div>
+  <div class="summary">
+    <h2>Demo status</h2>
+    <table>
+      <thead><tr><th>Demo</th><th>Status</th><th>Notebooks</th><th>Jobs</th><th>Outcome</th></tr></thead>
+      <tbody><tr><td><a href="#agentic-rft">Agentic_RFT_PrivatePreview</a></td><td><span class="badge succeeded">succeeded</span></td><td>2</td><td>2</td><td>Both Agentic RFT notebooks use Foundry SDK 2.x with Entra ID. The tool-calling and countdown endpoint/Python grader scenarios succeeded end to end. The final countdown run proves the original datasets were valid and the previous preprocessing failures were caused by the unsupported sys import.</td></tr><tr><td><a href="#distilling-sarcasm">DistillingSarcasm</a></td><td><span class="badge succeeded">passed</span></td><td>1</td><td>1</td><td>passed</td></tr><tr><td><a href="#dpo-intel-orca">DPO_Intel_Orca</a></td><td><span class="badge blocked">completed_with_service_failure</span></td><td>2</td><td>3</td><td>completed_with_service_failure</td></tr><tr><td><a href="#evaluation">Evaluation</a></td><td><span class="badge succeeded">completed</span></td><td>2</td><td>0</td><td>completed</td></tr><tr><td><a href="#image-breed">Image_Breed_Classification_FT</a></td><td><span class="badge succeeded">passed</span></td><td>2</td><td>1</td><td>passed</td></tr><tr><td><a href="#image-chart">Image_FT_Chart_Analysis</a></td><td><span class="badge succeeded">passed</span></td><td>0</td><td>1</td><td>passed</td></tr><tr><td><a href="#nl-to-python">NL_to_Python_Distillation</a></td><td><span class="badge succeeded">passed</span></td><td>1</td><td>1</td><td>passed</td></tr><tr><td><a href="#rft-countdown">RFT_Countdown</a></td><td><span class="badge succeeded">passed</span></td><td>2</td><td>2</td><td>passed</td></tr><tr><td><a href="#rft-math">RFT_Math_Reasoning</a></td><td><span class="badge succeeded">completed_with_deployment_quota_block</span></td><td>1</td><td>1</td><td>completed_with_deployment_quota_block</td></tr><tr><td><a href="#sft-bug-detection">SFT_Bug_Detection</a></td><td><span class="badge succeeded">passed</span></td><td>1</td><td>2</td><td>passed</td></tr><tr><td><a href="#sft-cnn">SFT_CNN_DailyMail</a></td><td><span class="badge succeeded">passed</span></td><td>1</td><td>1</td><td>passed</td></tr><tr><td><a href="#sft-pubmed">SFT_PubMed_Summarization</a></td><td><span class="badge succeeded">passed</span></td><td>2</td><td>1</td><td>passed</td></tr><tr><td><a href="#synthetic-tooluse">SyntheticDatagen-ToolUse</a></td><td><span class="badge succeeded">passed</span></td><td>2</td><td>1</td><td>passed</td></tr><tr><td><a href="#traces-distillation">TracesDistillation</a></td><td><span class="badge succeeded">passed</span></td><td>2</td><td>1</td><td>passed</td></tr><tr><td><a href="#video-ft">Video_FT_Action_Recognition</a></td><td><span class="badge succeeded">passed</span></td><td>1</td><td>1</td><td>passed</td></tr><tr><td><a href="#zava-retail">ZavaRetailAgent</a></td><td><span class="badge succeeded">succeeded</span></td><td>1</td><td>3</td><td>succeeded</td></tr></tbody>
+    </table>
+  </div>
+
+            <section id="agentic-rft" class="demo succeeded">
+              <h2>Agentic_RFT_PrivatePreview</h2>
+              <p><strong>Status:</strong> succeeded</p>
+              <p><strong>Outcome:</strong> Both Agentic RFT notebooks use Foundry SDK 2.x with Entra ID. The tool-calling and countdown endpoint/Python grader scenarios succeeded end to end. The final countdown run proves the original datasets were valid and the previous preprocessing failures were caused by the unsupported sys import.</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><ul><li><a href="https://eastus2-prakharg-demo-2026.services.ai.azure.com/api/projects/eastus2-prakharg-demo-2026">https://eastus2-prakharg-demo-2026.services.ai.azure.com/api/projects/eastus2-prakharg-demo-2026</a></li></ul></div>
+                <div><h3>Notebooks</h3><ul><li>Demos/Agentic_RFT_PrivatePreview/RFT_ToolCall/rft-tool-call.ipynb</li><li>Demos/Agentic_RFT_PrivatePreview/RFT_EndpointGrader/demo.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-4777ca37292942efa082cb2bad5ce257</li><li>ftjob-6fd19bc4f5bf435c9ed022ff18be1cd3</li></ul></div>
+                <div><h3>Fine-tuned models</h3><ul><li>o4-mini-2025-04-16.ft-4777ca37292942efa082cb2bad5ce257-tc-tools-endpoint-grader</li><li>o4-mini-2025-04-16.ft-6fd19bc4f5bf435c9ed022ff18be1cd3-agentic-countdown-original-dc8fbb96</li></ul></div>
+              </div>
+              <h3>Legacy paths removed</h3><ul><li>direct OpenAI imports and client construction</li><li>model-service API-key authentication</li><li>manually constructed OpenAI routes</li><li>account-level Azure OpenAI endpoints</li><li>explicit OpenAI SDK dependency</li></ul>
+              <h3>Fixes and corrective actions</h3><ul><li>Removed the local __main__ harness and unsupported sys import from submitted grader source.</li><li>Reduced grader imports to ast and json.</li><li>Loaded grader.py directly from disk to avoid cached or stale module source.</li><li>Fixed subtraction operand detection and malformed-expression handling.</li><li>Restored the original 25-row training and 10-row validation files.</li><li>Uploaded fresh files after deleting stale failed-attempt and evaluation files to clear project quota.</li></ul>
+              <h3>Notes and limitations</h3><p>None recorded</p>
+              <details><summary>Source report</summary><pre>{
+  &quot;schema_version&quot;: &quot;1.0&quot;,
+  &quot;demo&quot;: &quot;Demos/Agentic_RFT_PrivatePreview&quot;,
+  &quot;completed_at&quot;: &quot;2026-10-04T02:38:00Z&quot;,
+  &quot;overall_status&quot;: &quot;succeeded&quot;,
+  &quot;upgrade&quot;: {
+    &quot;status&quot;: &quot;completed&quot;,
+    &quot;sdk&quot;: {
+      &quot;package&quot;: &quot;azure-ai-projects&quot;,
+      &quot;requirement&quot;: &quot;&gt;=2.3.0,&lt;3&quot;,
+      &quot;tested_version&quot;: &quot;2.7.0&quot;
+    },
+    &quot;authentication&quot;: &quot;Microsoft Entra ID via DefaultAzureCredential&quot;,
+    &quot;client&quot;: &quot;AIProjectClient&quot;,
+    &quot;compatible_child_client&quot;: &quot;AIProjectClient.get_openai_client()&quot;,
+    &quot;removed&quot;: [
+      &quot;direct OpenAI imports and client construction&quot;,
+      &quot;model-service API-key authentication&quot;,
+      &quot;manually constructed OpenAI routes&quot;,
+      &quot;account-level Azure OpenAI endpoints&quot;,
+      &quot;explicit OpenAI SDK dependency&quot;
+    ]
+  },
+  &quot;execution&quot;: {
+    &quot;project_endpoint&quot;: &quot;https://eastus2-prakharg-demo-2026.services.ai.azure.com/api/projects/eastus2-prakharg-demo-2026&quot;,
+    &quot;notebooks&quot;: [
+      &quot;Demos/Agentic_RFT_PrivatePreview/RFT_ToolCall/rft-tool-call.ipynb&quot;,
+      &quot;Demos/Agentic_RFT_PrivatePreview/RFT_EndpointGrader/demo.ipynb&quot;
+    ],
+    &quot;original_training_file&quot;: {
+      &quot;path&quot;: &quot;Demos/Agentic_RFT_PrivatePreview/RFT_EndpointGrader/data/countdown_train_25.jsonl&quot;,
+      &quot;file_id&quot;: &quot;file-9424c609db6b4f1da2a9faad479e68bb&quot;,
+      &quot;rows&quot;: 25,
+      &quot;status&quot;: &quot;processed&quot;
+    },
+    &quot;original_validation_file&quot;: {
+      &quot;path&quot;: &quot;Demos/Agentic_RFT_PrivatePreview/RFT_EndpointGrader/data/countdown_valid_10.jsonl&quot;,
+      &quot;file_id&quot;: &quot;file-7aa59f1ac20d4dde875533fc54ba6a36&quot;,
+      &quot;rows&quot;: 10,
+      &quot;status&quot;: &quot;processed&quot;
+    }
+  },
+  &quot;fine_tuning_jobs&quot;: [
+    {
+      &quot;id&quot;: &quot;ftjob-4777ca37292942efa082cb2bad5ce257&quot;,
+      &quot;scenario&quot;: &quot;Tool calling with endpoint grader&quot;,
+      &quot;status&quot;: &quot;succeeded&quot;,
+      &quot;fine_tuned_model&quot;: &quot;o4-mini-2025-04-16.ft-4777ca37292942efa082cb2bad5ce257-tc-tools-endpoint-grader&quot;
+    },
+    {
+      &quot;id&quot;: &quot;ftjob-6fd19bc4f5bf435c9ed022ff18be1cd3&quot;,
+      &quot;scenario&quot;: &quot;Countdown Python plus endpoint multi-grader using the original 25/10 datasets&quot;,
+      &quot;status&quot;: &quot;succeeded&quot;,
+      &quot;fine_tuned_model&quot;: &quot;o4-mini-2025-04-16.ft-6fd19bc4f5bf435c9ed022ff18be1cd3-agentic-countdown-original-dc8fbb96&quot;
+    }
+  ],
+  &quot;root_cause_and_fix&quot;: {
+    &quot;misleading_user_error&quot;: &quot;File preprocessing failed. For more details, please check the Logs tab.&quot;,
+    &quot;misleading_parser_error&quot;: &quot;Invalid file format. Example 1 cannot be parsed.&quot;,
+    &quot;hyena_error&quot;: &quot;mentat.graders.caas.InvalidPythonCode: use of module &#x27;sys&#x27; is not allowed in Python graders&quot;,
+    &quot;root_cause&quot;: &quot;The complete local grader file was submitted, including a __main__ test block that imported the unsupported sys module. Hyena statically validates the complete Python AST before parsing the first RFT row.&quot;,
+    &quot;fixes&quot;: [
+      &quot;Removed the local __main__ harness and unsupported sys import from submitted grader source.&quot;,
+      &quot;Reduced grader imports to ast and json.&quot;,
+      &quot;Loaded grader.py directly from disk to avoid cached or stale module source.&quot;,
+      &quot;Fixed subtraction operand detection and malformed-expression handling.&quot;,
+      &quot;Restored the original 25-row training and 10-row validation files.&quot;,
+      &quot;Uploaded fresh files after deleting stale failed-attempt and evaluation files to clear project quota.&quot;
+    ]
+  },
+  &quot;validation&quot;: {
+    &quot;original_schema_compatible&quot;: true,
+    &quot;file_preprocessing&quot;: &quot;passed&quot;,
+    &quot;training&quot;: &quot;succeeded&quot;,
+    &quot;grader_endpoint_score&quot;: 1.0,
+    &quot;embedded_secret_scan&quot;: &quot;passed&quot;,
+    &quot;legacy_reference_scan&quot;: &quot;passed&quot;
+  },
+  &quot;outcome&quot;: &quot;Both Agentic RFT notebooks use Foundry SDK 2.x with Entra ID. The tool-calling and countdown endpoint/Python grader scenarios succeeded end to end. The final countdown run proves the original datasets were valid and the previous preprocessing failures were caused by the unsupported sys import.&quot;
+}</pre></details>
+            </section>
+
+            <section id="distilling-sarcasm" class="demo succeeded">
+              <h2>DistillingSarcasm</h2>
+              <p><strong>Status:</strong> passed</p>
+              <p><strong>Outcome:</strong> passed</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><ul><li><a href="https://ncus-prakharg-demo-2026.services.ai.azure.com/api/projects/ncus-prakharg-demo-2026">https://ncus-prakharg-demo-2026.services.ai.azure.com/api/projects/ncus-prakharg-demo-2026</a></li></ul></div>
+                <div><h3>Notebooks</h3><ul><li>Demos/DistillingSarcasm/sarcasm.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-b65562c862964de9975f54caba55dba2</li></ul></div>
+                <div><h3>Fine-tuned models</h3><ul><li>gpt-4.1-nano-2025-04-14.ft-b65562c862964de9975f54caba55dba2-sarcasm-gpt-41-bf779c52-retry1</li></ul></div>
+              </div>
+              <h3>Legacy paths removed</h3><ul><li>direct openai dependency</li><li>direct OpenAI client imports and construction</li><li>API key configuration</li><li>Azure OpenAI account endpoint configuration</li><li>subscription, resource group, and account deployment configuration</li><li>manually constructed OpenAI service routes</li><li>azure-mgmt-cognitiveservices dependency</li></ul>
+              <h3>Fixes and corrective actions</h3><p>None recorded</p>
+              <h3>Notes and limitations</h3><ul><li>Foundry SDK 2.x exposes project-scoped deployment list/get operations but not deployment creation, so the notebook verifies and reuses the existing fine-tuned deployment without an account-level management client.</li><li>The notebook prints new grader-run progress, reused fine-tuning terminal status, deployment warm-up, and held-out evaluation progress.</li></ul>
+              <details><summary>Source report</summary><pre>{
+  &quot;demo&quot;: &quot;Demos/DistillingSarcasm&quot;,
+  &quot;status&quot;: &quot;passed&quot;,
+  &quot;completed_at&quot;: &quot;2026-10-03T12:56:24.4144585-07:00&quot;,
+  &quot;upgrade&quot;: {
+    &quot;foundry_sdk&quot;: {
+      &quot;package&quot;: &quot;azure-ai-projects&quot;,
+      &quot;required_version&quot;: &quot;&gt;=2.3.0,&lt;3&quot;,
+      &quot;tested_version&quot;: &quot;2.7.0&quot;
+    },
+    &quot;authentication&quot;: &quot;Microsoft Entra ID via DefaultAzureCredential&quot;,
+    &quot;project_client&quot;: &quot;AIProjectClient&quot;,
+    &quot;project_endpoint&quot;: &quot;https://ncus-prakharg-demo-2026.services.ai.azure.com/api/projects/ncus-prakharg-demo-2026&quot;,
+    &quot;compatible_child&quot;: &quot;AIProjectClient.get_openai_client()&quot;,
+    &quot;deployment_discovery&quot;: &quot;AIProjectClient.deployments&quot;,
+    &quot;removed&quot;: [
+      &quot;direct openai dependency&quot;,
+      &quot;direct OpenAI client imports and construction&quot;,
+      &quot;API key configuration&quot;,
+      &quot;Azure OpenAI account endpoint configuration&quot;,
+      &quot;subscription, resource group, and account deployment configuration&quot;,
+      &quot;manually constructed OpenAI service routes&quot;,
+      &quot;azure-mgmt-cognitiveservices dependency&quot;
+    ]
+  },
+  &quot;retest&quot;: {
+    &quot;execution&quot;: &quot;end-to-end in-place notebook execution with the demo virtual environment&quot;,
+    &quot;notebook&quot;: &quot;Demos/DistillingSarcasm/sarcasm.ipynb&quot;,
+    &quot;code_cells&quot;: 31,
+    &quot;all_code_cells_executed&quot;: true,
+    &quot;notebook_errors&quot;: 0,
+    &quot;grader_validation&quot;: {
+      &quot;evaluation_id&quot;: &quot;eval_b5c0fc40852a404fab872974f766a95d&quot;,
+      &quot;run_id&quot;: &quot;evalrun_822e4956ae1d4bfcb193af743e37ddb2&quot;,
+      &quot;status&quot;: &quot;completed&quot;,
+      &quot;elapsed_seconds&quot;: 83
+    },
+    &quot;fine_tuning_job&quot;: {
+      &quot;id&quot;: &quot;ftjob-b65562c862964de9975f54caba55dba2&quot;,
+      &quot;status&quot;: &quot;succeeded&quot;,
+      &quot;reused&quot;: true,
+      &quot;fine_tuned_model&quot;: &quot;gpt-4.1-nano-2025-04-14.ft-b65562c862964de9975f54caba55dba2-sarcasm-gpt-41-bf779c52-retry1&quot;,
+      &quot;terminal_status_logged&quot;: true
+    },
+    &quot;fine_tuned_deployment&quot;: {
+      &quot;name&quot;: &quot;gpt-4.1-nano-distilled-bf779c52&quot;,
+      &quot;status&quot;: &quot;available&quot;,
+      &quot;model_match&quot;: true,
+      &quot;warmup_response&quot;: &quot;READY&quot;
+    },
+    &quot;held_out_evaluation&quot;: {
+      &quot;status&quot;: &quot;succeeded&quot;,
+      &quot;samples_per_model&quot;: 10,
+      &quot;teacher_average_score&quot;: 5.8,
+      &quot;student_base_average_score&quot;: 2.9,
+      &quot;distilled_average_score&quot;: 5.8,
+      &quot;absolute_improvement&quot;: 2.9,
+      &quot;intended_outcome_met&quot;: true
+    }
+  },
+  &quot;fixes_during_retest&quot;: [
+    {
+      &quot;failure&quot;: &quot;The first nbconvert attempt selected the machine-wide Python kernel instead of the demo virtual environment and failed in a transitive HTTP decoder.&quot;,
+      &quot;fix&quot;: &quot;Executed nbconvert with the demo virtual environment first on PATH and its local Jupyter kernels on JUPYTER_PATH.&quot;,
+      &quot;retest&quot;: &quot;passed&quot;
+    }
+  ],
+  &quot;verification&quot;: {
+    &quot;forbidden_direct_client_patterns_found&quot;: false,
+    &quot;pip_check&quot;: &quot;No broken requirements found&quot;,
+    &quot;helper_python_compile&quot;: &quot;passed&quot;,
+    &quot;notebook_json_parse&quot;: &quot;passed&quot;,
+    &quot;nbconvert_execution&quot;: &quot;passed&quot;
+  },
+  &quot;notes&quot;: [
+    &quot;Foundry SDK 2.x exposes project-scoped deployment list/get operations but not deployment creation, so the notebook verifies and reuses the existing fine-tuned deployment without an account-level management client.&quot;,
+    &quot;The notebook prints new grader-run progress, reused fine-tuning terminal status, deployment warm-up, and held-out evaluation progress.&quot;
+  ]
+}</pre></details>
+            </section>
+
+            <section id="dpo-intel-orca" class="demo blocked">
+              <h2>DPO_Intel_Orca</h2>
+              <p><strong>Status:</strong> completed_with_service_failure</p>
+              <p><strong>Outcome:</strong> completed_with_service_failure</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><ul><li><a href="https://swec-prakharg-demo-2026.services.ai.azure.com/api/projects/swec-prakharg-demo-2026">https://swec-prakharg-demo-2026.services.ai.azure.com/api/projects/swec-prakharg-demo-2026</a></li></ul></div>
+                <div><h3>Notebooks</h3><ul><li>dpo_finetuning_intel_orca.ipynb</li><li>dpo_finetuning_intel_orca.executed.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-c75b0c28e5e74cc891c6b8db9483ac4c</li><li>ftjob-d4123df1dd1b4914bfc1b1978ae1ed81</li><li>ftjob-ff826ec5e4cc475b8f98705b6bea2978</li></ul></div>
+                <div><h3>Fine-tuned models</h3><p>None recorded</p></div>
+              </div>
+              <h3>Legacy paths removed</h3><ul><li>direct OpenAI imports</li><li>direct OpenAI client construction</li><li>API-key authentication</li><li>raw service routes</li><li>Azure OpenAI account endpoints</li><li>subscription/resource-group/account deployment configuration</li><li>azure-mgmt-cognitiveservices</li><li>azure-ai-evaluation</li></ul>
+              <h3>Fixes and corrective actions</h3><p>None recorded</p>
+              <h3>Notes and limitations</h3><p>None recorded</p>
+              <details><summary>Source report</summary><pre>{
+  &quot;schema_version&quot;: &quot;1.0&quot;,
+  &quot;demo&quot;: &quot;Demos\\DPO_Intel_Orca&quot;,
+  &quot;completed_at&quot;: &quot;2026-10-04T01:46:03.736221+00:00&quot;,
+  &quot;overall_status&quot;: &quot;completed_with_service_failure&quot;,
+  &quot;upgrade&quot;: {
+    &quot;status&quot;: &quot;completed&quot;,
+    &quot;sdk&quot;: {
+      &quot;package&quot;: &quot;azure-ai-projects&quot;,
+      &quot;requirement&quot;: &quot;&gt;=2.3.0,&lt;3&quot;,
+      &quot;tested_version&quot;: &quot;2.7.0&quot;
+    },
+    &quot;authentication&quot;: &quot;DefaultAzureCredential&quot;,
+    &quot;client&quot;: &quot;AIProjectClient&quot;,
+    &quot;endpoint_type&quot;: &quot;Microsoft Foundry project endpoint&quot;,
+    &quot;compatible_child_client&quot;: &quot;AIProjectClient.get_openai_client()&quot;,
+    &quot;removed&quot;: [
+      &quot;direct OpenAI imports&quot;,
+      &quot;direct OpenAI client construction&quot;,
+      &quot;API-key authentication&quot;,
+      &quot;raw service routes&quot;,
+      &quot;Azure OpenAI account endpoints&quot;,
+      &quot;subscription/resource-group/account deployment configuration&quot;,
+      &quot;azure-mgmt-cognitiveservices&quot;,
+      &quot;azure-ai-evaluation&quot;
+    ],
+    &quot;deployment_behavior&quot;: &quot;AIProjectClient.deployments is used for project-scoped discovery. SDK 2.x does not expose project-scoped deployment creation, so the notebook evaluates a fine-tuned deployment only when one is already visible in the project.&quot;,
+    &quot;prohibited_pattern_scan&quot;: {
+      &quot;status&quot;: &quot;passed&quot;,
+      &quot;matches&quot;: 0
+    }
+  },
+  &quot;execution&quot;: {
+    &quot;status&quot;: &quot;completed&quot;,
+    &quot;notebook&quot;: &quot;dpo_finetuning_intel_orca.ipynb&quot;,
+    &quot;executed_notebook&quot;: &quot;dpo_finetuning_intel_orca.executed.ipynb&quot;,
+    &quot;region&quot;: &quot;East US 2&quot;,
+    &quot;project_endpoint&quot;: &quot;https://swec-prakharg-demo-2026.services.ai.azure.com/api/projects/swec-prakharg-demo-2026&quot;,
+    &quot;base_model&quot;: &quot;gpt-4.1-mini-2025-04-14&quot;,
+    &quot;evaluator_deployment&quot;: &quot;gpt-4.1-mini&quot;,
+    &quot;training_examples&quot;: 25,
+    &quot;validation_examples&quot;: 10,
+    &quot;training_file_id&quot;: &quot;file-39171307ce454f82a290fb205e3db618&quot;,
+    &quot;validation_file_id&quot;: &quot;file-1cb8694457624a59a55e430a8e85be27&quot;
+  },
+  &quot;base_evaluation&quot;: {
+    &quot;status&quot;: &quot;completed&quot;,
+    &quot;evaluation_id&quot;: &quot;eval_2725287cea1b46c5b2aa765585119a24&quot;,
+    &quot;run_id&quot;: &quot;evalrun_4c48ca4cbf724f048cc180a954f98220&quot;,
+    &quot;target_deployment&quot;: &quot;gpt-4.1-mini&quot;,
+    &quot;result_counts&quot;: {
+      &quot;errored&quot;: 0,
+      &quot;failed&quot;: 1,
+      &quot;passed&quot;: 2,
+      &quot;total&quot;: 3,
+      &quot;skipped&quot;: 0
+    },
+    &quot;output_item_count&quot;: 3,
+    &quot;report_url&quot;: &quot;https://ai.azure.com/nextgen/r/unl599BAScmvGnQUQCv2Ig,prakharg-demo-2026,,swec-prakharg-demo-2026,swec-prakharg-demo-2026/build/evaluations/eval_2725287cea1b46c5b2aa765585119a24/run/evalrun_4c48ca4cbf724f048cc180a954f98220&quot;
+  },
+  &quot;dpo&quot;: {
+    &quot;status&quot;: &quot;failed&quot;,
+    &quot;failure_stage&quot;: &quot;post-training model safety evaluation&quot;,
+    &quot;error&quot;: {
+      &quot;code&quot;: &quot;500&quot;,
+      &quot;message&quot;: &quot;Model safety checks failed due to system error.&quot;
+    },
+    &quot;training_completed_before_failure&quot;: true,
+    &quot;attempts&quot;: [
+      {
+        &quot;job_id&quot;: &quot;ftjob-c75b0c28e5e74cc891c6b8db9483ac4c&quot;,
+        &quot;status&quot;: &quot;failed&quot;,
+        &quot;suffix&quot;: &quot;intel-orca-dpo-sdk2&quot;,
+        &quot;trained_tokens&quot;: 21622,
+        &quot;result_file_id&quot;: &quot;file-11a36348b4b14a7d95c4c1720784cf76&quot;,
+        &quot;error_code&quot;: &quot;500&quot;,
+        &quot;error_message&quot;: &quot;Model safety checks failed due to system error.&quot;
+      },
+      {
+        &quot;job_id&quot;: &quot;ftjob-d4123df1dd1b4914bfc1b1978ae1ed81&quot;,
+        &quot;status&quot;: &quot;failed&quot;,
+        &quot;suffix&quot;: &quot;intel-orca-dpo-sdk2&quot;,
+        &quot;trained_tokens&quot;: 21622,
+        &quot;result_file_id&quot;: &quot;file-c09d4aea0fdf4b71bec0ecea8f223a33&quot;,
+        &quot;error_code&quot;: &quot;500&quot;,
+        &quot;error_message&quot;: &quot;Model safety checks failed due to system error.&quot;
+      },
+      {
+        &quot;job_id&quot;: &quot;ftjob-ff826ec5e4cc475b8f98705b6bea2978&quot;,
+        &quot;status&quot;: &quot;failed&quot;,
+        &quot;suffix&quot;: &quot;intel-orca-dpo-sdk2-retry&quot;,
+        &quot;trained_tokens&quot;: 21622,
+        &quot;result_file_id&quot;: &quot;file-2a02b0d6cc57405583e91fbc896b318f&quot;,
+        &quot;error_code&quot;: &quot;500&quot;,
+        &quot;error_message&quot;: &quot;Model safety checks failed due to system error.&quot;
+      }
+    ],
+    &quot;retry_handling&quot;: &quot;The notebook retries this transient service error once for a new run and records a terminal failure explicitly if the retry also fails.&quot;
+  },
+  &quot;fine_tuned_deployment&quot;: {
+    &quot;status&quot;: &quot;not_created&quot;,
+    &quot;reason&quot;: &quot;No fine-tuned model was produced because all DPO jobs failed during service-side safety postprocessing. No deployment operation was attempted.&quot;
+  },
+  &quot;fine_tuned_evaluation&quot;: {
+    &quot;status&quot;: &quot;skipped&quot;,
+    &quot;reason&quot;: &quot;No project-visible fine-tuned deployment was available.&quot;
+  }
+}</pre></details>
+            </section>
+
+            <section id="evaluation" class="demo succeeded">
+              <h2>Evaluation</h2>
+              <p><strong>Status:</strong> completed</p>
+              <p><strong>Outcome:</strong> completed</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><p>None recorded</p></div>
+                <div><h3>Notebooks</h3><ul><li>audio_evals_example.ipynb</li><li>image_evals_example.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><p>None recorded</p></div>
+                <div><h3>Fine-tuned models</h3><p>None recorded</p></div>
+              </div>
+              <h3>Legacy paths removed</h3><ul><li>direct openai imports and OpenAI type imports</li><li>direct AsyncOpenAI construction</li><li>API-key configuration</li><li>raw /openai/v1 route construction</li><li>Azure account endpoint configuration</li><li>AzureCliCredential and manual bearer-token providers</li><li>separate image inference client calls</li><li>evaluation file uploads that were unnecessary for inline cloud runs</li></ul>
+              <h3>Fixes and corrective actions</h3><p>None recorded</p>
+              <h3>Notes and limitations</h3><ul><li>The cloud run completed successfully. The deployed audio model predicted neutral for all ten CREMA-D samples, so the score-model criterion passed only the neutral item; this is model quality behavior, not an SDK or execution failure.</li></ul>
+              <details><summary>Source report</summary><pre>{
+  &quot;schema_version&quot;: &quot;1.0&quot;,
+  &quot;generated_at&quot;: &quot;2026-10-03T12:29:58.869-07:00&quot;,
+  &quot;scope&quot;: &quot;Demos/Evaluation&quot;,
+  &quot;status&quot;: &quot;completed&quot;,
+  &quot;region&quot;: {
+    &quot;required&quot;: &quot;eastus2&quot;,
+    &quot;verified&quot;: true,
+    &quot;resource_name&quot;: &quot;eastus2-prakharg-demo-2026&quot;,
+    &quot;resource_kind&quot;: &quot;AIServices&quot;,
+    &quot;resource_location&quot;: &quot;eastus2&quot;
+  },
+  &quot;runtime&quot;: {
+    &quot;python&quot;: &quot;3.12&quot;,
+    &quot;azure_ai_projects&quot;: &quot;2.7.0&quot;,
+    &quot;azure_identity&quot;: &quot;1.26.0&quot;,
+    &quot;openai_transitive_dependency&quot;: &quot;3.24.0&quot;,
+    &quot;nbclient&quot;: &quot;0.11.0&quot;,
+    &quot;authentication&quot;: &quot;DefaultAzureCredential(process_timeout=90)&quot;
+  },
+  &quot;upgrade&quot;: {
+    &quot;project_client&quot;: &quot;azure.ai.projects.AIProjectClient&quot;,
+    &quot;credential&quot;: &quot;azure.identity.DefaultAzureCredential&quot;,
+    &quot;stable_evaluation_types&quot;: [
+      &quot;azure.ai.projects.models.TargetCompletionEvalRunDataSource&quot;,
+      &quot;azure.ai.projects.models.AzureAIModelTargetParam&quot;,
+      &quot;azure.ai.projects.models.ModelSamplingConfigParam&quot;
+    ],
+    &quot;removed&quot;: [
+      &quot;direct openai imports and OpenAI type imports&quot;,
+      &quot;direct AsyncOpenAI construction&quot;,
+      &quot;API-key configuration&quot;,
+      &quot;raw /openai/v1 route construction&quot;,
+      &quot;Azure account endpoint configuration&quot;,
+      &quot;AzureCliCredential and manual bearer-token providers&quot;,
+      &quot;separate image inference client calls&quot;,
+      &quot;evaluation file uploads that were unnecessary for inline cloud runs&quot;
+    ],
+    &quot;cloud_execution&quot;: &quot;Both notebooks submit Foundry model-target evaluation runs and poll the cloud run status to a terminal state.&quot;,
+    &quot;sdk_limitation&quot;: {
+      &quot;package&quot;: &quot;azure-ai-projects 2.7.0&quot;,
+      &quot;details&quot;: &quot;The stable SDK exposes Foundry target and sampling TypedDicts, but evaluation create/run operations remain available only on the OpenAI-compatible protocol client returned by AIProjectClient.get_openai_client(). Stable Azure types are not exposed for the custom evaluation schema, score-model grader, or inline source/input-message members; TargetCompletionEvalRunDataSource annotations still reference openai.types. The OpenAI-compatible eval-run operation also has no create_and_poll or Azure LRO poller in this stable release.&quot;,
+      &quot;isolation&quot;: &quot;The helper owns the SDK-returned protocol client and the supported retrieve-based terminal-state polling loop. The unavoidable schema, grader, inline source, and input-message payloads are isolated as plain dictionaries, so the demos have no direct openai import, direct client construction, API key, raw route, or account endpoint.&quot;
+    }
+  },
+  &quot;executions&quot;: [
+    {
+      &quot;notebook&quot;: &quot;audio_evals_example.ipynb&quot;,
+      &quot;model_target&quot;: &quot;gpt-audio&quot;,
+      &quot;grader_model&quot;: &quot;gpt-4o-mini&quot;,
+      &quot;evaluation_id&quot;: &quot;eval_3c562dcf599146008a224f11215e393e&quot;,
+      &quot;run_id&quot;: &quot;evalrun_7127d51aa09e49a296c32817d897a481&quot;,
+      &quot;status&quot;: &quot;completed&quot;,
+      &quot;report_url&quot;: &quot;https://ai.azure.com/nextgen/r/unl599BAScmvGnQUQCv2Ig,prakharg-demo-2026,,eastus2-prakharg-demo-2026,eastus2-prakharg-demo-2026/build/evaluations/eval_3c562dcf599146008a224f11215e393e/run/evalrun_7127d51aa09e49a296c32817d897a481&quot;,
+      &quot;result_counts&quot;: {
+        &quot;errored&quot;: 0,
+        &quot;failed&quot;: 9,
+        &quot;passed&quot;: 1,
+        &quot;total&quot;: 10,
+        &quot;skipped&quot;: 0
+      },
+      &quot;output_item_count&quot;: 10,
+      &quot;execution_errors&quot;: 0,
+      &quot;notes&quot;: &quot;The cloud run completed successfully. The deployed audio model predicted neutral for all ten CREMA-D samples, so the score-model criterion passed only the neutral item; this is model quality behavior, not an SDK or execution failure.&quot;
+    },
+    {
+      &quot;notebook&quot;: &quot;image_evals_example.ipynb&quot;,
+      &quot;model_target&quot;: &quot;gpt-4o-mini&quot;,
+      &quot;grader_model&quot;: &quot;gpt-4o-mini&quot;,
+      &quot;evaluation_id&quot;: &quot;eval_df9d204f6d3a48219dfd35614126f6d5&quot;,
+      &quot;run_id&quot;: &quot;evalrun_a4aff73e34884c59b3d12a242f7dd15b&quot;,
+      &quot;status&quot;: &quot;completed&quot;,
+      &quot;report_url&quot;: &quot;https://ai.azure.com/nextgen/r/unl599BAScmvGnQUQCv2Ig,prakharg-demo-2026,,eastus2-prakharg-demo-2026,eastus2-prakharg-demo-2026/build/evaluations/eval_df9d204f6d3a48219dfd35614126f6d5/run/evalrun_a4aff73e34884c59b3d12a242f7dd15b&quot;,
+      &quot;result_counts&quot;: {
+        &quot;errored&quot;: 0,
+        &quot;failed&quot;: 0,
+        &quot;passed&quot;: 10,
+        &quot;total&quot;: 10,
+        &quot;skipped&quot;: 0
+      },
+      &quot;output_item_count&quot;: 10,
+      &quot;execution_errors&quot;: 0
+    }
+  ],
+  &quot;validation&quot;: {
+    &quot;notebooks_fully_executed&quot;: true,
+    &quot;notebook_error_outputs&quot;: 0,
+    &quot;python_compile&quot;: &quot;passed&quot;,
+    &quot;notebook_code_syntax&quot;: &quot;passed&quot;,
+    &quot;git_diff_check&quot;: &quot;passed&quot;,
+    &quot;forbidden_legacy_pattern_scan&quot;: &quot;passed&quot;,
+    &quot;forbidden_legacy_patterns&quot;: [
+      &quot;direct openai imports&quot;,
+      &quot;AsyncOpenAI&quot;,
+      &quot;AzureCliCredential&quot;,
+      &quot;manual bearer token provider&quot;,
+      &quot;API key environment variables&quot;,
+      &quot;raw /openai/v1 routes&quot;,
+      &quot;hard-coded services.ai.azure.com endpoints&quot;
+    ]
+  },
+  &quot;files&quot;: [
+    &quot;audio_evals_example.ipynb&quot;,
+    &quot;image_evals_example.ipynb&quot;,
+    &quot;requirements.txt&quot;,
+    &quot;scripts/audio_utils.py&quot;,
+    &quot;scripts/eval_utils.py&quot;,
+    &quot;upgrade-reports/evaluation.json&quot;
+  ]
+}</pre></details>
+            </section>
+
+            <section id="image-breed" class="demo succeeded">
+              <h2>Image_Breed_Classification_FT</h2>
+              <p><strong>Status:</strong> passed</p>
+              <p><strong>Outcome:</strong> passed</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><p>None recorded</p></div>
+                <div><h3>Notebooks</h3><ul><li>images_classification_vlm.ipynb</li><li>latency_base_ft_models.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-8985500b18a14f18857a33d6340d2c52</li></ul></div>
+                <div><h3>Fine-tuned models</h3><ul><li>gpt-4o-2024-08-06.ft-8985500b18a14f18857a33d6340d2c52-image-breed-demo</li></ul></div>
+              </div>
+              <h3>Legacy paths removed</h3><p>None recorded</p>
+              <h3>Fixes and corrective actions</h3><p>None recorded</p>
+              <h3>Notes and limitations</h3><p>None recorded</p>
+              <details><summary>Source report</summary><pre>{
+  &quot;demo&quot;: &quot;Image_Breed_Classification_FT&quot;,
+  &quot;status&quot;: &quot;passed&quot;,
+  &quot;executed_at&quot;: &quot;2026-10-03T23:41:25Z&quot;,
+  &quot;region&quot;: &quot;East US 2&quot;,
+  &quot;upgrade&quot;: {
+    &quot;azure_ai_projects_requirement&quot;: &quot;&gt;=2.3.0,&lt;3&quot;,
+    &quot;azure_ai_projects_tested_version&quot;: &quot;2.7.0&quot;,
+    &quot;authentication&quot;: &quot;DefaultAzureCredential&quot;,
+    &quot;project_client&quot;: &quot;AIProjectClient&quot;,
+    &quot;service_child_client&quot;: &quot;project_client.get_openai_client()&quot;,
+    &quot;direct_openai_imports&quot;: false,
+    &quot;direct_openai_client_constructors&quot;: false,
+    &quot;api_keys&quot;: false,
+    &quot;account_endpoints&quot;: false,
+    &quot;raw_management_urls&quot;: false
+  },
+  &quot;notebooks&quot;: [
+    {
+      &quot;path&quot;: &quot;images_classification_vlm.ipynb&quot;,
+      &quot;code_cells&quot;: 8,
+      &quot;executed_code_cells&quot;: 8,
+      &quot;execution_errors&quot;: 0,
+      &quot;status&quot;: &quot;passed&quot;
+    },
+    {
+      &quot;path&quot;: &quot;latency_base_ft_models.ipynb&quot;,
+      &quot;code_cells&quot;: 5,
+      &quot;executed_code_cells&quot;: 5,
+      &quot;execution_errors&quot;: 0,
+      &quot;status&quot;: &quot;passed&quot;
+    }
+  ],
+  &quot;fine_tuning&quot;: {
+    &quot;job_id&quot;: &quot;ftjob-8985500b18a14f18857a33d6340d2c52&quot;,
+    &quot;status&quot;: &quot;succeeded&quot;,
+    &quot;created_at&quot;: &quot;2026-10-03T19:47:41Z&quot;,
+    &quot;finished_at&quot;: &quot;2026-10-03T23:41:25Z&quot;,
+    &quot;model&quot;: &quot;gpt-4o-2024-08-06&quot;,
+    &quot;fine_tuned_model&quot;: &quot;gpt-4o-2024-08-06.ft-8985500b18a14f18857a33d6340d2c52-image-breed-demo&quot;,
+    &quot;training_type&quot;: &quot;standard&quot;,
+    &quot;trained_tokens&quot;: 379793,
+    &quot;training_file_id&quot;: &quot;file-64f9bc9237bf4529bf58fe5115e59e8a&quot;,
+    &quot;validation_file_id&quot;: &quot;file-33b4c9ab9c3f45e8ac514ea81d4ceb8b&quot;,
+    &quot;submitted_training_examples&quot;: 48,
+    &quot;accepted_training_examples&quot;: 30,
+    &quot;submitted_validation_examples&quot;: 16,
+    &quot;accepted_validation_examples&quot;: 11
+  },
+  &quot;deployment&quot;: {
+    &quot;name&quot;: &quot;image-breed-gpt-4o-ft-340d2c52&quot;,
+    &quot;model_version&quot;: &quot;1&quot;,
+    &quot;sku&quot;: &quot;GlobalStandard&quot;,
+    &quot;capacity&quot;: 10,
+    &quot;verified_through_project_client&quot;: true
+  },
+  &quot;accuracy&quot;: {
+    &quot;test_examples&quot;: 16,
+    &quot;base&quot;: 0.9375,
+    &quot;fine_tuned&quot;: 0.9375,
+    &quot;delta&quot;: 0.0
+  },
+  &quot;latency&quot;: {
+    &quot;requests_per_model&quot;: 8,
+    &quot;base_mean_ms&quot;: 2120.741724909749,
+    &quot;fine_tuned_mean_ms&quot;: 1525.0408998690546,
+    &quot;fine_tuned_minus_base_ms&quot;: -595.7008250406943,
+    &quot;fine_tuned_change_percent&quot;: -28.089267921865645,
+    &quot;base_p99_ms&quot;: 4755.0152540625995,
+    &quot;fine_tuned_p99_ms&quot;: 1696.4655137062073
+  },
+  &quot;corrections_during_retest&quot;: [
+    &quot;Forced notebook execution to use the directory-local Python 3.12 virtual environment and kernel.&quot;,
+    &quot;Created a job-specific deployment because Azure does not support changing the model of an existing fine-tuned deployment.&quot;,
+    &quot;Added bounded retries for the temporary BadRequestForDependentService response while a new deployment propagates.&quot;,
+    &quot;Added an optional AZURE_FINE_TUNING_JOB_ID resume path so a terminal job can be reused after correcting downstream deployment or evaluation failures.&quot;
+  ]
+}</pre></details>
+            </section>
+
+            <section id="image-chart" class="demo succeeded">
+              <h2>Image_FT_Chart_Analysis</h2>
+              <p><strong>Status:</strong> passed</p>
+              <p><strong>Outcome:</strong> passed</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><ul><li><a href="https://ncus-prakharg-demo-2026.services.ai.azure.com/api/projects/ncus-prakharg-demo-2026">https://ncus-prakharg-demo-2026.services.ai.azure.com/api/projects/ncus-prakharg-demo-2026</a></li></ul></div>
+                <div><h3>Notebooks</h3><p>None recorded</p></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-6a2ce222ce01492d93ceb71a26398334</li></ul></div>
+                <div><h3>Fine-tuned models</h3><ul><li>gpt-4.1-2025-04-14.ft-6a2ce222ce01492d93ceb71a26398334-chart-qa-run-20261002-v4</li></ul></div>
+              </div>
+              <h3>Legacy paths removed</h3><ul><li>direct openai dependency</li><li>direct OpenAI client imports and construction</li><li>API key configuration</li><li>Azure OpenAI account endpoint configuration</li><li>manually constructed OpenAI service routes</li><li>Azure Resource Manager deployment URLs and requests</li></ul>
+              <h3>Fixes and corrective actions</h3><p>None recorded</p>
+              <h3>Notes and limitations</h3><ul><li>The Foundry SDK 2.x project deployment API supports project-scoped get/list operations, so the notebook monitors and validates a deployment created in the Foundry portal instead of calling an account-level control-plane endpoint.</li><li>The small deterministic retest validates execution and integration, not model-quality significance.</li><li>Non-blocking runtime warnings were emitted by the Windows Jupyter transport, Hugging Face anonymous download, OpenAI response model serialization, and PyTables object storage.</li></ul>
+              <details><summary>Source report</summary><pre>{
+  &quot;demo&quot;: &quot;Demos/Image_FT_Chart_Analysis&quot;,
+  &quot;status&quot;: &quot;passed&quot;,
+  &quot;completed_at&quot;: &quot;2026-10-03T12:30:03.494-07:00&quot;,
+  &quot;upgrade&quot;: {
+    &quot;foundry_sdk&quot;: {
+      &quot;package&quot;: &quot;azure-ai-projects&quot;,
+      &quot;required_version&quot;: &quot;&gt;=2.0.0,&lt;3.0.0&quot;,
+      &quot;tested_version&quot;: &quot;2.7.0&quot;
+    },
+    &quot;authentication&quot;: &quot;Microsoft Entra ID via AzureCliCredential&quot;,
+    &quot;project_client&quot;: &quot;AIProjectClient&quot;,
+    &quot;project_endpoint&quot;: &quot;https://ncus-prakharg-demo-2026.services.ai.azure.com/api/projects/ncus-prakharg-demo-2026&quot;,
+    &quot;compatible_child&quot;: &quot;AIProjectClient.get_openai_client()&quot;,
+    &quot;deployment_discovery&quot;: &quot;AIProjectClient.deployments&quot;,
+    &quot;removed&quot;: [
+      &quot;direct openai dependency&quot;,
+      &quot;direct OpenAI client imports and construction&quot;,
+      &quot;API key configuration&quot;,
+      &quot;Azure OpenAI account endpoint configuration&quot;,
+      &quot;manually constructed OpenAI service routes&quot;,
+      &quot;Azure Resource Manager deployment URLs and requests&quot;
+    ]
+  },
+  &quot;retest&quot;: {
+    &quot;execution&quot;: &quot;end-to-end notebook execution&quot;,
+    &quot;code_cells&quot;: 27,
+    &quot;all_code_cells_executed&quot;: true,
+    &quot;notebook_errors&quot;: 0,
+    &quot;resource&quot;: &quot;ncus-prakharg-demo-2026 project&quot;,
+    &quot;base_deployment&quot;: {
+      &quot;name&quot;: &quot;gpt-4.1&quot;,
+      &quot;model&quot;: &quot;gpt-4.1&quot;,
+      &quot;version&quot;: &quot;2025-04-14&quot;
+    },
+    &quot;fine_tuning_job&quot;: {
+      &quot;id&quot;: &quot;ftjob-6a2ce222ce01492d93ceb71a26398334&quot;,
+      &quot;status&quot;: &quot;succeeded&quot;,
+      &quot;reused&quot;: true
+    },
+    &quot;fine_tuned_deployment&quot;: {
+      &quot;name&quot;: &quot;chart-qa-run-20261002-v4&quot;,
+      &quot;model&quot;: &quot;gpt-4.1-2025-04-14.ft-6a2ce222ce01492d93ceb71a26398334-chart-qa-run-20261002-v4&quot;,
+      &quot;status&quot;: &quot;succeeded&quot;,
+      &quot;status_basis&quot;: &quot;project-scoped deployment resolved and matched the fine-tuning job model&quot;
+    },
+    &quot;evaluation&quot;: {
+      &quot;status&quot;: &quot;succeeded&quot;,
+      &quot;samples&quot;: 10,
+      &quot;baseline_accuracy&quot;: 0.9,
+      &quot;fine_tuned_accuracy&quot;: 0.8,
+      &quot;absolute_improvement&quot;: -0.09999999999999998,
+      &quot;relative_improvement&quot;: -0.11111111111111108
+    }
+  },
+  &quot;notes&quot;: [
+    &quot;The Foundry SDK 2.x project deployment API supports project-scoped get/list operations, so the notebook monitors and validates a deployment created in the Foundry portal instead of calling an account-level control-plane endpoint.&quot;,
+    &quot;The small deterministic retest validates execution and integration, not model-quality significance.&quot;,
+    &quot;Non-blocking runtime warnings were emitted by the Windows Jupyter transport, Hugging Face anonymous download, OpenAI response model serialization, and PyTables object storage.&quot;
+  ]
+}</pre></details>
+            </section>
+
+            <section id="nl-to-python" class="demo succeeded">
+              <h2>NL_to_Python_Distillation</h2>
+              <p><strong>Status:</strong> passed</p>
+              <p><strong>Outcome:</strong> passed</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><p>None recorded</p></div>
+                <div><h3>Notebooks</h3><ul><li>Demos/NL_to_Python_Distillation/Text_to_Python_Fine_Tuning.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-af2ed8c656a34e77879d8f32605705a8</li></ul></div>
+                <div><h3>Fine-tuned models</h3><ul><li>gpt-4.1-mini-2025-04-14.ft-af2ed8c656a34e77879d8f32605705a8-nl2py-eastus2</li></ul></div>
+              </div>
+              <h3>Legacy paths removed</h3><ul><li>direct openai dependency, imports, and client construction</li><li>API-key authentication and environment variables</li><li>Azure OpenAI account endpoint configuration</li><li>subscription, resource group, and account-name deployment configuration</li><li>raw Azure Resource Manager deployment routes and requests</li><li>temporary project discovery, probe, retry, and result artifacts</li></ul>
+              <h3>Fixes and corrective actions</h3><p>None recorded</p>
+              <h3>Notes and limitations</h3><ul><li>The supported azure-ai-projects deployment surface is project-scoped get/list, so the notebook discovers and validates an existing fine-tuned deployment instead of creating one through an account-level control-plane route.</li><li>The deterministic retest reused an existing successful East US 2 fine-tuning job and the checked-in dataset; set USE_PREBUILT_DATA=0 to exercise Data Designer generation through the authenticated project.</li><li>The one-sample validation set verifies integration and execution, not model-quality significance.</li><li>The final run emitted non-blocking Windows Jupyter transport warnings outside notebook execution.</li></ul>
+              <details><summary>Source report</summary><pre>{
+  &quot;demo&quot;: &quot;Demos/NL_to_Python_Distillation&quot;,
+  &quot;status&quot;: &quot;passed&quot;,
+  &quot;completed_at&quot;: &quot;2026-10-03T12:53:22-07:00&quot;,
+  &quot;upgrade&quot;: {
+    &quot;foundry_sdk&quot;: {
+      &quot;package&quot;: &quot;azure-ai-projects&quot;,
+      &quot;required_version&quot;: &quot;&gt;=2.3.0,&lt;3&quot;,
+      &quot;tested_version&quot;: &quot;2.7.0&quot;
+    },
+    &quot;authentication&quot;: &quot;Microsoft Entra ID via DefaultAzureCredential&quot;,
+    &quot;project_client&quot;: &quot;azure.ai.projects.AIProjectClient&quot;,
+    &quot;project_endpoint_source&quot;: &quot;AZURE_PROJECT_ENDPOINT&quot;,
+    &quot;model_and_fine_tuning_child&quot;: &quot;AIProjectClient.get_openai_client()&quot;,
+    &quot;deployment_resolution&quot;: &quot;AIProjectClient.deployments.list()&quot;,
+    &quot;data_designer&quot;: {
+      &quot;preserved&quot;: true,
+      &quot;authentication&quot;: &quot;Entra bearer token from DefaultAzureCredential&quot;,
+      &quot;endpoint_source&quot;: &quot;project-created model client&quot;,
+      &quot;api_key_configuration&quot;: false
+    },
+    &quot;removed&quot;: [
+      &quot;direct openai dependency, imports, and client construction&quot;,
+      &quot;API-key authentication and environment variables&quot;,
+      &quot;Azure OpenAI account endpoint configuration&quot;,
+      &quot;subscription, resource group, and account-name deployment configuration&quot;,
+      &quot;raw Azure Resource Manager deployment routes and requests&quot;,
+      &quot;temporary project discovery, probe, retry, and result artifacts&quot;
+    ]
+  },
+  &quot;execution&quot;: {
+    &quot;notebook&quot;: &quot;Demos/NL_to_Python_Distillation/Text_to_Python_Fine_Tuning.ipynb&quot;,
+    &quot;region&quot;: &quot;East US 2&quot;,
+    &quot;code_cells_executed&quot;: 22,
+    &quot;code_cells_failed&quot;: 0,
+    &quot;dataset&quot;: {
+      &quot;mode&quot;: &quot;checked-in teacher-generated data&quot;,
+      &quot;training_rows&quot;: 11,
+      &quot;validation_rows&quot;: 1
+    },
+    &quot;fine_tuning_job&quot;: {
+      &quot;id&quot;: &quot;ftjob-af2ed8c656a34e77879d8f32605705a8&quot;,
+      &quot;reused&quot;: true,
+      &quot;terminal_status&quot;: &quot;succeeded&quot;,
+      &quot;fine_tuned_model&quot;: &quot;gpt-4.1-mini-2025-04-14.ft-af2ed8c656a34e77879d8f32605705a8-nl2py-eastus2&quot;,
+      &quot;training_steps&quot;: 11,
+      &quot;final_train_loss&quot;: 0.2297,
+      &quot;final_validation_loss&quot;: 0.3068
+    },
+    &quot;deployment&quot;: {
+      &quot;name&quot;: &quot;nl2py-eus2-32605705a8&quot;,
+      &quot;status&quot;: &quot;available_in_project&quot;,
+      &quot;model_match&quot;: true
+    },
+    &quot;evaluation&quot;: {
+      &quot;samples&quot;: 1,
+      &quot;teacher_combined_score&quot;: 9.5,
+      &quot;base_combined_score&quot;: 9.5,
+      &quot;fine_tuned_combined_score&quot;: 9.0,
+      &quot;all_pass_at_8_percent&quot;: 100.0,
+      &quot;status&quot;: &quot;succeeded&quot;
+    }
+  },
+  &quot;fixes_during_retest&quot;: [
+    {
+      &quot;failure&quot;: &quot;The first upgraded run reached evaluation but the evaluation client assignment was embedded in a notebook comment by an escaped newline.&quot;,
+      &quot;fix&quot;: &quot;Split the assignment into executable notebook source lines.&quot;,
+      &quot;retest&quot;: &quot;passed&quot;
+    },
+    {
+      &quot;failure&quot;: &quot;One rerun encountered a transient DefaultAzureCredential token-source failure on Windows.&quot;,
+      &quot;fix&quot;: &quot;Verified AzureCliCredential availability through DefaultAzureCredential and retried without changing the authentication standard.&quot;,
+      &quot;retest&quot;: &quot;passed&quot;
+    }
+  ],
+  &quot;verification&quot;: {
+    &quot;notebook_python_cells_parse&quot;: true,
+    &quot;python_helpers_compile&quot;: true,
+    &quot;forbidden_direct_client_and_raw_endpoint_patterns_found&quot;: false,
+    &quot;pip_check&quot;: &quot;No broken requirements found&quot;,
+    &quot;terminal_notebook_execution&quot;: &quot;passed&quot;,
+    &quot;all_code_cells_executed&quot;: true
+  },
+  &quot;notes&quot;: [
+    &quot;The supported azure-ai-projects deployment surface is project-scoped get/list, so the notebook discovers and validates an existing fine-tuned deployment instead of creating one through an account-level control-plane route.&quot;,
+    &quot;The deterministic retest reused an existing successful East US 2 fine-tuning job and the checked-in dataset; set USE_PREBUILT_DATA=0 to exercise Data Designer generation through the authenticated project.&quot;,
+    &quot;The one-sample validation set verifies integration and execution, not model-quality significance.&quot;,
+    &quot;The final run emitted non-blocking Windows Jupyter transport warnings outside notebook execution.&quot;
+  ]
+}</pre></details>
+            </section>
+
+            <section id="rft-countdown" class="demo succeeded">
+              <h2>RFT_Countdown</h2>
+              <p><strong>Status:</strong> passed</p>
+              <p><strong>Outcome:</strong> passed</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><p>None recorded</p></div>
+                <div><h3>Notebooks</h3><ul><li>Demos/RFT_Countdown/demo.ipynb</li><li>Demos/RFT_Countdown/demo_with_python_grader.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-7cad39edc348414cb0f213d206c297cf</li><li>ftjob-9666eca5d954457d9cf5651dc74e9f6e</li></ul></div>
+                <div><h3>Fine-tuned models</h3><ul><li>o4-mini-2025-04-16.ft-7cad39edc348414cb0f213d206c297cf-countdown-model-grader</li><li>o4-mini-2025-04-16.ft-9666eca5d954457d9cf5651dc74e9f6e-countdown-python-grader</li></ul></div>
+              </div>
+              <h3>Legacy paths removed</h3><p>None recorded</p>
+              <h3>Fixes and corrective actions</h3><ul><li>Replaced CLI-specific credential and token-provider plumbing with DefaultAzureCredential.</li><li>Replaced direct synchronous and asynchronous OpenAI construction with Foundry project child clients.</li><li>Removed secret-based authentication and account-endpoint configuration from helpers and documentation.</li><li>Replaced ARM deployment creation and polling with Foundry project deployment retrieval and model verification.</li><li>Added deterministic async child-client, project-client, and credential cleanup.</li><li>Made baseline inference informational while retaining the fine-tuned inference success gate.</li><li>Configured UTF-8 notebook execution on Windows.</li></ul>
+              <h3>Notes and limitations</h3><p>None recorded</p>
+              <details><summary>Source report</summary><pre>{
+  &quot;status&quot;: &quot;passed&quot;,
+  &quot;completed_at&quot;: &quot;2026-10-03T19:55:00Z&quot;,
+  &quot;scope&quot;: &quot;Demos/RFT_Countdown&quot;,
+  &quot;region&quot;: &quot;East US 2&quot;,
+  &quot;authentication&quot;: &quot;Microsoft Entra ID via DefaultAzureCredential&quot;,
+  &quot;sdk&quot;: {
+    &quot;package&quot;: &quot;azure-ai-projects&quot;,
+    &quot;major_version&quot;: 2,
+    &quot;tested_version&quot;: &quot;2.7.0&quot;,
+    &quot;project_client&quot;: &quot;AIProjectClient&quot;,
+    &quot;child_client&quot;: &quot;AIProjectClient.get_openai_client&quot;
+  },
+  &quot;constraints&quot;: {
+    &quot;direct_openai_imports_or_constructors&quot;: false,
+    &quot;credential_secrets&quot;: false,
+    &quot;manual_openai_routes&quot;: false,
+    &quot;manual_account_or_arm_endpoints&quot;: false,
+    &quot;project_child_client_only&quot;: true
+  },
+  &quot;fixes&quot;: [
+    &quot;Replaced CLI-specific credential and token-provider plumbing with DefaultAzureCredential.&quot;,
+    &quot;Replaced direct synchronous and asynchronous OpenAI construction with Foundry project child clients.&quot;,
+    &quot;Removed secret-based authentication and account-endpoint configuration from helpers and documentation.&quot;,
+    &quot;Replaced ARM deployment creation and polling with Foundry project deployment retrieval and model verification.&quot;,
+    &quot;Added deterministic async child-client, project-client, and credential cleanup.&quot;,
+    &quot;Made baseline inference informational while retaining the fine-tuned inference success gate.&quot;,
+    &quot;Configured UTF-8 notebook execution on Windows.&quot;
+  ],
+  &quot;notebooks&quot;: [
+    {
+      &quot;path&quot;: &quot;Demos/RFT_Countdown/demo.ipynb&quot;,
+      &quot;grader_type&quot;: &quot;score_model&quot;,
+      &quot;base_model&quot;: &quot;o4-mini-2025-04-16&quot;,
+      &quot;fine_tune_job_id&quot;: &quot;ftjob-7cad39edc348414cb0f213d206c297cf&quot;,
+      &quot;fine_tune_status&quot;: &quot;succeeded&quot;,
+      &quot;trained_tokens&quot;: 13600,
+      &quot;fine_tuned_model&quot;: &quot;o4-mini-2025-04-16.ft-7cad39edc348414cb0f213d206c297cf-countdown-model-grader&quot;,
+      &quot;deployment&quot;: &quot;countdown-model-grader-ft&quot;,
+      &quot;deployment_status&quot;: &quot;available&quot;,
+      &quot;baseline_exact_inference&quot;: {
+        &quot;passed&quot;: 1,
+        &quot;total&quot;: 3
+      },
+      &quot;fine_tuned_exact_inference&quot;: {
+        &quot;passed&quot;: 3,
+        &quot;total&quot;: 3
+      },
+      &quot;execution_status&quot;: &quot;passed&quot;
+    },
+    {
+      &quot;path&quot;: &quot;Demos/RFT_Countdown/demo_with_python_grader.ipynb&quot;,
+      &quot;grader_type&quot;: &quot;python&quot;,
+      &quot;base_model&quot;: &quot;o4-mini-2025-04-16&quot;,
+      &quot;fine_tune_job_id&quot;: &quot;ftjob-9666eca5d954457d9cf5651dc74e9f6e&quot;,
+      &quot;fine_tune_status&quot;: &quot;succeeded&quot;,
+      &quot;trained_tokens&quot;: 13800,
+      &quot;fine_tuned_model&quot;: &quot;o4-mini-2025-04-16.ft-9666eca5d954457d9cf5651dc74e9f6e-countdown-python-grader&quot;,
+      &quot;deployment&quot;: &quot;countdown-python-grader-ft&quot;,
+      &quot;deployment_status&quot;: &quot;available&quot;,
+      &quot;baseline_exact_inference&quot;: {
+        &quot;passed&quot;: 1,
+        &quot;total&quot;: 3
+      },
+      &quot;fine_tuned_exact_inference&quot;: {
+        &quot;passed&quot;: 3,
+        &quot;total&quot;: 3
+      },
+      &quot;execution_status&quot;: &quot;passed&quot;
+    }
+  ]
+}</pre></details>
+            </section>
+
+            <section id="rft-math" class="demo succeeded">
+              <h2>RFT_Math_Reasoning</h2>
+              <p><strong>Status:</strong> completed_with_deployment_quota_block</p>
+              <p><strong>Outcome:</strong> completed_with_deployment_quota_block</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><p>None recorded</p></div>
+                <div><h3>Notebooks</h3><ul><li>Demos/RFT_Math_Reasoning/rft_math_reasoning.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-bdba18dfcb9c4110acd6c5967a66f879</li></ul></div>
+                <div><h3>Fine-tuned models</h3><ul><li>qwen3.6-35b-a3b.ft-bdba18dfcb9c4110acd6c5967a66f879-math-reasoning-rft-sdk2</li></ul></div>
+              </div>
+              <h3>Legacy paths removed</h3><ul><li>direct OpenAI imports and client construction</li><li>API-key configuration</li><li>hard-coded project URLs</li><li>Azure OpenAI account endpoints</li><li>subscription, resource-group, and account-name configuration</li><li>CognitiveServicesManagementClient deployment construction</li><li>direct openai and azure-mgmt-cognitiveservices requirements</li></ul>
+              <h3>Fixes and corrective actions</h3><p>None recorded</p>
+              <h3>Notes and limitations</h3><p>None recorded</p>
+              <details><summary>Source report</summary><pre>{
+  &quot;demo&quot;: &quot;Demos/RFT_Math_Reasoning&quot;,
+  &quot;status&quot;: &quot;completed_with_deployment_quota_block&quot;,
+  &quot;completed_at&quot;: &quot;2026-10-03T20:31:57Z&quot;,
+  &quot;scope&quot;: {
+    &quot;modified&quot;: [
+      &quot;Demos/RFT_Math_Reasoning/.env.template&quot;,
+      &quot;Demos/RFT_Math_Reasoning/README.md&quot;,
+      &quot;Demos/RFT_Math_Reasoning/requirements.txt&quot;,
+      &quot;Demos/RFT_Math_Reasoning/rft_math_reasoning.ipynb&quot;
+    ],
+    &quot;report&quot;: &quot;upgrade-reports/rft-math.json&quot;
+  },
+  &quot;sdk&quot;: {
+    &quot;azure_ai_projects&quot;: &quot;2.7.0&quot;,
+    &quot;azure_identity&quot;: &quot;1.26.0&quot;,
+    &quot;python_dotenv&quot;: &quot;1.2.4&quot;,
+    &quot;client&quot;: &quot;AIProjectClient&quot;,
+    &quot;credential&quot;: &quot;DefaultAzureCredential&quot;,
+    &quot;configuration&quot;: &quot;AZURE_AI_PROJECT_ENDPOINT&quot;,
+    &quot;protocol_client_source&quot;: &quot;AIProjectClient.get_openai_client()&quot;
+  },
+  &quot;removed&quot;: [
+    &quot;direct OpenAI imports and client construction&quot;,
+    &quot;API-key configuration&quot;,
+    &quot;hard-coded project URLs&quot;,
+    &quot;Azure OpenAI account endpoints&quot;,
+    &quot;subscription, resource-group, and account-name configuration&quot;,
+    &quot;CognitiveServicesManagementClient deployment construction&quot;,
+    &quot;direct openai and azure-mgmt-cognitiveservices requirements&quot;
+  ],
+  &quot;execution&quot;: {
+    &quot;notebook&quot;: &quot;Demos/RFT_Math_Reasoning/rft_math_reasoning.ipynb&quot;,
+    &quot;all_code_cells_completed&quot;: true,
+    &quot;grader_tests&quot;: {
+      &quot;passed&quot;: 6,
+      &quot;failed&quot;: 0
+    },
+    &quot;training_file_id&quot;: &quot;file-af53e4fcb1d74b68b1a4ae0593123d7d&quot;,
+    &quot;validation_file_id&quot;: &quot;file-4de0515e4cfd4528913085f3b6310317&quot;,
+    &quot;job_id&quot;: &quot;ftjob-bdba18dfcb9c4110acd6c5967a66f879&quot;,
+    &quot;job_status&quot;: &quot;succeeded&quot;,
+    &quot;created_at&quot;: &quot;2026-10-03T19:45:42Z&quot;,
+    &quot;finished_at&quot;: &quot;2026-10-03T20:31:57Z&quot;,
+    &quot;training_hours_billed&quot;: 0.568027777777778,
+    &quot;trained_tokens&quot;: 27354,
+    &quot;result_file_id&quot;: &quot;file-3e3d50e52dd64b4a9e96f525bfae44f1&quot;,
+    &quot;fine_tuned_model&quot;: &quot;qwen3.6-35b-a3b.ft-bdba18dfcb9c4110acd6c5967a66f879-math-reasoning-rft-sdk2&quot;
+  },
+  &quot;validation&quot;: {
+    &quot;status&quot;: &quot;passed&quot;,
+    &quot;eval_id&quot;: &quot;eval_bfd3ab92f412486aabfae0ee2a28b6fd&quot;,
+    &quot;final_run_id&quot;: &quot;evalrun_a28c20eae5904861a12bbdd9cac1711e&quot;,
+    &quot;mean_reward_history&quot;: [
+      0.05,
+      0.2
+    ],
+    &quot;final_mean_reward&quot;: 0.2,
+    &quot;validated_answer&quot;: &quot;0&quot;,
+    &quot;reasoning_word_count&quot;: 257
+  },
+  &quot;deployment&quot;: {
+    &quot;attempted&quot;: true,
+    &quot;method&quot;: &quot;AIProjectClient project-scoped deployment list and get operations&quot;,
+    &quot;deployment_name&quot;: &quot;rft-math-c5967a66f879&quot;,
+    &quot;status&quot;: &quot;blocked_by_quota&quot;,
+    &quot;project_lookup_result&quot;: &quot;not_found&quot;,
+    &quot;sdk_limitation&quot;: &quot;azure-ai-projects 2.7.0 exposes project deployment discovery but not deployment creation&quot;,
+    &quot;quota_finding&quot;: {
+      &quot;reused_after_upgraded_training_and_validation&quot;: true,
+      &quot;sku&quot;: &quot;Fireworks GlobalProvisionedManaged&quot;,
+      &quot;required_capacity&quot;: 90,
+      &quot;available_capacity&quot;: 0,
+      &quot;quota_limit&quot;: 0
+    }
+  },
+  &quot;retest_notes&quot;: [
+    &quot;The first local execution selected a stale system Jupyter kernel and failed before service-side upload because of an incompatible Brotli binding.&quot;,
+    &quot;The notebook was rerun with the demo virtual environment kernel.&quot;,
+    &quot;The rerun uploaded both datasets, created a new RFT job, monitored it to succeeded, validated the final evaluation output, and completed the deployment availability attempt.&quot;
+  ]
+}</pre></details>
+            </section>
+
+            <section id="sft-bug-detection" class="demo succeeded">
+              <h2>SFT_Bug_Detection</h2>
+              <p><strong>Status:</strong> passed</p>
+              <p><strong>Outcome:</strong> passed</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><p>None recorded</p></div>
+                <div><h3>Notebooks</h3><ul><li>Demos/SFT_Bug_Detection/Bug_Detection_Fine_Tuning.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-0ed7e14f2c374686b39cf7c330717af7</li><li>ftjob-26559512cf93499d9fd8eac439853f46</li></ul></div>
+                <div><h3>Fine-tuned models</h3><ul><li>gpt-4.1-mini-2025-04-14.ft-26559512cf93499d9fd8eac439853f46-bug-detection</li></ul></div>
+              </div>
+              <h3>Legacy paths removed</h3><ul><li>explicit openai dependency</li><li>direct OpenAI imports and client construction</li><li>API-key authentication</li><li>raw HTTP routes and requests dependency</li><li>account-level endpoint configuration</li><li>AzureCliCredential</li><li>Azure management configuration from the notebook</li><li>legacy Azure OpenAI environment names</li></ul>
+              <h3>Fixes and corrective actions</h3><p>None recorded</p>
+              <h3>Notes and limitations</h3><p>None recorded</p>
+              <details><summary>Source report</summary><pre>{
+  &quot;demo&quot;: &quot;Demos/SFT_Bug_Detection&quot;,
+  &quot;status&quot;: &quot;passed&quot;,
+  &quot;completed_at&quot;: &quot;2026-10-03T16:23:12-07:00&quot;,
+  &quot;region&quot;: &quot;Sweden Central&quot;,
+  &quot;upgrade&quot;: {
+    &quot;azure_ai_projects_constraint&quot;: &quot;&gt;=2.3.0,&lt;3&quot;,
+    &quot;validated_azure_ai_projects_version&quot;: &quot;2.7.0&quot;,
+    &quot;validated_azure_identity_version&quot;: &quot;1.26.0&quot;,
+    &quot;authentication&quot;: &quot;azure.identity.DefaultAzureCredential&quot;,
+    &quot;project_client&quot;: &quot;azure.ai.projects.AIProjectClient&quot;,
+    &quot;endpoint_source&quot;: &quot;FOUNDRY_PROJECT_ENDPOINT&quot;,
+    &quot;openai_client_source&quot;: &quot;AIProjectClient.get_openai_client()&quot;,
+    &quot;deployment_client_source&quot;: &quot;AIProjectClient.deployments&quot;,
+    &quot;removed&quot;: [
+      &quot;explicit openai dependency&quot;,
+      &quot;direct OpenAI imports and client construction&quot;,
+      &quot;API-key authentication&quot;,
+      &quot;raw HTTP routes and requests dependency&quot;,
+      &quot;account-level endpoint configuration&quot;,
+      &quot;AzureCliCredential&quot;,
+      &quot;Azure management configuration from the notebook&quot;,
+      &quot;legacy Azure OpenAI environment names&quot;
+    ]
+  },
+  &quot;execution&quot;: {
+    &quot;notebook&quot;: &quot;Demos/SFT_Bug_Detection/Bug_Detection_Fine_Tuning.ipynb&quot;,
+    &quot;initial_run_started_at&quot;: &quot;2026-10-03T19:48:09Z&quot;,
+    &quot;final_project_only_replay_started_at&quot;: &quot;2026-10-03T23:20:06Z&quot;,
+    &quot;final_project_only_replay_completed_at&quot;: &quot;2026-10-03T23:23:12Z&quot;,
+    &quot;code_cells_executed&quot;: 13,
+    &quot;code_cells_failed&quot;: 0,
+    &quot;training_files&quot;: {
+      &quot;training_file_id&quot;: &quot;file-6379c8868df249539b266a77185bfcf4&quot;,
+      &quot;validation_file_id&quot;: &quot;file-62917c9a09e449bcb2d68a8955d819f7&quot;,
+      &quot;terminal_status&quot;: &quot;processed&quot;
+    },
+    &quot;fine_tuning&quot;: {
+      &quot;initial_job_id&quot;: &quot;ftjob-0ed7e14f2c374686b39cf7c330717af7&quot;,
+      &quot;initial_terminal_status&quot;: &quot;failed&quot;,
+      &quot;initial_failure&quot;: &quot;Model safety checks failed due to system error during postprocessing&quot;,
+      &quot;retry_job_id&quot;: &quot;ftjob-26559512cf93499d9fd8eac439853f46&quot;,
+      &quot;retry_terminal_status&quot;: &quot;succeeded&quot;,
+      &quot;retry_completed_at&quot;: &quot;2026-10-03T23:04:21Z&quot;,
+      &quot;training_tokens_billed&quot;: 94000,
+      &quot;fine_tuned_model&quot;: &quot;gpt-4.1-mini-2025-04-14.ft-26559512cf93499d9fd8eac439853f46-bug-detection&quot;
+    },
+    &quot;deployment&quot;: {
+      &quot;name&quot;: &quot;bug-detection-ft-39853f46&quot;,
+      &quot;provisioning_terminal_status&quot;: &quot;Succeeded&quot;,
+      &quot;project_child_resolution&quot;: &quot;passed&quot;,
+      &quot;model_match&quot;: true,
+      &quot;inference_readiness&quot;: &quot;passed&quot;,
+      &quot;cleanup&quot;: &quot;deleted&quot;,
+      &quot;note&quot;: &quot;The stable Projects deployment child is read-only. The retest harness provisioned and removed the deployment outside the notebook; the notebook itself used only project-scoped child clients.&quot;
+    },
+    &quot;evaluation&quot;: {
+      &quot;terminal_status&quot;: &quot;completed&quot;,
+      &quot;examples&quot;: 10,
+      &quot;baseline&quot;: {
+        &quot;combined_score&quot;: 8.566666666666666,
+        &quot;pass_rate&quot;: 90.0
+      },
+      &quot;fine_tuned&quot;: {
+        &quot;combined_score&quot;: 8.966666666666667,
+        &quot;pass_rate&quot;: 90.0
+      },
+      &quot;teacher&quot;: {
+        &quot;combined_score&quot;: 9.233333333333333,
+        &quot;pass_rate&quot;: 90.0
+      }
+    }
+  },
+  &quot;verification&quot;: {
+    &quot;notebook_python_cells_parse&quot;: true,
+    &quot;notebook_execution&quot;: &quot;passed&quot;,
+    &quot;pip_check&quot;: &quot;No broken requirements found&quot;,
+    &quot;prohibited_usage_scan&quot;: &quot;no matches&quot;,
+    &quot;deployment_cleanup_verified&quot;: true,
+    &quot;remaining_demo_deployments&quot;: []
+  }
+}</pre></details>
+            </section>
+
+            <section id="sft-cnn" class="demo succeeded">
+              <h2>SFT_CNN_DailyMail</h2>
+              <p><strong>Status:</strong> passed</p>
+              <p><strong>Outcome:</strong> passed</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><p>None recorded</p></div>
+                <div><h3>Notebooks</h3><ul><li>Demos/SFT_CNN_DailyMail/sft_cnn_dailymail.executed.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-82fb71a6a7f2416d9b720f56a6ca5a59</li></ul></div>
+                <div><h3>Fine-tuned models</h3><ul><li>gpt-4o-mini-2024-07-18.ft-82fb71a6a7f2416d9b720f56a6ca5a59-cnn-dailymail-summarization</li></ul></div>
+              </div>
+              <h3>Legacy paths removed</h3><ul><li>explicit openai dependency</li><li>direct OpenAI imports and client constructors</li><li>API key configuration</li><li>account-level inference endpoint configuration</li><li>raw HTTP file-import URL and request code</li><li>AZURE_AOAI_ACCOUNT configuration</li></ul>
+              <h3>Fixes and corrective actions</h3><p>None recorded</p>
+              <h3>Notes and limitations</h3><p>None recorded</p>
+              <details><summary>Source report</summary><pre>{
+  &quot;demo&quot;: &quot;Demos/SFT_CNN_DailyMail&quot;,
+  &quot;status&quot;: &quot;passed&quot;,
+  &quot;completed_at&quot;: &quot;2026-10-03T13:35:31-07:00&quot;,
+  &quot;region&quot;: &quot;East US 2&quot;,
+  &quot;upgrade&quot;: {
+    &quot;foundry_sdk&quot;: &quot;azure-ai-projects 2.7.0&quot;,
+    &quot;identity_sdk&quot;: &quot;azure-identity 1.26.0&quot;,
+    &quot;authentication&quot;: &quot;Entra ID via DefaultAzureCredential&quot;,
+    &quot;project_client&quot;: &quot;AIProjectClient with MICROSOFT_FOUNDRY_PROJECT_ENDPOINT&quot;,
+    &quot;project_endpoint_host&quot;: &quot;eastus2-prakharg-demo-2026.services.ai.azure.com&quot;,
+    &quot;openai_client_source&quot;: &quot;AIProjectClient.get_openai_client()&quot;,
+    &quot;removed&quot;: [
+      &quot;explicit openai dependency&quot;,
+      &quot;direct OpenAI imports and client constructors&quot;,
+      &quot;API key configuration&quot;,
+      &quot;account-level inference endpoint configuration&quot;,
+      &quot;raw HTTP file-import URL and request code&quot;,
+      &quot;AZURE_AOAI_ACCOUNT configuration&quot;
+    ]
+  },
+  &quot;execution&quot;: {
+    &quot;notebook&quot;: &quot;Demos/SFT_CNN_DailyMail/sft_cnn_dailymail.executed.ipynb&quot;,
+    &quot;fresh_fine_tune_job&quot;: true,
+    &quot;credential_retest&quot;: &quot;DefaultAzureCredential&quot;,
+    &quot;retest_file_mode&quot;: &quot;reused existing project files after the project reached its 100-file quota&quot;,
+    &quot;retest_reused_existing_job&quot;: true,
+    &quot;training_file_id&quot;: &quot;file-6202715072fb46af891f1179cc8dd096&quot;,
+    &quot;validation_file_id&quot;: &quot;file-148ab41ed4dd4561b441fa11bfbdb84f&quot;,
+    &quot;job_id&quot;: &quot;ftjob-82fb71a6a7f2416d9b720f56a6ca5a59&quot;,
+    &quot;job_status&quot;: &quot;succeeded&quot;,
+    &quot;base_model&quot;: &quot;gpt-4o-mini-2024-07-18&quot;,
+    &quot;fine_tuned_model&quot;: &quot;gpt-4o-mini-2024-07-18.ft-82fb71a6a7f2416d9b720f56a6ca5a59-cnn-dailymail-summarization&quot;,
+    &quot;trained_tokens&quot;: 12718,
+    &quot;training_tokens_billed&quot;: 11000,
+    &quot;deployment_name&quot;: &quot;cnn-dailymail-0f56a6ca5a59&quot;,
+    &quot;deployment_status&quot;: &quot;Succeeded&quot;,
+    &quot;deployment_sku&quot;: &quot;GlobalStandard&quot;,
+    &quot;deployment_capacity&quot;: 10,
+    &quot;inference_status&quot;: &quot;passed&quot;,
+    &quot;inference_assertions&quot;: [
+      &quot;response was non-empty&quot;,
+      &quot;summary contained the central topic &#x27;solar&#x27;&quot;
+    ],
+    &quot;notebook_errors&quot;: []
+  },
+  &quot;validation&quot;: {
+    &quot;dependency_check&quot;: &quot;passed&quot;,
+    &quot;source_notebook_json&quot;: &quot;valid&quot;,
+    &quot;executed_notebook_json&quot;: &quot;valid&quot;,
+    &quot;executed_code_cells&quot;: 11,
+    &quot;prohibited_usage_scan&quot;: &quot;no matches&quot;,
+    &quot;azure_cli_credential_references&quot;: 0,
+    &quot;default_azure_credential_references_verified&quot;: true
+  }
+}</pre></details>
+            </section>
+
+            <section id="sft-pubmed" class="demo succeeded">
+              <h2>SFT_PubMed_Summarization</h2>
+              <p><strong>Status:</strong> passed</p>
+              <p><strong>Outcome:</strong> passed</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><p>None recorded</p></div>
+                <div><h3>Notebooks</h3><ul><li>Demos/SFT_PubMed_Summarization/sft_pubmed_summarization.ipynb</li><li>Demos/SFT_PubMed_Summarization/sft_pubmed_summarization.executed.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-72ede626606d40eebb7aaa15060a24ee</li></ul></div>
+                <div><h3>Fine-tuned models</h3><ul><li>gpt-4.1-2025-04-14.ft-72ede626606d40eebb7aaa15060a24ee-pubmed-summarization</li></ul></div>
+              </div>
+              <h3>Legacy paths removed</h3><ul><li>direct openai imports and AzureOpenAI construction</li><li>API-key authentication</li><li>manually constructed Azure OpenAI account endpoints</li><li>subscription, resource group, and account deployment configuration</li><li>azure-mgmt-cognitiveservices dependency</li></ul>
+              <h3>Fixes and corrective actions</h3><p>None recorded</p>
+              <h3>Notes and limitations</h3><p>None recorded</p>
+              <details><summary>Source report</summary><pre>{
+  &quot;demo&quot;: &quot;Demos/SFT_PubMed_Summarization&quot;,
+  &quot;status&quot;: &quot;passed&quot;,
+  &quot;upgrade&quot;: {
+    &quot;azure_ai_projects_constraint&quot;: &quot;&gt;=2.3.0,&lt;3&quot;,
+    &quot;validated_azure_ai_projects_version&quot;: &quot;2.7.0&quot;,
+    &quot;project_client&quot;: &quot;azure.ai.projects.AIProjectClient&quot;,
+    &quot;credential&quot;: &quot;azure.identity.DefaultAzureCredential&quot;,
+    &quot;endpoint_source&quot;: &quot;MICROSOFT_FOUNDRY_PROJECT_ENDPOINT&quot;,
+    &quot;openai_client_source&quot;: &quot;AIProjectClient.get_openai_client()&quot;,
+    &quot;removed&quot;: [
+      &quot;direct openai imports and AzureOpenAI construction&quot;,
+      &quot;API-key authentication&quot;,
+      &quot;manually constructed Azure OpenAI account endpoints&quot;,
+      &quot;subscription, resource group, and account deployment configuration&quot;,
+      &quot;azure-mgmt-cognitiveservices dependency&quot;
+    ]
+  },
+  &quot;execution&quot;: {
+    &quot;notebook&quot;: &quot;Demos/SFT_PubMed_Summarization/sft_pubmed_summarization.ipynb&quot;,
+    &quot;executed_notebook&quot;: &quot;Demos/SFT_PubMed_Summarization/sft_pubmed_summarization.executed.ipynb&quot;,
+    &quot;code_cells_executed&quot;: 11,
+    &quot;code_cells_failed&quot;: 0,
+    &quot;training_file_id&quot;: &quot;file-5b7f953d4a22478d85e28016ce19a3f1&quot;,
+    &quot;validation_file_id&quot;: &quot;file-e942cb4ce5c54a6f888eced2230c834e&quot;,
+    &quot;job&quot;: {
+      &quot;id&quot;: &quot;ftjob-72ede626606d40eebb7aaa15060a24ee&quot;,
+      &quot;mode&quot;: &quot;reused_from_FINE_TUNE_JOB_ID&quot;,
+      &quot;terminal_status&quot;: &quot;succeeded&quot;,
+      &quot;fine_tuned_model&quot;: &quot;gpt-4.1-2025-04-14.ft-72ede626606d40eebb7aaa15060a24ee-pubmed-summarization&quot;
+    },
+    &quot;deployment&quot;: {
+      &quot;name&quot;: &quot;pubmed-060a24ee&quot;,
+      &quot;resolution&quot;: &quot;AIProjectClient.deployments.list/get&quot;,
+      &quot;status&quot;: &quot;available_in_project&quot;,
+      &quot;model_match&quot;: true
+    },
+    &quot;inference&quot;: {
+      &quot;status&quot;: &quot;succeeded&quot;,
+      &quot;client&quot;: &quot;project-scoped OpenAI client&quot;,
+      &quot;response_nonempty&quot;: true
+    }
+  },
+  &quot;fixes_during_retest&quot;: [
+    {
+      &quot;failure&quot;: &quot;DefaultAzureCredential Azure CLI token refresh exceeded its default 10-second subprocess timeout on Windows&quot;,
+      &quot;fix&quot;: &quot;Set DefaultAzureCredential(process_timeout=120) while retaining DefaultAzureCredential authentication&quot;,
+      &quot;retest&quot;: &quot;passed&quot;
+    }
+  ],
+  &quot;verification&quot;: {
+    &quot;notebook_python_cells_parse&quot;: true,
+    &quot;forbidden_direct_client_patterns_found&quot;: false,
+    &quot;pip_check&quot;: &quot;No broken requirements found&quot;,
+    &quot;nbconvert_execution&quot;: &quot;passed&quot;
+  }
+}</pre></details>
+            </section>
+
+            <section id="synthetic-tooluse" class="demo succeeded">
+              <h2>SyntheticDatagen-ToolUse</h2>
+              <p><strong>Status:</strong> passed</p>
+              <p><strong>Outcome:</strong> passed</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><p>None recorded</p></div>
+                <div><h3>Notebooks</h3><ul><li>Demos/SyntheticDatagen-ToolUse/notebook.ipynb</li><li>Demos/SyntheticDatagen-ToolUse/notebook.executed.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-28f241250f5d48bd89422a49d67526bd</li></ul></div>
+                <div><h3>Fine-tuned models</h3><ul><li>gpt-4.1-mini-2025-04-14.ft-28f241250f5d48bd89422a49d67526bd-zava-tools-demo</li></ul></div>
+              </div>
+              <h3>Legacy paths removed</h3><ul><li>direct openai imports and client construction</li><li>API-key authentication and configuration</li><li>Azure OpenAI account endpoint configuration</li><li>subscription, resource group, and account-name configuration</li><li>raw Azure Resource Manager deployment URLs and requests</li><li>manual data-generation status polling</li></ul>
+              <h3>Fixes and corrective actions</h3><p>None recorded</p>
+              <h3>Notes and limitations</h3><ul><li>Data-generation job creation remains a beta project operation in azure-ai-projects 2.7.0; the notebook uses the SDK&#x27;s native poller instead of a manual loop.</li><li>The custom structural tool-call evaluator runs through the stable azure-ai-evaluation package; no cloud evaluation poller is required for this local target/evaluator flow.</li><li>azure-ai-projects 2.7.0 exposes project-scoped deployment get/list operations but not deployment creation, so the notebook validates an existing fine-tuned deployment instead of using an account-level control-plane request.</li><li>The final run emitted non-blocking Windows Jupyter transport warnings.</li></ul>
+              <details><summary>Source report</summary><pre>{
+  &quot;demo&quot;: &quot;Demos/SyntheticDatagen-ToolUse&quot;,
+  &quot;status&quot;: &quot;passed&quot;,
+  &quot;completed_at&quot;: &quot;2026-10-03T19:52:47.119433+00:00&quot;,
+  &quot;upgrade&quot;: {
+    &quot;foundry_sdk&quot;: {
+      &quot;package&quot;: &quot;azure-ai-projects&quot;,
+      &quot;required_version&quot;: &quot;&gt;=2.7,&lt;3&quot;,
+      &quot;tested_version&quot;: &quot;2.7.0&quot;
+    },
+    &quot;authentication&quot;: &quot;azure.identity.DefaultAzureCredential&quot;,
+    &quot;project_client&quot;: &quot;azure.ai.projects.AIProjectClient&quot;,
+    &quot;endpoint_source&quot;: &quot;AZURE_AI_PROJECT_ENDPOINT&quot;,
+    &quot;model_and_fine_tuning_child&quot;: &quot;AIProjectClient.get_openai_client()&quot;,
+    &quot;data_generation&quot;: &quot;AIProjectClient.beta.datasets.begin_create_generation_job() with DatasetGenerationLROPoller&quot;,
+    &quot;evaluation&quot;: &quot;stable azure.ai.evaluation.evaluate()&quot;,
+    &quot;deployment_resolution&quot;: &quot;stable AIProjectClient.deployments.get()&quot;,
+    &quot;removed&quot;: [
+      &quot;direct openai imports and client construction&quot;,
+      &quot;API-key authentication and configuration&quot;,
+      &quot;Azure OpenAI account endpoint configuration&quot;,
+      &quot;subscription, resource group, and account-name configuration&quot;,
+      &quot;raw Azure Resource Manager deployment URLs and requests&quot;,
+      &quot;manual data-generation status polling&quot;
+    ]
+  },
+  &quot;execution&quot;: {
+    &quot;notebook&quot;: &quot;Demos/SyntheticDatagen-ToolUse/notebook.ipynb&quot;,
+    &quot;executed_notebook&quot;: &quot;Demos/SyntheticDatagen-ToolUse/notebook.executed.ipynb&quot;,
+    &quot;region&quot;: &quot;Australia East&quot;,
+    &quot;training_type&quot;: &quot;GlobalStandard&quot;,
+    &quot;code_cells_executed&quot;: 10,
+    &quot;code_cells_failed&quot;: 0,
+    &quot;data_generation&quot;: {
+      &quot;jobs_revalidated&quot;: 3,
+      &quot;all_terminal_statuses&quot;: &quot;succeeded&quot;,
+      &quot;unique_rows&quot;: 30
+    },
+    &quot;fine_tuning_job&quot;: {
+      &quot;id&quot;: &quot;ftjob-28f241250f5d48bd89422a49d67526bd&quot;,
+      &quot;reused&quot;: true,
+      &quot;terminal_status&quot;: &quot;succeeded&quot;,
+      &quot;fine_tuned_model&quot;: &quot;gpt-4.1-mini-2025-04-14.ft-28f241250f5d48bd89422a49d67526bd-zava-tools-demo&quot;
+    },
+    &quot;deployment&quot;: {
+      &quot;name&quot;: &quot;zava-tools-ft-demo&quot;,
+      &quot;status&quot;: &quot;available_and_inferenceable&quot;,
+      &quot;model_match&quot;: true
+    },
+    &quot;evaluation&quot;: {
+      &quot;rows&quot;: 9,
+      &quot;baseline_combined_score&quot;: 7.0,
+      &quot;baseline_pass_rate_percent&quot;: 66.66666666666666,
+      &quot;fine_tuned_combined_score&quot;: 9.0,
+      &quot;fine_tuned_pass_rate_percent&quot;: 88.88888888888889,
+      &quot;relative_lift_percent&quot;: 28.57142857142857
+    }
+  },
+  &quot;fixes_during_retest&quot;: [
+    {
+      &quot;failure&quot;: &quot;The first nbconvert attempt selected the global Anaconda kernel, whose Brotli/http transport stack failed while reading a project-derived files response.&quot;,
+      &quot;fix&quot;: &quot;Executed with a local Jupyter kernelspec bound to Demos/SyntheticDatagen-ToolUse/.venv.&quot;,
+      &quot;retest&quot;: &quot;passed&quot;
+    }
+  ],
+  &quot;verification&quot;: {
+    &quot;notebook_python_cells_parse&quot;: true,
+    &quot;notebook_cell_ids_present&quot;: true,
+    &quot;forbidden_direct_client_and_raw_endpoint_patterns_found&quot;: false,
+    &quot;nbconvert_execution&quot;: &quot;passed&quot;,
+    &quot;all_run_stages_succeeded&quot;: true
+  },
+  &quot;notes&quot;: [
+    &quot;Data-generation job creation remains a beta project operation in azure-ai-projects 2.7.0; the notebook uses the SDK&#x27;s native poller instead of a manual loop.&quot;,
+    &quot;The custom structural tool-call evaluator runs through the stable azure-ai-evaluation package; no cloud evaluation poller is required for this local target/evaluator flow.&quot;,
+    &quot;azure-ai-projects 2.7.0 exposes project-scoped deployment get/list operations but not deployment creation, so the notebook validates an existing fine-tuned deployment instead of using an account-level control-plane request.&quot;,
+    &quot;The final run emitted non-blocking Windows Jupyter transport warnings.&quot;
+  ]
+}</pre></details>
+            </section>
+
+            <section id="traces-distillation" class="demo succeeded">
+              <h2>TracesDistillation</h2>
+              <p><strong>Status:</strong> passed</p>
+              <p><strong>Outcome:</strong> passed</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><p>None recorded</p></div>
+                <div><h3>Notebooks</h3><ul><li>Demos/TracesDistillation/notebook.ipynb</li><li>Demos/TracesDistillation/notebook.executed.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-1b7750a19fde42179b57059addc70228</li></ul></div>
+                <div><h3>Fine-tuned models</h3><p>None recorded</p></div>
+              </div>
+              <h3>Legacy paths removed</h3><ul><li>direct openai imports and client construction</li><li>API-key authentication and configuration</li><li>hard-coded project endpoint fallback</li><li>raw Azure Resource Manager deployment route</li><li>subscription, resource group, and account deployment configuration</li><li>manual bearer-token acquisition for deployment</li></ul>
+              <h3>Fixes and corrective actions</h3><p>None recorded</p>
+              <h3>Notes and limitations</h3><p>None recorded</p>
+              <details><summary>Source report</summary><pre>{
+  &quot;demo&quot;: &quot;Demos/TracesDistillation&quot;,
+  &quot;status&quot;: &quot;passed&quot;,
+  &quot;completed_at&quot;: &quot;2026-10-03T12:51:00-07:00&quot;,
+  &quot;upgrade&quot;: {
+    &quot;foundry_sdk&quot;: {
+      &quot;package&quot;: &quot;azure-ai-projects&quot;,
+      &quot;required_version&quot;: &quot;&gt;=2.7.0,&lt;3&quot;,
+      &quot;tested_version&quot;: &quot;2.7.0&quot;
+    },
+    &quot;authentication&quot;: &quot;Microsoft Entra ID via DefaultAzureCredential&quot;,
+    &quot;project_client&quot;: &quot;azure.ai.projects.AIProjectClient&quot;,
+    &quot;project_endpoint_source&quot;: &quot;AZURE_AI_PROJECT_ENDPOINT&quot;,
+    &quot;project_child_scope&quot;: [
+      &quot;model inference&quot;,
+      &quot;fine-tuning files&quot;,
+      &quot;fine-tuning jobs&quot;
+    ],
+    &quot;aiprojectclient_surfaces&quot;: {
+      &quot;agent&quot;: &quot;AIProjectClient.agents&quot;,
+      &quot;connections&quot;: &quot;AIProjectClient.connections&quot;,
+      &quot;data_generation&quot;: &quot;AIProjectClient.beta.datasets&quot;,
+      &quot;evaluation_context&quot;: &quot;AIProjectClient deployment discovery with azure-ai-evaluation orchestration&quot;,
+      &quot;deployments&quot;: &quot;AIProjectClient.deployments&quot;
+    },
+    &quot;removed&quot;: [
+      &quot;direct openai imports and client construction&quot;,
+      &quot;API-key authentication and configuration&quot;,
+      &quot;hard-coded project endpoint fallback&quot;,
+      &quot;raw Azure Resource Manager deployment route&quot;,
+      &quot;subscription, resource group, and account deployment configuration&quot;,
+      &quot;manual bearer-token acquisition for deployment&quot;
+    ]
+  },
+  &quot;resource_preservation&quot;: {
+    &quot;hosted_agent&quot;: {
+      &quot;name&quot;: &quot;traces-distill-zava-20261003-0805&quot;,
+      &quot;version&quot;: &quot;2&quot;,
+      &quot;status&quot;: &quot;active&quot;,
+      &quot;reused&quot;: true
+    },
+    &quot;application_insights_connection&quot;: {
+      &quot;name&quot;: &quot;traces-distill-appinsights&quot;,
+      &quot;reused&quot;: true
+    },
+    &quot;fine_tuning_job&quot;: {
+      &quot;id&quot;: &quot;ftjob-1b7750a19fde42179b57059addc70228&quot;,
+      &quot;terminal_status&quot;: &quot;succeeded&quot;,
+      &quot;reused&quot;: true
+    },
+    &quot;fine_tuned_deployment&quot;: {
+      &quot;name&quot;: &quot;traces-distil-demo&quot;,
+      &quot;status&quot;: &quot;inference_ready&quot;,
+      &quot;reused&quot;: true
+    }
+  },
+  &quot;execution&quot;: {
+    &quot;notebook&quot;: &quot;Demos/TracesDistillation/notebook.ipynb&quot;,
+    &quot;executed_notebook&quot;: &quot;Demos/TracesDistillation/notebook.executed.ipynb&quot;,
+    &quot;code_cells_executed&quot;: 10,
+    &quot;code_cells_failed&quot;: 0,
+    &quot;data_generation&quot;: {
+      &quot;job_id&quot;: &quot;datagen-47f410cd31874e1888a2ecea489d7df8&quot;,
+      &quot;terminal_status&quot;: &quot;succeeded&quot;,
+      &quot;generated_samples&quot;: 100,
+      &quot;output_files&quot;: 2
+    },
+    &quot;transformation&quot;: {
+      &quot;clean_rows&quot;: 100,
+      &quot;repaired_tool_call_ids&quot;: 53,
+      &quot;train_rows&quot;: 80,
+      &quot;validation_rows&quot;: 10,
+      &quot;test_rows&quot;: 10
+    },
+    &quot;evaluation&quot;: {
+      &quot;status&quot;: &quot;succeeded&quot;,
+      &quot;samples&quot;: 10,
+      &quot;baseline_score&quot;: 8.5,
+      &quot;baseline_pass_rate_percent&quot;: 70.0,
+      &quot;fine_tuned_score&quot;: 10.0,
+      &quot;fine_tuned_pass_rate_percent&quot;: 100.0,
+      &quot;relative_lift_percent&quot;: 17.647058823529413
+    }
+  },
+  &quot;fixes_during_retest&quot;: [
+    {
+      &quot;failure&quot;: &quot;The first nbconvert attempt selected the machine Anaconda kernel and hit an incompatible Brotli decoder while downloading successful data-generation outputs.&quot;,
+      &quot;fix&quot;: &quot;Executed with a temporary local kernelspec pinned to Demos/TracesDistillation/.venv, then removed the kernelspec.&quot;,
+      &quot;retest&quot;: &quot;passed&quot;
+    }
+  ],
+  &quot;verification&quot;: {
+    &quot;notebook_python_cells_parse&quot;: true,
+    &quot;python_helpers_compile&quot;: true,
+    &quot;forbidden_direct_client_patterns_found&quot;: false,
+    &quot;terminal_operations_monitored&quot;: [
+      &quot;data generation&quot;,
+      &quot;fine-tuning job&quot;,
+      &quot;deployment inference readiness&quot;
+    ],
+    &quot;nbconvert_execution&quot;: &quot;passed&quot;
+  }
+}</pre></details>
+            </section>
+
+            <section id="video-ft" class="demo succeeded">
+              <h2>Video_FT_Action_Recognition</h2>
+              <p><strong>Status:</strong> passed</p>
+              <p><strong>Outcome:</strong> passed</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><ul><li><a href="https://koreacentral-prakharg-demo-2026.services.ai.azure.com/api/projects/koreacentral-prakharg-demo-2026">https://koreacentral-prakharg-demo-2026.services.ai.azure.com/api/projects/koreacentral-prakharg-demo-2026</a></li></ul></div>
+                <div><h3>Notebooks</h3><ul><li>Demos/Video_FT_Action_Recognition/fine-tune-aoai-gpt4-1-action-detection.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-40024e60fc5d4fbe8378a52b3f6d74bd</li></ul></div>
+                <div><h3>Fine-tuned models</h3><ul><li>gpt-4.1-2025-04-14.ft-40024e60fc5d4fbe8378a52b3f6d74bd-ction-recognition-global-vision-20261002</li></ul></div>
+              </div>
+              <h3>Legacy paths removed</h3><ul><li>direct openai dependency and imports</li><li>direct AzureOpenAI client construction</li><li>API-key configuration</li><li>Azure OpenAI account endpoint configuration</li><li>manual Azure Resource Manager deployment routes</li><li>manual bearer-token providers</li><li>subscription, resource group, and account deployment settings</li></ul>
+              <h3>Fixes and corrective actions</h3><p>None recorded</p>
+              <h3>Notes and limitations</h3><ul><li>The stable Foundry SDK 2.x deployment surface supports project-scoped get/list operations, so the notebook monitors and validates existing deployments instead of calling account-level management routes.</li><li>The deterministic 15-video retest validates integration and execution; its small sample is not a model-quality benchmark.</li><li>The Windows Jupyter transport emitted non-blocking ZMQ/TCP warnings.</li></ul>
+              <details><summary>Source report</summary><pre>{
+  &quot;demo&quot;: &quot;Demos/Video_FT_Action_Recognition&quot;,
+  &quot;status&quot;: &quot;passed&quot;,
+  &quot;completed_at&quot;: &quot;2026-10-03T13:10:44.772052-07:00&quot;,
+  &quot;upgrade&quot;: {
+    &quot;foundry_sdk&quot;: {
+      &quot;package&quot;: &quot;azure-ai-projects&quot;,
+      &quot;required_version&quot;: &quot;&gt;=2.3.0,&lt;3&quot;,
+      &quot;tested_version&quot;: &quot;2.7.0&quot;
+    },
+    &quot;authentication&quot;: &quot;Microsoft Entra ID via DefaultAzureCredential&quot;,
+    &quot;project_client&quot;: &quot;azure.ai.projects.AIProjectClient&quot;,
+    &quot;project_endpoint_source&quot;: &quot;AZURE_AI_PROJECT_ENDPOINT&quot;,
+    &quot;project_endpoint&quot;: &quot;https://koreacentral-prakharg-demo-2026.services.ai.azure.com/api/projects/koreacentral-prakharg-demo-2026&quot;,
+    &quot;compatible_child&quot;: &quot;AIProjectClient.get_openai_client()&quot;,
+    &quot;deployment_discovery&quot;: &quot;AIProjectClient.deployments.get()&quot;,
+    &quot;removed&quot;: [
+      &quot;direct openai dependency and imports&quot;,
+      &quot;direct AzureOpenAI client construction&quot;,
+      &quot;API-key configuration&quot;,
+      &quot;Azure OpenAI account endpoint configuration&quot;,
+      &quot;manual Azure Resource Manager deployment routes&quot;,
+      &quot;manual bearer-token providers&quot;,
+      &quot;subscription, resource group, and account deployment settings&quot;
+    ]
+  },
+  &quot;privacy&quot;: {
+    &quot;privacy_preserving_frames&quot;: true,
+    &quot;method&quot;: &quot;grayscale Gaussian blur, Canny edges, dilation, and inverted edge rendering&quot;,
+    &quot;training_frames_use_fix&quot;: true,
+    &quot;evaluation_frames_use_fix&quot;: true,
+    &quot;photographic_pixels_and_timestamp_overlay_removed&quot;: true
+  },
+  &quot;execution&quot;: {
+    &quot;notebook&quot;: &quot;Demos/Video_FT_Action_Recognition/fine-tune-aoai-gpt4-1-action-detection.ipynb&quot;,
+    &quot;mode&quot;: &quot;end-to-end in-place notebook execution&quot;,
+    &quot;region&quot;: &quot;Korea Central&quot;,
+    &quot;code_cells_failed&quot;: 0,
+    &quot;training_files&quot;: {
+      &quot;training_file_id&quot;: &quot;file-c372b6df43594684b2e443a2f77ca01f&quot;,
+      &quot;training_file_status&quot;: &quot;processed&quot;,
+      &quot;validation_file_id&quot;: &quot;file-9ea75590f0ed4ba49549b7617c1832cd&quot;,
+      &quot;validation_file_status&quot;: &quot;processed&quot;
+    },
+    &quot;fine_tuning_job&quot;: {
+      &quot;id&quot;: &quot;ftjob-40024e60fc5d4fbe8378a52b3f6d74bd&quot;,
+      &quot;mode&quot;: &quot;reused successful compatible job&quot;,
+      &quot;terminal_status&quot;: &quot;succeeded&quot;,
+      &quot;training_type&quot;: &quot;globalStandard&quot;,
+      &quot;base_model&quot;: &quot;gpt-4.1-2025-04-14&quot;,
+      &quot;fine_tuned_model&quot;: &quot;gpt-4.1-2025-04-14.ft-40024e60fc5d4fbe8378a52b3f6d74bd-ction-recognition-global-vision-20261002&quot;
+    },
+    &quot;deployments&quot;: {
+      &quot;base&quot;: {
+        &quot;name&quot;: &quot;action-recognition-global-vision-20261002-base&quot;,
+        &quot;status&quot;: &quot;available&quot;,
+        &quot;model&quot;: &quot;gpt-4.1&quot;,
+        &quot;model_version&quot;: &quot;2025-04-14&quot;,
+        &quot;sku&quot;: &quot;GlobalStandard&quot;
+      },
+      &quot;fine_tuned&quot;: {
+        &quot;name&quot;: &quot;action-recognition-global-vision-20261002-ft&quot;,
+        &quot;status&quot;: &quot;available&quot;,
+        &quot;model_match&quot;: true,
+        &quot;sku&quot;: &quot;GlobalStandard&quot;
+      },
+      &quot;status_basis&quot;: &quot;project-scoped deployments resolved through AIProjectClient and matched the expected models&quot;
+    },
+    &quot;evaluation&quot;: {
+      &quot;status&quot;: &quot;succeeded&quot;,
+      &quot;classes&quot;: [
+        &quot;Basketball&quot;,
+        &quot;CricketShot&quot;,
+        &quot;TennisSwing&quot;
+      ],
+      &quot;samples&quot;: 15,
+      &quot;frames_per_video&quot;: 3,
+      &quot;base_accuracy&quot;: 0.7333333333333333,
+      &quot;fine_tuned_accuracy&quot;: 0.7333333333333333,
+      &quot;accuracy_delta&quot;: 0.0,
+      &quot;artifact&quot;: &quot;Demos/Video_FT_Action_Recognition/action-recognition-global-vision-20261002-eval-results-15-entries.csv&quot;
+    },
+    &quot;started_at&quot;: &quot;2026-10-03T20:03:15.599962+00:00&quot;,
+    &quot;completed_at&quot;: &quot;2026-10-03T20:10:44.772052+00:00&quot;
+  },
+  &quot;fixes_during_retest&quot;: [
+    {
+      &quot;failure&quot;: &quot;The notebook runner initially failed because nbformat was not installed in the active Python environment.&quot;,
+      &quot;fix&quot;: &quot;Restored the demo&#x27;s declared requirements for the current user after the system-wide install was denied.&quot;,
+      &quot;retest&quot;: &quot;passed&quot;
+    },
+    {
+      &quot;failure&quot;: &quot;The initial upgrade report tested an azure-ai-projects version below the requested 2.3 stable baseline.&quot;,
+      &quot;fix&quot;: &quot;Raised the requirement to azure-ai-projects&gt;=2.3.0,&lt;3, installed 2.7.0, and reran all 32 notebook code cells.&quot;,
+      &quot;retest&quot;: &quot;passed&quot;
+    }
+  ],
+  &quot;verification&quot;: {
+    &quot;notebook_json_valid&quot;: true,
+    &quot;python_helpers_compile&quot;: true,
+    &quot;forbidden_direct_client_patterns_found&quot;: false,
+    &quot;terminal_operations_monitored&quot;: [
+      &quot;fine-tuning file processing&quot;,
+      &quot;fine-tuning job&quot;,
+      &quot;base deployment&quot;,
+      &quot;fine-tuned deployment&quot;,
+      &quot;base evaluation&quot;,
+      &quot;fine-tuned evaluation&quot;
+    ],
+    &quot;notebook_execution&quot;: &quot;passed&quot;
+  },
+  &quot;notes&quot;: [
+    &quot;The stable Foundry SDK 2.x deployment surface supports project-scoped get/list operations, so the notebook monitors and validates existing deployments instead of calling account-level management routes.&quot;,
+    &quot;The deterministic 15-video retest validates integration and execution; its small sample is not a model-quality benchmark.&quot;,
+    &quot;The Windows Jupyter transport emitted non-blocking ZMQ/TCP warnings.&quot;
+  ]
+}</pre></details>
+            </section>
+
+            <section id="zava-retail" class="demo succeeded">
+              <h2>ZavaRetailAgent</h2>
+              <p><strong>Status:</strong> succeeded</p>
+              <p><strong>Outcome:</strong> succeeded</p>
+              <div class="grid">
+                <div><h3>Foundry project endpoints</h3><p>None recorded</p></div>
+                <div><h3>Notebooks</h3><ul><li>demo.ipynb</li></ul></div>
+                <div><h3>Fine-tuning jobs</h3><ul><li>ftjob-6f20675efd6b465baf35a7c5dff2444a</li><li>ftjob-ced8168de7e1450688b69babdae5989f</li><li>ftjob-cca56049bd1c4a6aa7752f8125ddc4e2</li></ul></div>
+                <div><h3>Fine-tuned models</h3><p>None recorded</p></div>
+              </div>
+              <h3>Legacy paths removed</h3><ul><li>direct openai imports</li><li>direct OpenAI and AzureOpenAI constructors</li><li>API-key authentication</li><li>legacy azure-ai-agents dependency and models</li><li>raw account and /openai endpoint construction</li><li>legacy project connection strings</li></ul>
+              <h3>Fixes and corrective actions</h3><p>None recorded</p>
+              <h3>Notes and limitations</h3><p>None recorded</p>
+              <details><summary>Source report</summary><pre>{
+  &quot;demo&quot;: &quot;ZavaRetailAgent&quot;,
+  &quot;status&quot;: &quot;succeeded&quot;,
+  &quot;completedAt&quot;: &quot;2026-10-03T14:05:00-07:00&quot;,
+  &quot;scope&quot;: &quot;Demos/ZavaRetailAgent&quot;,
+  &quot;target&quot;: {
+    &quot;region&quot;: &quot;westus3&quot;,
+    &quot;project&quot;: &quot;westus3-prakharg-demo-2026&quot;,
+    &quot;authentication&quot;: &quot;Microsoft Entra ID&quot;,
+    &quot;sdk&quot;: {
+      &quot;azure-ai-projects&quot;: &quot;2.7.0&quot;,
+      &quot;azure-identity&quot;: &quot;1.26.0&quot;
+    }
+  },
+  &quot;migration&quot;: {
+    &quot;rootClient&quot;: &quot;azure.ai.projects.AIProjectClient&quot;,
+    &quot;modelOperationsChild&quot;: &quot;AIProjectClient.get_openai_client()&quot;,
+    &quot;projectOperations&quot;: [
+      &quot;deployments&quot;,
+      &quot;agents&quot;,
+      &quot;datasets&quot;
+    ],
+    &quot;childOperations&quot;: [
+      &quot;responses&quot;,
+      &quot;files&quot;,
+      &quot;evals&quot;,
+      &quot;fine_tuning&quot;
+    ],
+    &quot;removed&quot;: [
+      &quot;direct openai imports&quot;,
+      &quot;direct OpenAI and AzureOpenAI constructors&quot;,
+      &quot;API-key authentication&quot;,
+      &quot;legacy azure-ai-agents dependency and models&quot;,
+      &quot;raw account and /openai endpoint construction&quot;,
+      &quot;legacy project connection strings&quot;
+    ]
+  },
+  &quot;execution&quot;: {
+    &quot;notebook&quot;: {
+      &quot;path&quot;: &quot;demo.ipynb&quot;,
+      &quot;kernel&quot;: &quot;zava-retail-sdk2&quot;,
+      &quot;result&quot;: &quot;completed&quot;,
+      &quot;executedCodeCells&quot;: 17
+    },
+    &quot;mcpConnectivity&quot;: {
+      &quot;result&quot;: &quot;passed&quot;,
+      &quot;checksPassed&quot;: 5,
+      &quot;checksTotal&quot;: 5
+    },
+    &quot;agentPolicy&quot;: {
+      &quot;result&quot;: &quot;passed&quot;,
+      &quot;checks&quot;: {
+        &quot;connection&quot;: true,
+        &quot;agentCreation&quot;: true,
+        &quot;mcpToolRequest&quot;: true,
+        &quot;userLookup&quot;: true,
+        &quot;confirmationPolicy&quot;: true,
+        &quot;toolTrace&quot;: true
+      }
+    },
+    &quot;syntheticDataGeneration&quot;: {
+      &quot;runId&quot;: &quot;evalrun_cf68c8b8ae9e4a16bf418de84999b37e&quot;,
+      &quot;status&quot;: &quot;completed&quot;,
+      &quot;samples&quot;: 15
+    },
+    &quot;evaluation&quot;: {
+      &quot;evaluationId&quot;: &quot;eval_345dc212210f456fb5cee3c9cf63a1d5&quot;,
+      &quot;datasetId&quot;: &quot;azureai://accounts/westus3-prakharg-demo-2026/projects/westus3-prakharg-demo-2026/data/zava-retail-eval-20261003205407/versions/1&quot;,
+      &quot;runs&quot;: [
+        {
+          &quot;id&quot;: &quot;evalrun_b08cf3b3b80a46f9aa10982b1ceb8c06&quot;,
+          &quot;model&quot;: &quot;gpt-4.1&quot;,
+          &quot;status&quot;: &quot;completed&quot;
+        },
+        {
+          &quot;id&quot;: &quot;evalrun_206cb0339dba4ddbb05358d23ad99b31&quot;,
+          &quot;model&quot;: &quot;gpt-4.1-mini&quot;,
+          &quot;status&quot;: &quot;completed&quot;
+        },
+        {
+          &quot;id&quot;: &quot;evalrun_c71adc26392b48b9a341d8b2ad11d3ec&quot;,
+          &quot;model&quot;: &quot;gpt-4.1-nano&quot;,
+          &quot;status&quot;: &quot;completed&quot;
+        }
+      ]
+    },
+    &quot;sft&quot;: {
+      &quot;validatedJobId&quot;: &quot;ftjob-6f20675efd6b465baf35a7c5dff2444a&quot;,
+      &quot;status&quot;: &quot;succeeded&quot;,
+      &quot;trainedTokens&quot;: 7358355,
+      &quot;deployment&quot;: &quot;zava-retail-sft&quot;,
+      &quot;inference&quot;: &quot;passed&quot;,
+      &quot;retestAttempt&quot;: {
+        &quot;jobId&quot;: &quot;ftjob-ced8168de7e1450688b69babdae5989f&quot;,
+        &quot;status&quot;: &quot;cancelled&quot;,
+        &quot;reason&quot;: &quot;The service estimated a multi-day completion time; the job was explicitly cancelled and monitored to terminal before the validated succeeded job and deployment were retested.&quot;
+      }
+    },
+    &quot;rft&quot;: {
+      &quot;validatedJobId&quot;: &quot;ftjob-cca56049bd1c4a6aa7752f8125ddc4e2&quot;,
+      &quot;status&quot;: &quot;succeeded&quot;,
+      &quot;trainedTokens&quot;: 34739,
+      &quot;deployment&quot;: &quot;zava-retail-rft&quot;,
+      &quot;inference&quot;: &quot;passed&quot;,
+      &quot;policyGraderConfigured&quot;: true,
+      &quot;remoteToolsConfigured&quot;: 17
+    },
+    &quot;terminalSweep&quot;: {
+      &quot;nonTerminalJobs&quot;: 0,
+      &quot;taskCreatedRunCounts&quot;: {
+        &quot;completed&quot;: 14,
+        &quot;failedDuringDebugging&quot;: 16,
+        &quot;cancelled&quot;: 3
+      }
+    }
+  },
+  &quot;validation&quot;: {
+    &quot;pythonCompilation&quot;: &quot;passed&quot;,
+    &quot;notebookCompilation&quot;: &quot;passed&quot;,
+    &quot;forbiddenClientAndEndpointScan&quot;: &quot;passed&quot;,
+    &quot;gitDiffCheck&quot;: &quot;passed&quot;
+  }
+}</pre></details>
+            </section>
+
+</body>
+</html>

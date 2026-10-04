@@ -1,311 +1,136 @@
-import json
-import os
-import asyncio
-import matplotlib.patches as mpatches
-import matplotlib.pyplot as plt
-import pandas as pd
+"""Foundry cloud evaluation helpers for the evaluation demos."""
 
-import pandas as pd
-import json
-from tabulate import tabulate
+from __future__ import annotations
 
-from dotenv import load_dotenv
-from azure.identity import AzureCliCredential, get_bearer_token_provider
-from openai import AsyncOpenAI
+import time
+from collections.abc import Iterable, Sequence
+from typing import Any
 
-# Load environment variables from the .env file
-load_dotenv()
+from azure.ai.projects import AIProjectClient
+from azure.ai.projects.models import (
+    AzureAIModelTargetParam,
+    ModelSamplingConfigParam,
+    TargetCompletionEvalRunDataSource,
+)
+from azure.identity import DefaultAzureCredential
 
-# API keys and endpoint
-OAI_API_TYPE = os.getenv("OAI_API_TYPE", "azure").lower()
-AZURE_API_KEY = os.getenv("AZURE_API_KEY", None)
-AZURE_API_ENDPOINT = os.getenv("AZURE_API_ENDPOINT", "") + "/openai/v1"
-AZURE_AI_PROJECT_ENDPOINT = os.getenv("AZURE_AI_PROJECT_ENDPOINT", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", None)
-OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "") + "/v1"
 
-# -------------------------------------------------------------------------------
-# --                           Eval Client Class                               --
-# -------------------------------------------------------------------------------
-class AsyncEvalClient:
+TERMINAL_EVALUATION_STATUSES = {"completed", "failed", "canceled"}
 
-    def __init__(self, project_endpoint: str | None = None):
-        """ 
-        Initialize the AsyncEvalClient with the appropriate OpenAI client based on the API type.
-        """
-        params = {"aoai-evals": "preview"} if OAI_API_TYPE != "openai" else None
-        if OAI_API_TYPE == "openai":
-            base_url = OPENAI_API_BASE
-            api_key = OPENAI_API_KEY
-        else:
-            azure_endpoint = project_endpoint or AZURE_AI_PROJECT_ENDPOINT
-            base_url = (
-                f"{azure_endpoint.rstrip('/')}/openai/v1"
-                if azure_endpoint
-                else AZURE_API_ENDPOINT
-            )
-            if AZURE_API_KEY:
-                api_key = AZURE_API_KEY
-            else:
-                token_provider = get_bearer_token_provider(
-                    AzureCliCredential(process_timeout=60),
-                    "https://ai.azure.com/.default",
-                )
 
-                async def api_key():
-                    return await asyncio.to_thread(token_provider)
+def build_model_target_data_source(
+    *,
+    items: Sequence[dict[str, Any]],
+    model: str,
+    input_messages: dict[str, Any],
+    max_completion_tokens: int,
+    top_p: float = 1.0,
+) -> TargetCompletionEvalRunDataSource:
+    """Build a stable Foundry model-target evaluation data source."""
+    return TargetCompletionEvalRunDataSource(
+        type="azure_ai_target_completions",
+        source={
+            "type": "file_content",
+            "content": list(items),
+        },
+        input_messages=input_messages,
+        target=AzureAIModelTargetParam(
+            type="azure_ai_model",
+            model=model,
+            sampling_params=ModelSamplingConfigParam(
+                top_p=top_p,
+                max_completion_tokens=max_completion_tokens,
+            ),
+        ),
+    )
 
-        self.client = AsyncOpenAI(
-            base_url=base_url,
-            api_key=api_key,
-            default_query=params
+
+class FoundryEvaluationClient:
+    """Own the Foundry project client and its OpenAI-compatible eval operation."""
+
+    def __init__(self, project_endpoint: str) -> None:
+        self.credential = DefaultAzureCredential(process_timeout=90)
+        self.project_client = AIProjectClient(
+            endpoint=project_endpoint,
+            credential=self.credential,
         )
+        self._protocol_client = self.project_client.get_openai_client()
 
-    # ---------------------------- Evaluation File Upload ----------------------------
-    async def upload_file(self, file_name: str, file_path: str, purpose: str = "evals") -> str:
-        """
-        Upload a file to either Azure or OpenAI based on the configuration in the .env file.
-        If a file with the same name already exists, return its ID instead of uploading again.
+    def create_evaluation(
+        self,
+        *,
+        name: str,
+        data_source_config: dict[str, Any],
+        testing_criteria: Iterable[dict[str, Any]],
+    ):
+        evaluation = self._protocol_client.evals.create(
+            name=name,
+            data_source_config=data_source_config,
+            testing_criteria=list(testing_criteria),
+        )
+        print(f"Evaluation created: {evaluation.id}")
+        return evaluation
 
-        Args:
-            file_name (str): The name of the file to upload.
-            file_path (str): The path to the file to upload.
-            purpose (str): The purpose of the file upload (e.g., "fine-tune", "evals"). Defaults to "evals".
+    def create_run(
+        self,
+        *,
+        evaluation_id: str,
+        name: str,
+        data_source: TargetCompletionEvalRunDataSource,
+        metadata: dict[str, str] | None = None,
+    ):
+        run = self._protocol_client.evals.runs.create(
+            eval_id=evaluation_id,
+            name=name,
+            data_source=data_source,
+            metadata=metadata,
+        )
+        print(f"Evaluation run created: {run.id}")
+        return run
 
-        Returns:
-            str: The file ID of the uploaded or existing file, or an empty string if the operation fails.
-        """
-
-        # Check if the file already exists
-        list_response = await self.client.files.list()
-
-        files = list_response.data
-        local_size = os.path.getsize(file_path)
-        for file in files:
-            if file.filename == file_name and file.bytes == local_size:
-                print(f"File '{file_name}' already exists. Returning existing file ID.")
-                return file.id
-
-        # File does not exist, proceed with upload
-        try:
-            with open(file_path, 'rb') as f:
-                response = await self.client.files.create(
-                    file=f,
-                    purpose= purpose, # type: ignore
-                )
-
-            print(f"File uploaded successfully to {'OpenAI' if OAI_API_TYPE == 'openai' else 'Azure'}.")
-            return response.id
-        except Exception as e:
-            print(f"Failed to upload file to {'OpenAI' if OAI_API_TYPE == 'openai' else 'Azure'}: {e}")
-            return ''
-
-    # ---------------------------- Evaluation Methods ----------------------------
-    # Create an evaluation using the SDK
-    async def create_eval_sdk(self, name, data_source_config, testing_criteria):
-        """
-        Create a new evaluation using the SDK.
-        Parameters:
-            name (str): The name of the evaluation.
-            data_source_config (dict): Configuration for the data source.
-            testing_criteria (list): List of testing criteria for the evaluation.
-        Returns:
-            str: The ID of the created evaluation, or None if creation failed.
-        """
-        try:
-            response = await self.client.evals.create(
-                name=name,
-                data_source_config=data_source_config,
-                testing_criteria=testing_criteria
-            )
-
-            eval_id = response.to_dict()["id"]
-            print(f"Evaluation created successfully with ID: {eval_id}")
-            return eval_id
-
-        except Exception as e:
-            print(f"Failed to create evaluation. Error: {e}")
-            raise
-
-
-    # List all evaluations using the SDK
-    async def get_eval_list_sdk(self):
-        """
-        List all evaluations using the SDK.
-        Returns:
-            list: A list of evaluations, each represented as a dictionary.
-        """
-        response = await self.client.evals.list()
-        print("Fetched evaluations successfully.")
-        return response.data
-
-
-    # Get details of a specific evaluation using the SDK
-    async def get_eval_sdk(self, eval_id):
-        """
-        Get details of a specific evaluation using the SDK.
-        Parameters:
-            eval_id (str): The ID of the evaluation to retrieve.
-        Returns:
-            dict: A dictionary containing evaluation details, including the name and None if retrieval failed.
-        """
-        try:
-            response = await self.client.evals.retrieve(eval_id=eval_id)
-            return response.to_dict()
-        except Exception as e:
-            print(f"Failed to fetch evaluation details for ID: {eval_id}. Error: {e}")
-            return {"name": f"Unknown Evaluation ({eval_id})"}
-
-
-    # Delete an evaluation using the SDK
-    async def delete_eval_sdk(self, eval_id):
-        """
-        Delete an evaluation using the SDK.
-        Parameters:
-            eval_id (str): The ID of the evaluation to delete.
-        Returns:
-            bool: True if deletion was successful, False otherwise.
-        """
-        try:
-            await self.client.evals.delete(eval_id=eval_id)
-            print(f"Evaluation with ID {eval_id} deleted successfully.")
-            return True
-        except Exception as e:
-            print(f"Failed to delete evaluation with ID: {eval_id}. Error: {e}")
-            return False
-
-
-    # -------------------------- Evaluation Run Methods --------------------------
-    # Create a new evaluation run using the SDK
-    async def create_eval_run_sdk(self, eval_id, name, data_source, metadata=None) -> dict:
-        """
-        Create a new evaluation run using the SDK.
-        Parameters:
-            eval_id (str): The ID of the evaluation to run.
-            name (str): The name of the evaluation run.
-            data_source (dict): Data source configuration for the evaluation run.
-            metadata (dict, optional): Additional metadata for the evaluation run.
-        Returns:
-            dict: The response from the SDK containing the evaluation run details, or an empty dictionary if creation failed.
-        """
-        try:
-            response = await self.client.evals.runs.create(
-                eval_id=eval_id,
-                name=name,
-                metadata=metadata,
-                data_source=data_source
-            )
-            eval_run_id = response.to_dict().get("id", "Unknown ID")
-            print(f"Created evaluation run for {name}: {eval_run_id}")
-            return response.to_dict()
-        except Exception as e:
-            print(f"Failed to create evaluation run. Error: {e}")
-            raise
-
-
-    # Get a list of evaluation runs for a specific evaluation using the SDK
-    async def get_eval_run_list_sdk(self, eval_id) -> list:
-        """
-        Get a list of evaluation runs for a specific evaluation using the SDK.
-        Parameters:
-            eval_id (str): The ID of the evaluation to retrieve runs for.
-        """
-        response = await self.client.evals.runs.list(eval_id=eval_id)
-        return response.data
-
-
-    # Get details of a specific evaluation run using the SDK
-    async def get_eval_run_sdk(self, eval_id, run_id) -> dict:
-        """
-        Get details of a specific evaluation run using the SDK.
-        Parameters:
-            eval_id (str): The ID of the evaluation.
-            run_id (str): The ID of the evaluation run to retrieve.
-        Returns:
-            dict: A dictionary containing evaluation run details, or an empty dictionary if retrieval failed.
-        """
-        try:
-            response = await self.client.evals.runs.retrieve(eval_id=eval_id, run_id=run_id)
-            return response.to_dict()
-        except Exception as e:
-            print(f"Failed to fetch evaluation run details for ID: {run_id}. Error: {e}")
-            return {}
-
-
-    # Get the output items of a specific evaluation run using the SDK
-    async def get_eval_run_output_items_sdk(self, eval_id, run_id) -> list:
-        """
-        Get the output items of a specific evaluation run using the SDK.
-        Parameters:
-            eval_id (str): The ID of the evaluation.
-            run_id (str): The ID of the evaluation run to retrieve output items for.
-        Returns:
-            list: A list of output items for the evaluation run, or an empty list if retrieval failed.
-        """
-        try:
-            response = await self.client.evals.runs.output_items.list(eval_id=eval_id, run_id=run_id)
-            return [item async for item in response]
-        except Exception as e:
-            print(f"Failed to fetch output items for evaluation run ID: {run_id}. Error: {e}")
-            return []
-
-
-    # Get the single output item of a specific evaluation run using the SDK
-    async def get_eval_run_output_item_sdk(self, eval_id, run_id, item_id) -> dict:
-        """
-        Get a specific output item of a specific evaluation run using the SDK.
-        Parameters:
-            eval_id (str): The ID of the evaluation.
-            run_id (str): The ID of the evaluation run to retrieve the output item for.
-            item_id (str): The ID of the output item to retrieve.
-        Returns:
-            dict: A dictionary containing the output item details, or an empty dictionary if retrieval failed.
-        """
-        try:
-            response = await self.client.evals.runs.output_items.retrieve(
-                eval_id=eval_id,
+    def wait_for_run(
+        self,
+        *,
+        evaluation_id: str,
+        run_id: str,
+        polling_interval: float = 5,
+    ):
+        """Poll the Foundry cloud evaluation until it reaches a terminal state."""
+        last_status = None
+        while True:
+            run = self._protocol_client.evals.runs.retrieve(
+                eval_id=evaluation_id,
                 run_id=run_id,
-                output_item_id=item_id
             )
-            return response.to_dict()
-        except Exception as e:
-            print(f"Failed to fetch output item for evaluation run ID: {run_id}, item ID: {item_id}. Error: {e}")
-            return {}
+            if run.status != last_status:
+                print(f"Evaluation run {run_id}: {run.status}")
+                last_status = run.status
+            if run.status in TERMINAL_EVALUATION_STATUSES:
+                if run.status != "completed":
+                    raise RuntimeError(
+                        f"Evaluation run {run_id} ended with status {run.status}: "
+                        f"{getattr(run, 'error', None)}"
+                    )
+                return run
+            time.sleep(polling_interval)
 
+    def list_output_items(self, *, evaluation_id: str, run_id: str) -> list[dict[str, Any]]:
+        items = self._protocol_client.evals.runs.output_items.list(
+            eval_id=evaluation_id,
+            run_id=run_id,
+        )
+        return [
+            item.model_dump(mode="json") if hasattr(item, "model_dump") else dict(item)
+            for item in items
+        ]
 
-    # Cancel a specific evaluation run using the SDK
-    async def cancel_eval_run_sdk(self, eval_id, run_id) -> bool:
-        """
-        Cancel a specific evaluation run using the SDK.
-        Parameters:
-            eval_id (str): The ID of the evaluation.
-            run_id (str): The ID of the evaluation run to cancel.
-        Returns:
-            bool: True if cancellation was successful, False otherwise.
-        """
-        try:
-            await self.client.evals.runs.cancel(eval_id=eval_id, run_id=run_id)
-            print(f"Evaluation run with ID {run_id} cancelled successfully.")
-            return True
-        except Exception as e:
-            print(f"Failed to cancel evaluation run with ID: {run_id}. Error: {e}")
-            return False
+    def close(self) -> None:
+        self._protocol_client.close()
+        self.project_client.close()
+        self.credential.close()
 
+    def __enter__(self) -> "FoundryEvaluationClient":
+        return self
 
-    # Delete a specific evaluation run using the SDK
-    async def delete_eval_run_sdk(self, eval_id, run_id) -> bool:
-        """
-        Delete a specific evaluation run using the SDK.
-        Parameters:
-            eval_id (str): The ID of the evaluation.
-            run_id (str): The ID of the evaluation run to delete.
-        Returns:
-            bool: True if deletion was successful, False otherwise.
-        """
-        try:    
-            await self.client.evals.runs.delete(eval_id=eval_id, run_id=run_id)
-            print(f"Evaluation run with ID {run_id} deleted successfully.")
-            return True
-        except Exception as e:
-            print(f"Failed to delete evaluation run with ID: {run_id}. Error: {e}")
-            return False
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self.close()

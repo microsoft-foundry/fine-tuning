@@ -111,27 +111,37 @@ pip install -r requirements-demo.txt
 ### 2. Create and configure a `.env` file
 Make sure it's got at least:
 
-- `AZURE_OPENAI_API_KEY` -- no Entra id used yet
-- `AZURE_OPENAI_ENDPOINT` -- full endpoint like https://your-foundry-resource.openai.azure.com/openai/v1/
+- `FOUNDRY_PROJECT_ENDPOINT` -- training project endpoint like `https://<resource>.services.ai.azure.com/api/projects/<project>`
+- `FOUNDRY_EVALUATION_PROJECT_ENDPOINT` -- optional evaluation project endpoint when endpoint-grader enablement differs by project
 - `AZURE_FUNCTIONS_ENDPOINT` -- full path to Azure Function like https://your-function-app-name.azurewebsites.net/api/grader
 - `X_FUNCTIONS_KEY` -- authentication key to the Azure Function
+
+Run `az login` before starting the notebook. It uses `AIProjectClient` with
+`DefaultAzureCredential`; model, evaluation, file, and fine-tuning operations
+come from the applicable project client's documented `get_openai_client()`
+child. The notebook reuses processed project files with matching names before
+uploading, which avoids exhausting the project file quota during repeated runs.
 
 
 ## Local Testing
 The grader logic is in [grader.py](./grader.py). You can test it in two ways:
 
 ### Direct invocation
-The [grader.py](./grader.py) file includes a `__main__` entrypoint, so you can
-invoke it directly from the command line:
+Import the grader and call `grade` with the same `sample` and `item` objects
+that Foundry supplies:
 
-```bash
-python grader.py
-```
-```
-grading with:
-        sample: {'output_json': {'expression': '(72 + 22) / (88 - 86)', 'result': 47}}
-        item: {'mesages': [{'role': 'developer', 'content': 'You are an expert in arithmetic problem solving...'}, {'role': 'user', 'content': 'target: 47\nnumbers: [86, 22, 88, 72]'}], 'target': 47, 'nums': [86, 22, 88, 72]}
-score: 5
+```python
+from grader import grade
+
+sample = {
+    "output_json": {
+        "expression": "(72 + 22) / (88 - 86)",
+        "result": "47",
+    }
+}
+item = {"target": 47, "nums": [86, 22, 88, 72]}
+
+assert grade(sample, item) == 1.0
 ```
 
 ### As a local Azure Function

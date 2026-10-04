@@ -73,7 +73,8 @@ Then you will run two jobs:
 
 ### Access
 - Your Azure subscription must be enabled for **RFT tool calling** and (if using Job B) **endpoint graders**.
-- You must have an Azure AI Foundry / Azure OpenAI endpoint + API key for the region where RFT is enabled for your model.
+- You must have a Microsoft Foundry project endpoint in a region where RFT is enabled for your model.
+- Your signed-in Entra ID identity must have access to the project.
 
 ### Local tooling
 - Python **3.10+** (3.11 recommended)
@@ -87,13 +88,9 @@ Then you will run two jobs:
 
 Create a `.env` file in your project root (or set env vars in your shell). Example:
 
-**Note** : to use endpoint grader, the API version needs to be `v1`.
-
 ```bash
-# Azure OpenAI / Foundry
-AZURE_OPENAI_ENDPOINT="https://<your-resource>.openai.azure.com"
-AZURE_OPENAI_API_KEY="<your-key>"
-AZURE_OPENAI_API_VERSION="v1"
+# Microsoft Foundry project
+FOUNDRY_PROJECT_ENDPOINT="https://<resource>.services.ai.azure.com/api/projects/<project>"
 
 # Azure Function App
 FUNC_APP_NAME="<your-function-app-name>"
@@ -298,7 +295,10 @@ Both flows:
 4. Print job ID and initial status
 
 
-Ensure `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_API_VERSION` are set before running.
+Run `az login`, set `FOUNDRY_PROJECT_ENDPOINT` if you are not using the notebook's
+default project, and ensure your Entra ID identity can access that project. The
+notebook creates `AIProjectClient` with `DefaultAzureCredential` and obtains all
+file and fine-tuning operations from `AIProjectClient.get_openai_client()`.
 
 
 ## 7) Monitor job status

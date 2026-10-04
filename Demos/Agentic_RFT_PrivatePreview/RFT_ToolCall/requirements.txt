@@ -3,7 +3,8 @@
 # ============================
 
 # Notebook / client-side (submit RFT jobs)
-openai>=1.0.0
+azure-ai-projects>=2.3.0,<3
+azure-identity>=1.17.0
 python-dotenv>=1.0.0
 
 # Azure Functions + FastAPI (tool + endpoint grader server)

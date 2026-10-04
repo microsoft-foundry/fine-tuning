@@ -14,20 +14,15 @@ from typing import Any
 import pandas as pd
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
-from openai import OpenAI
 from PIL import Image
 
-PROJECT_ENDPOINT = (
-    "https://eastus2-prakharg-demo-2026.services.ai.azure.com/api/projects/"
-    "eastus2-prakharg-demo-2026"
-)
-SUBSCRIPTION_ID = "ba7979f7-d040-49c9-af1a-7414402bf622"
-RESOURCE_GROUP = "prakharg-demo-2026"
-ACCOUNT_NAME = "eastus2-prakharg-demo-2026"
+PROJECT_ENDPOINT = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
+SUBSCRIPTION_ID = os.environ["AZURE_SUBSCRIPTION_ID"]
+RESOURCE_GROUP = os.environ["AZURE_RESOURCE_GROUP"]
+ACCOUNT_NAME = os.environ["AZURE_AI_ACCOUNT_NAME"]
 BASE_MODEL = "gpt-4o-2024-08-06"
 BASE_DEPLOYMENT = "image-breed-gpt-4o-base"
-FT_DEPLOYMENT = "image-breed-gpt-4o-ft"
-SUCCESSFUL_JOB_ID = "ftjob-25d544adc35d47e1bbcf92b3977037d3"
+FT_DEPLOYMENT_PREFIX = "image-breed-gpt-4o-ft"
 DATASET_URL = (
     "https://www.kaggle.com/api/v1/datasets/download/"
     "jessicali9530/stanford-dogs-dataset"
@@ -49,13 +44,12 @@ def configure_azure_cli_path() -> None:
         os.environ["PATH"] = scripts + os.pathsep + os.environ.get("PATH", "")
 
 
-def get_openai_client() -> OpenAI:
+def get_project_client() -> AIProjectClient:
     configure_azure_cli_path()
-    project = AIProjectClient(
+    return AIProjectClient(
         endpoint=PROJECT_ENDPOINT,
         credential=DefaultAzureCredential(),
     )
-    return project.get_openai_client()
 
 
 def download_dataset(root: Path) -> Path:
@@ -121,29 +115,42 @@ def classification_prompt(labels: list[str]) -> str:
 
 
 def classify(
-    client: OpenAI,
+    client: Any,
     deployment: str,
     prompt: str,
     image_uri: str,
 ) -> str:
-    response = client.chat.completions.create(
-        model=deployment,
-        messages=[
-            {"role": "system", "content": prompt},
-            {
-                "role": "user",
-                "content": [
+    for attempt in range(1, 13):
+        try:
+            response = client.chat.completions.create(
+                model=deployment,
+                messages=[
+                    {"role": "system", "content": prompt},
                     {
-                        "type": "image_url",
-                        "image_url": {"url": image_uri, "detail": "low"},
-                    }
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": image_uri, "detail": "low"},
+                            }
+                        ],
+                    },
                 ],
-            },
-        ],
-        max_tokens=20,
-        temperature=0,
-    )
-    return (response.choices[0].message.content or "").strip()
+                max_tokens=20,
+                temperature=0,
+            )
+            return (response.choices[0].message.content or "").strip()
+        except Exception as error:
+            body = getattr(error, "body", None) or {}
+            code = (body.get("error") or body).get("code") if isinstance(body, dict) else None
+            if code != "BadRequestForDependentService" or attempt == 12:
+                raise
+            print(
+                f"Deployment {deployment} is still propagating; "
+                f"retrying in 30 seconds ({attempt}/12)"
+            )
+            time.sleep(30)
+    raise RuntimeError(f"Classification retries exhausted for {deployment}")
 
 
 def normalize_prediction(value: str, labels: list[str]) -> str:
@@ -185,7 +192,7 @@ def write_fine_tuning_jsonl(
 
 
 def wait_for_job(
-    client: OpenAI,
+    client: Any,
     job_id: str,
     poll_seconds: int = 60,
 ) -> Any:
@@ -199,7 +206,7 @@ def wait_for_job(
 
 
 def wait_for_file(
-    client: OpenAI,
+    client: Any,
     file_id: str,
     poll_seconds: int = 10,
 ) -> Any:
@@ -214,7 +221,11 @@ def wait_for_file(
         time.sleep(poll_seconds)
 
 
-def deploy_fine_tuned_model(model_name: str) -> dict[str, Any]:
+def deploy_fine_tuned_model(
+    project_client: AIProjectClient,
+    model_name: str,
+    deployment_name: str,
+) -> Any:
     configure_azure_cli_path()
     command = [
         "az",
@@ -229,7 +240,7 @@ def deploy_fine_tuned_model(model_name: str) -> dict[str, Any]:
         "--name",
         ACCOUNT_NAME,
         "--deployment-name",
-        FT_DEPLOYMENT,
+        deployment_name,
         "--model-format",
         "OpenAI",
         "--model-name",
@@ -243,59 +254,32 @@ def deploy_fine_tuned_model(model_name: str) -> dict[str, Any]:
         "--output",
         "json",
     ]
-    subprocess.run(
-        command,
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=600,
-    )
-    show_command = [
-        "az",
-        "cognitiveservices",
-        "account",
-        "deployment",
-        "show",
-        "--subscription",
-        SUBSCRIPTION_ID,
-        "--resource-group",
-        RESOURCE_GROUP,
-        "--name",
-        ACCOUNT_NAME,
-        "--deployment-name",
-        FT_DEPLOYMENT,
-        "--output",
-        "json",
-    ]
-    for _ in range(60):
-        result = subprocess.run(
-            show_command,
+    try:
+        subprocess.run(
+            command,
             check=True,
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=600,
         )
-        deployment = json.loads(result.stdout)
-        state = deployment["properties"]["provisioningState"]
-        print(f"Deployment {FT_DEPLOYMENT}: {state}")
-        if state == "Succeeded":
-            return deployment
-        if state in {"Failed", "Canceled"}:
-            raise RuntimeError(f"Deployment {FT_DEPLOYMENT} ended as {state}")
+    except subprocess.CalledProcessError as error:
+        details = (error.stderr or error.stdout or str(error)).strip()
+        raise RuntimeError(
+            f"Deployment {deployment_name} creation failed: {details}"
+        ) from error
+    for _ in range(60):
+        try:
+            deployment = project_client.deployments.get(deployment_name)
+        except Exception as error:
+            print(f"Deployment {deployment_name}: not visible yet ({error})")
+        else:
+            print(
+                f"Deployment {deployment_name}: "
+                f"{deployment.model_name} version {deployment.model_version}"
+            )
+            if deployment.model_name == model_name:
+                return deployment
         time.sleep(30)
-    raise TimeoutError(f"Deployment {FT_DEPLOYMENT} did not become ready")
-
-
-def project_job_link(job_id: str) -> str:
-    return (
-        "https://ai.azure.com/fine-tuning/"
-        + job_id
-        + "?wsid=/subscriptions/"
-        + SUBSCRIPTION_ID
-        + "/resourceGroups/"
-        + RESOURCE_GROUP
-        + "/providers/Microsoft.CognitiveServices/accounts/"
-        + ACCOUNT_NAME
-        + "/projects/"
-        + ACCOUNT_NAME
+    raise TimeoutError(
+        f"Deployment {deployment_name} did not expose model {model_name}"
     )

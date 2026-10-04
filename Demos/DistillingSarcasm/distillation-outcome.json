@@ -2,9 +2,9 @@
   "teacher_model": "gpt-4.1",
   "student_base_model": "gpt-4.1-nano",
   "distilled_model": "gpt-4.1-nano-distilled-bf779c52",
-  "teacher_average_score": 6.4,
-  "student_base_average_score": 3.1,
-  "distilled_average_score": 5.2,
-  "absolute_improvement": 2.1,
+  "teacher_average_score": 5.8,
+  "student_base_average_score": 2.9,
+  "distilled_average_score": 5.8,
+  "absolute_improvement": 2.9,
   "intended_outcome_met": true
 }

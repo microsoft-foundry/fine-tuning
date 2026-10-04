@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "demo": "Demos/Agentic_RFT_PrivatePreview",
+  "completed_at": "2026-10-04T02:38:00Z",
+  "overall_status": "succeeded",
+  "upgrade": {
+    "status": "completed",
+    "sdk": {
+      "package": "azure-ai-projects",
+      "requirement": ">=2.3.0,<3",
+      "tested_version": "2.7.0"
+    },
+    "authentication": "Microsoft Entra ID via DefaultAzureCredential",
+    "client": "AIProjectClient",
+    "compatible_child_client": "AIProjectClient.get_openai_client()",
+    "removed": [
+      "direct OpenAI imports and client construction",
+      "model-service API-key authentication",
+      "manually constructed OpenAI routes",
+      "account-level Azure OpenAI endpoints",
+      "explicit OpenAI SDK dependency"
+    ]
+  },
+  "execution": {
+    "project_endpoint": "https://eastus2-prakharg-demo-2026.services.ai.azure.com/api/projects/eastus2-prakharg-demo-2026",
+    "notebooks": [
+      "Demos/Agentic_RFT_PrivatePreview/RFT_ToolCall/rft-tool-call.ipynb",
+      "Demos/Agentic_RFT_PrivatePreview/RFT_EndpointGrader/demo.ipynb"
+    ],
+    "original_training_file": {
+      "path": "Demos/Agentic_RFT_PrivatePreview/RFT_EndpointGrader/data/countdown_train_25.jsonl",
+      "file_id": "file-9424c609db6b4f1da2a9faad479e68bb",
+      "rows": 25,
+      "status": "processed"
+    },
+    "original_validation_file": {
+      "path": "Demos/Agentic_RFT_PrivatePreview/RFT_EndpointGrader/data/countdown_valid_10.jsonl",
+      "file_id": "file-7aa59f1ac20d4dde875533fc54ba6a36",
+      "rows": 10,
+      "status": "processed"
+    }
+  },
+  "fine_tuning_jobs": [
+    {
+      "id": "ftjob-4777ca37292942efa082cb2bad5ce257",
+      "scenario": "Tool calling with endpoint grader",
+      "status": "succeeded",
+      "fine_tuned_model": "o4-mini-2025-04-16.ft-4777ca37292942efa082cb2bad5ce257-tc-tools-endpoint-grader"
+    },
+    {
+      "id": "ftjob-6fd19bc4f5bf435c9ed022ff18be1cd3",
+      "scenario": "Countdown Python plus endpoint multi-grader using the original 25/10 datasets",
+      "status": "succeeded",
+      "fine_tuned_model": "o4-mini-2025-04-16.ft-6fd19bc4f5bf435c9ed022ff18be1cd3-agentic-countdown-original-dc8fbb96"
+    }
+  ],
+  "root_cause_and_fix": {
+    "misleading_user_error": "File preprocessing failed. For more details, please check the Logs tab.",
+    "misleading_parser_error": "Invalid file format. Example 1 cannot be parsed.",
+    "hyena_error": "mentat.graders.caas.InvalidPythonCode: use of module 'sys' is not allowed in Python graders",
+    "root_cause": "The complete local grader file was submitted, including a __main__ test block that imported the unsupported sys module. Hyena statically validates the complete Python AST before parsing the first RFT row.",
+    "fixes": [
+      "Removed the local __main__ harness and unsupported sys import from submitted grader source.",
+      "Reduced grader imports to ast and json.",
+      "Loaded grader.py directly from disk to avoid cached or stale module source.",
+      "Fixed subtraction operand detection and malformed-expression handling.",
+      "Restored the original 25-row training and 10-row validation files.",
+      "Uploaded fresh files after deleting stale failed-attempt and evaluation files to clear project quota."
+    ]
+  },
+  "validation": {
+    "original_schema_compatible": true,
+    "file_preprocessing": "passed",
+    "training": "succeeded",
+    "grader_endpoint_score": 1.0,
+    "embedded_secret_scan": "passed",
+    "legacy_reference_scan": "passed"
+  },
+  "outcome": "Both Agentic RFT notebooks use Foundry SDK 2.x with Entra ID. The tool-calling and countdown endpoint/Python grader scenarios succeeded end to end. The final countdown run proves the original datasets were valid and the previous preprocessing failures were caused by the unsupported sys import."
+}

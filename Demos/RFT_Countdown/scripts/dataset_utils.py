@@ -1,23 +1,3 @@
-# Import required libraries
-import requests
-import time
-import json
-import asyncio
-
-from dotenv import load_dotenv
-import os
-
-# Load environment variables from the .env file
-load_dotenv(override=True)
-
-# API keys and endpoint
-AZURE_API_KEY = os.getenv("AZURE_API_KEY")
-AZURE_API_ENDPOINT = os.getenv("AZURE_API_ENDPOINT")
-API_VERSION = os.getenv("API_VERSION")
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_API_ENDPOINT = os.getenv("OPENAI_API_BASE")
-
 import json
 
 def save_dataset_as_jsonl(dataset, file_path, max_records=None):
@@ -124,4 +104,3 @@ def convert_to_rft_dataset(input_path, output_path, system_prompt, max_records=1
             count += 1
 
     print(f"✅ Converted {count} records to RFT format and saved to {output_path}")
-

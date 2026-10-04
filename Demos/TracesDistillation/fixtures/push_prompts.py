@@ -2,7 +2,7 @@
 to generate App Insights traces that the Data Generation API can later
 distill into SFT training data.
 
-Auth: uses DefaultAzureCredential (az login). No API key needed.
+Auth: uses DefaultAzureCredential with Entra ID (for example, `az login`).
 
 Usage:
   set AZURE_AI_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
@@ -69,7 +69,7 @@ def push_one(responses_client, agent_name, agent_version, prompt, timeout=120):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--agent-name", required=True)
-    p.add_argument("--agent-version", default=None)
+    p.add_argument("--agent-version", required=True)
     p.add_argument("--num-prompts", type=int, default=500)
     p.add_argument("--project-endpoint", default=os.environ.get("AZURE_AI_PROJECT_ENDPOINT"))
     p.add_argument("--concurrency", type=int, default=4)
@@ -83,8 +83,16 @@ def main():
     from azure.ai.projects import AIProjectClient
     from azure.identity import DefaultAzureCredential
 
-    project = AIProjectClient(endpoint=args.project_endpoint, credential=DefaultAzureCredential())
-    responses = project.get_openai_client().responses
+    project = AIProjectClient(
+        endpoint=args.project_endpoint,
+        credential=DefaultAzureCredential(),
+        allow_preview=True,
+    )
+    agent = project.agents.get_version(
+        agent_name=args.agent_name,
+        agent_version=args.agent_version,
+    )
+    responses = project.get_openai_client(agent_name=agent.name).responses
 
     rng = random.Random(args.seed)
     prompts = []

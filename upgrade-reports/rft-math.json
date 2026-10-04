@@ -1,0 +1,82 @@
+{
+  "demo": "Demos/RFT_Math_Reasoning",
+  "status": "completed_with_deployment_quota_block",
+  "completed_at": "2026-10-03T20:31:57Z",
+  "scope": {
+    "modified": [
+      "Demos/RFT_Math_Reasoning/.env.template",
+      "Demos/RFT_Math_Reasoning/README.md",
+      "Demos/RFT_Math_Reasoning/requirements.txt",
+      "Demos/RFT_Math_Reasoning/rft_math_reasoning.ipynb"
+    ],
+    "report": "upgrade-reports/rft-math.json"
+  },
+  "sdk": {
+    "azure_ai_projects": "2.7.0",
+    "azure_identity": "1.26.0",
+    "python_dotenv": "1.2.4",
+    "client": "AIProjectClient",
+    "credential": "DefaultAzureCredential",
+    "configuration": "AZURE_AI_PROJECT_ENDPOINT",
+    "protocol_client_source": "AIProjectClient.get_openai_client()"
+  },
+  "removed": [
+    "direct OpenAI imports and client construction",
+    "API-key configuration",
+    "hard-coded project URLs",
+    "Azure OpenAI account endpoints",
+    "subscription, resource-group, and account-name configuration",
+    "CognitiveServicesManagementClient deployment construction",
+    "direct openai and azure-mgmt-cognitiveservices requirements"
+  ],
+  "execution": {
+    "notebook": "Demos/RFT_Math_Reasoning/rft_math_reasoning.ipynb",
+    "all_code_cells_completed": true,
+    "grader_tests": {
+      "passed": 6,
+      "failed": 0
+    },
+    "training_file_id": "file-af53e4fcb1d74b68b1a4ae0593123d7d",
+    "validation_file_id": "file-4de0515e4cfd4528913085f3b6310317",
+    "job_id": "ftjob-bdba18dfcb9c4110acd6c5967a66f879",
+    "job_status": "succeeded",
+    "created_at": "2026-10-03T19:45:42Z",
+    "finished_at": "2026-10-03T20:31:57Z",
+    "training_hours_billed": 0.568027777777778,
+    "trained_tokens": 27354,
+    "result_file_id": "file-3e3d50e52dd64b4a9e96f525bfae44f1",
+    "fine_tuned_model": "qwen3.6-35b-a3b.ft-bdba18dfcb9c4110acd6c5967a66f879-math-reasoning-rft-sdk2"
+  },
+  "validation": {
+    "status": "passed",
+    "eval_id": "eval_bfd3ab92f412486aabfae0ee2a28b6fd",
+    "final_run_id": "evalrun_a28c20eae5904861a12bbdd9cac1711e",
+    "mean_reward_history": [
+      0.05,
+      0.2
+    ],
+    "final_mean_reward": 0.2,
+    "validated_answer": "0",
+    "reasoning_word_count": 257
+  },
+  "deployment": {
+    "attempted": true,
+    "method": "AIProjectClient project-scoped deployment list and get operations",
+    "deployment_name": "rft-math-c5967a66f879",
+    "status": "blocked_by_quota",
+    "project_lookup_result": "not_found",
+    "sdk_limitation": "azure-ai-projects 2.7.0 exposes project deployment discovery but not deployment creation",
+    "quota_finding": {
+      "reused_after_upgraded_training_and_validation": true,
+      "sku": "Fireworks GlobalProvisionedManaged",
+      "required_capacity": 90,
+      "available_capacity": 0,
+      "quota_limit": 0
+    }
+  },
+  "retest_notes": [
+    "The first local execution selected a stale system Jupyter kernel and failed before service-side upload because of an incompatible Brotli binding.",
+    "The notebook was rerun with the demo virtual environment kernel.",
+    "The rerun uploaded both datasets, created a new RFT job, monitored it to succeeded, validated the final evaluation output, and completed the deployment availability attempt."
+  ]
+}

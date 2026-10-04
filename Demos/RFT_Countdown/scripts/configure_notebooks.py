@@ -4,10 +4,6 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PROJECT_ENDPOINT = (
-    "https://eastus2-prakharg-demo-2026.services.ai.azure.com/api/projects/"
-    "eastus2-prakharg-demo-2026"
-)
 
 INSTRUCTION = '''instruction = (
     "You are an expert in arithmetic problem solving. Given a target number and a list of numbers, "
@@ -44,13 +40,13 @@ for index in random.sample(range(len(dataset)), 5):
     item = dataset[index]
     print(f"Target: {item['target']} Numbers: {item['nums']}")'''
 
-CONSTANTS = f'''import os
-os.environ["AZURE_AI_PROJECT_ENDPOINT"] = "{PROJECT_ENDPOINT}"
+CONSTANTS = '''import os
 
-BASE_MODEL = "o4-mini-2025-04-16"
-BASELINE_DEPLOYMENT = "gpt-5.4-mini"
+PROJECT_ENDPOINT = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
+BASE_MODEL = os.getenv("FOUNDRY_BASE_MODEL", "o4-mini-2025-04-16")
+BASELINE_DEPLOYMENT = os.environ["FOUNDRY_BASELINE_DEPLOYMENT"]
 GRADER_MODEL = "o3-mini"
-print("Project endpoint:", os.environ["AZURE_AI_PROJECT_ENDPOINT"])
+print("Project endpoint:", PROJECT_ENDPOINT)
 print("RFT base model:", BASE_MODEL)
 print("Baseline deployment:", BASELINE_DEPLOYMENT)
 print("RFT grader model:", GRADER_MODEL)'''

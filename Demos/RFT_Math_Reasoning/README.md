@@ -62,11 +62,11 @@ The RFT dataset consists of advanced mathematical problems with ground truth ans
 This cookbook teaches you how to:
 
 1. Understand the RFT dataset format (prompts + ground truth answers)
-2. Set up your Microsoft Foundry environment for RFT
+2. Connect to a Microsoft Foundry project with Microsoft Entra authentication
 3. Create a grading function to evaluate mathematical reasoning quality
 4. Configure and launch an RFT fine-tuning job
 5. Monitor training progress and model performance
-6. Deploy and test your fine-tuned mathematical reasoning model
+6. Validate the fine-tuned model and check project deployment availability
 
 **Note**: The RFT-formatted dataset files (training_rft.jsonl and validation_rft.jsonl) are already provided. If you want to prepare your own dataset from the original Kaggle files, you'll need to extract problems and answers into the RFT format shown in the Dataset Format section.
 
@@ -115,12 +115,13 @@ Copy the file `.env.template` (located in this folder), and save it as file name
 
 ```env
 # Required for RFT Fine-Tuning
-MICROSOFT_FOUNDRY_PROJECT_ENDPOINT=<your-endpoint>
-AZURE_SUBSCRIPTION_ID=<your-subscription-id>
-AZURE_RESOURCE_GROUP=<your-resource-group>
-AZURE_AOAI_ACCOUNT=<your-foundry-account-name>
+AZURE_AI_PROJECT_ENDPOINT=<your-foundry-project-endpoint>
 MODEL_NAME=<your-base-model-name>
 ```
+
+The endpoint must be the project endpoint copied from the Foundry portal. The
+notebook uses `AIProjectClient` with `DefaultAzureCredential`; it does not use
+API keys, Azure OpenAI account endpoints, or manually constructed service URLs.
 
 ### 4. Run the Notebook
 
@@ -182,6 +183,14 @@ After fine-tuning with RFT on OpenR1-Math-220k, your model should:
 - Solve college-level and competition mathematics problems across diverse domains
 - Produce properly formatted answers with `\boxed{}` notation for grader verification
 - Demonstrate significantly improved performance on multi-hop mathematical reasoning compared to the base model
+
+## Deployment Note
+
+Azure AI Projects 2.x provides project-scoped deployment discovery but does not
+currently provide deployment creation. The notebook checks whether the newly
+registered fine-tuned model is available as a project deployment. Creating a
+new Fireworks fine-tuned deployment also requires sufficient
+`GlobalProvisionedManaged` quota.
 
 
 ## Additional Resources

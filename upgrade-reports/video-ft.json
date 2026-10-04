@@ -1,0 +1,117 @@
+{
+  "demo": "Demos/Video_FT_Action_Recognition",
+  "status": "passed",
+  "completed_at": "2026-10-03T13:10:44.772052-07:00",
+  "upgrade": {
+    "foundry_sdk": {
+      "package": "azure-ai-projects",
+      "required_version": ">=2.3.0,<3",
+      "tested_version": "2.7.0"
+    },
+    "authentication": "Microsoft Entra ID via DefaultAzureCredential",
+    "project_client": "azure.ai.projects.AIProjectClient",
+    "project_endpoint_source": "AZURE_AI_PROJECT_ENDPOINT",
+    "project_endpoint": "https://koreacentral-prakharg-demo-2026.services.ai.azure.com/api/projects/koreacentral-prakharg-demo-2026",
+    "compatible_child": "AIProjectClient.get_openai_client()",
+    "deployment_discovery": "AIProjectClient.deployments.get()",
+    "removed": [
+      "direct openai dependency and imports",
+      "direct AzureOpenAI client construction",
+      "API-key configuration",
+      "Azure OpenAI account endpoint configuration",
+      "manual Azure Resource Manager deployment routes",
+      "manual bearer-token providers",
+      "subscription, resource group, and account deployment settings"
+    ]
+  },
+  "privacy": {
+    "privacy_preserving_frames": true,
+    "method": "grayscale Gaussian blur, Canny edges, dilation, and inverted edge rendering",
+    "training_frames_use_fix": true,
+    "evaluation_frames_use_fix": true,
+    "photographic_pixels_and_timestamp_overlay_removed": true
+  },
+  "execution": {
+    "notebook": "Demos/Video_FT_Action_Recognition/fine-tune-aoai-gpt4-1-action-detection.ipynb",
+    "mode": "end-to-end in-place notebook execution",
+    "region": "Korea Central",
+    "code_cells_failed": 0,
+    "training_files": {
+      "training_file_id": "file-c372b6df43594684b2e443a2f77ca01f",
+      "training_file_status": "processed",
+      "validation_file_id": "file-9ea75590f0ed4ba49549b7617c1832cd",
+      "validation_file_status": "processed"
+    },
+    "fine_tuning_job": {
+      "id": "ftjob-40024e60fc5d4fbe8378a52b3f6d74bd",
+      "mode": "reused successful compatible job",
+      "terminal_status": "succeeded",
+      "training_type": "globalStandard",
+      "base_model": "gpt-4.1-2025-04-14",
+      "fine_tuned_model": "gpt-4.1-2025-04-14.ft-40024e60fc5d4fbe8378a52b3f6d74bd-ction-recognition-global-vision-20261002"
+    },
+    "deployments": {
+      "base": {
+        "name": "action-recognition-global-vision-20261002-base",
+        "status": "available",
+        "model": "gpt-4.1",
+        "model_version": "2025-04-14",
+        "sku": "GlobalStandard"
+      },
+      "fine_tuned": {
+        "name": "action-recognition-global-vision-20261002-ft",
+        "status": "available",
+        "model_match": true,
+        "sku": "GlobalStandard"
+      },
+      "status_basis": "project-scoped deployments resolved through AIProjectClient and matched the expected models"
+    },
+    "evaluation": {
+      "status": "succeeded",
+      "classes": [
+        "Basketball",
+        "CricketShot",
+        "TennisSwing"
+      ],
+      "samples": 15,
+      "frames_per_video": 3,
+      "base_accuracy": 0.7333333333333333,
+      "fine_tuned_accuracy": 0.7333333333333333,
+      "accuracy_delta": 0.0,
+      "artifact": "Demos/Video_FT_Action_Recognition/action-recognition-global-vision-20261002-eval-results-15-entries.csv"
+    },
+    "started_at": "2026-10-03T20:03:15.599962+00:00",
+    "completed_at": "2026-10-03T20:10:44.772052+00:00"
+  },
+  "fixes_during_retest": [
+    {
+      "failure": "The notebook runner initially failed because nbformat was not installed in the active Python environment.",
+      "fix": "Restored the demo's declared requirements for the current user after the system-wide install was denied.",
+      "retest": "passed"
+    },
+    {
+      "failure": "The initial upgrade report tested an azure-ai-projects version below the requested 2.3 stable baseline.",
+      "fix": "Raised the requirement to azure-ai-projects>=2.3.0,<3, installed 2.7.0, and reran all 32 notebook code cells.",
+      "retest": "passed"
+    }
+  ],
+  "verification": {
+    "notebook_json_valid": true,
+    "python_helpers_compile": true,
+    "forbidden_direct_client_patterns_found": false,
+    "terminal_operations_monitored": [
+      "fine-tuning file processing",
+      "fine-tuning job",
+      "base deployment",
+      "fine-tuned deployment",
+      "base evaluation",
+      "fine-tuned evaluation"
+    ],
+    "notebook_execution": "passed"
+  },
+  "notes": [
+    "The stable Foundry SDK 2.x deployment surface supports project-scoped get/list operations, so the notebook monitors and validates existing deployments instead of calling account-level management routes.",
+    "The deterministic 15-video retest validates integration and execution; its small sample is not a model-quality benchmark.",
+    "The Windows Jupyter transport emitted non-blocking ZMQ/TCP warnings."
+  ]
+}

@@ -58,7 +58,11 @@ def display_items(num_lines: int = 10):
             if i >= num_lines:
                 break
             item = json.loads(line)
-            print(json.dumps(item, indent=2))
+            preview = item.copy()
+            preview["item"] = preview["item"].copy()
+            audio_data = preview["item"]["audio_data"]
+            preview["item"]["audio_data"] = f"<base64 WAV: {len(audio_data)} characters>"
+            print(json.dumps(preview, indent=2))
 
 
 def _audio_to_base64(item) -> str:

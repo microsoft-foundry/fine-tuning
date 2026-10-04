@@ -51,13 +51,14 @@ This cookbook teaches you how to:
 ## Prerequisites
 
 - Azure subscription with Microsoft Foundry project, you must have **Azure AI User** role
+- An Entra ID identity available to `DefaultAzureCredential`; for local development, run `az login`
 - Python 3.9 or higher
 - Familiarity with Jupyter notebooks
 - CNN/DailyMail dataset CSV files (download from Kaggle)
 
 ## Supported Models
 
-Find the supported DPO fine-tuning models in Microsoft foundry [here](https://learn.microsoft.com/en-us/azure/ai-foundry/concepts/fine-tuning-overview?view=foundry-classic). Model availability may vary by region. Check the [Azure OpenAI model availability](https://learn.microsoft.com/azure/ai-services/openai/concepts/models) page for the most current regional support.
+Find the supported fine-tuning models in Microsoft Foundry [here](https://learn.microsoft.com/en-us/azure/ai-foundry/concepts/fine-tuning-overview?view=foundry-classic). Model availability may vary by region. Check the [Azure OpenAI model availability](https://learn.microsoft.com/azure/ai-services/openai/concepts/models) page for the most current regional support.
 
 ## Files in This Cookbook
 
@@ -93,8 +94,21 @@ MICROSOFT_FOUNDRY_PROJECT_ENDPOINT=<your-endpoint>
 MODEL_NAME=<your-gpt-model-name>
 AZURE_SUBSCRIPTION_ID=<your-subscription-id>
 AZURE_RESOURCE_GROUP=<your-resource-group>
-AZURE_AOAI_ACCOUNT=<your-foundry-account-name>
+EXISTING_TRAINING_FILE_ID=<optional-project-file-id>
+EXISTING_VALIDATION_FILE_ID=<optional-project-file-id>
+EXISTING_FINE_TUNE_JOB_ID=<optional-completed-job-id>
 ```
+
+Use the project endpoint shown in Microsoft Foundry, for example
+`https://<account>.services.ai.azure.com/api/projects/<project>`. The account
+name used for deployment is derived from this project endpoint. Authentication
+uses `DefaultAzureCredential`, which can select the signed-in Azure CLI identity
+for local development. API keys and account-level inference endpoints are not
+supported by this notebook.
+
+If the project has reached its file quota, set both existing file IDs to reuse
+previously uploaded training and validation files. Leave both unset to upload
+the local demonstration files.
 
 ### 4. Run the Notebook
 

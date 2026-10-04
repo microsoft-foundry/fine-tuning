@@ -1,0 +1,57 @@
+{
+  "demo": "Demos/SFT_PubMed_Summarization",
+  "status": "passed",
+  "upgrade": {
+    "azure_ai_projects_constraint": ">=2.3.0,<3",
+    "validated_azure_ai_projects_version": "2.7.0",
+    "project_client": "azure.ai.projects.AIProjectClient",
+    "credential": "azure.identity.DefaultAzureCredential",
+    "endpoint_source": "MICROSOFT_FOUNDRY_PROJECT_ENDPOINT",
+    "openai_client_source": "AIProjectClient.get_openai_client()",
+    "removed": [
+      "direct openai imports and AzureOpenAI construction",
+      "API-key authentication",
+      "manually constructed Azure OpenAI account endpoints",
+      "subscription, resource group, and account deployment configuration",
+      "azure-mgmt-cognitiveservices dependency"
+    ]
+  },
+  "execution": {
+    "notebook": "Demos/SFT_PubMed_Summarization/sft_pubmed_summarization.ipynb",
+    "executed_notebook": "Demos/SFT_PubMed_Summarization/sft_pubmed_summarization.executed.ipynb",
+    "code_cells_executed": 11,
+    "code_cells_failed": 0,
+    "training_file_id": "file-5b7f953d4a22478d85e28016ce19a3f1",
+    "validation_file_id": "file-e942cb4ce5c54a6f888eced2230c834e",
+    "job": {
+      "id": "ftjob-72ede626606d40eebb7aaa15060a24ee",
+      "mode": "reused_from_FINE_TUNE_JOB_ID",
+      "terminal_status": "succeeded",
+      "fine_tuned_model": "gpt-4.1-2025-04-14.ft-72ede626606d40eebb7aaa15060a24ee-pubmed-summarization"
+    },
+    "deployment": {
+      "name": "pubmed-060a24ee",
+      "resolution": "AIProjectClient.deployments.list/get",
+      "status": "available_in_project",
+      "model_match": true
+    },
+    "inference": {
+      "status": "succeeded",
+      "client": "project-scoped OpenAI client",
+      "response_nonempty": true
+    }
+  },
+  "fixes_during_retest": [
+    {
+      "failure": "DefaultAzureCredential Azure CLI token refresh exceeded its default 10-second subprocess timeout on Windows",
+      "fix": "Set DefaultAzureCredential(process_timeout=120) while retaining DefaultAzureCredential authentication",
+      "retest": "passed"
+    }
+  ],
+  "verification": {
+    "notebook_python_cells_parse": true,
+    "forbidden_direct_client_patterns_found": false,
+    "pip_check": "No broken requirements found",
+    "nbconvert_execution": "passed"
+  }
+}

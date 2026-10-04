@@ -34,21 +34,22 @@ and a bounded four-breed Stanford Dogs subset.
         """
 from pathlib import Path
 import json
+import os
 import pandas as pd
 from sklearn.metrics import accuracy_score
 
 from demo_common import (
-    ACCOUNT_NAME, BASE_DEPLOYMENT, BASE_MODEL, FT_DEPLOYMENT, PROJECT_ENDPOINT,
-    SUCCESSFUL_JOB_ID,
+    ACCOUNT_NAME, BASE_DEPLOYMENT, BASE_MODEL, FT_DEPLOYMENT_PREFIX, PROJECT_ENDPOINT,
     build_demo_dataset, classification_prompt, classify, deploy_fine_tuned_model,
-    download_dataset, get_openai_client, image_data_uri, normalize_prediction,
-    project_job_link, wait_for_file, wait_for_job, write_fine_tuning_jsonl,
+    download_dataset, get_project_client, image_data_uri, normalize_prediction,
+    wait_for_file, wait_for_job, write_fine_tuning_jsonl,
 )
 
 ROOT = Path.cwd()
 OUTPUTS = ROOT / "outputs"
 OUTPUTS.mkdir(exist_ok=True)
-client = get_openai_client()
+project_client = get_project_client()
+client = project_client.get_openai_client()
 print("Project:", PROJECT_ENDPOINT)
 print("Base model:", BASE_MODEL)
 print("Base deployment:", BASE_DEPLOYMENT)
@@ -95,18 +96,44 @@ print("Validation examples:", sum(1 for _ in validation_file.open(encoding="utf-
     ),
     code(
         """
-training_upload = client.files.create(file=train_file.open("rb"), purpose="fine-tune")
-validation_upload = client.files.create(
-    file=validation_file.open("rb"), purpose="fine-tune"
-)
-print("Training file:", training_upload.id)
-print("Validation file:", validation_upload.id)
-wait_for_file(client, training_upload.id)
-wait_for_file(client, validation_upload.id)
+resume_job_id = os.environ.get("AZURE_FINE_TUNING_JOB_ID")
+if resume_job_id:
+    job = client.fine_tuning.jobs.retrieve(resume_job_id)
+    training_upload = client.files.retrieve(job.training_file)
+    validation_upload = client.files.retrieve(job.validation_file)
+    print("Resuming job:", job.id)
+else:
+    training_upload = client.files.create(
+        file=train_file.open("rb"), purpose="fine-tune"
+    )
+    validation_upload = client.files.create(
+        file=validation_file.open("rb"), purpose="fine-tune"
+    )
+    print("Training file:", training_upload.id)
+    print("Validation file:", validation_upload.id)
+    wait_for_file(client, training_upload.id)
+    wait_for_file(client, validation_upload.id)
 
-job = client.fine_tuning.jobs.retrieve(SUCCESSFUL_JOB_ID)
-print("Using completed job:", job.id)
-print("Job link:", project_job_link(job.id))
+    job = client.fine_tuning.jobs.create(
+        model=BASE_MODEL,
+        training_file=training_upload.id,
+        validation_file=validation_upload.id,
+        seed=42,
+        suffix="image-breed-demo",
+        method={
+            "type": "supervised",
+            "supervised": {
+                "hyperparameters": {
+                    "n_epochs": 1,
+                    "batch_size": 1,
+                    "learning_rate_multiplier": 1.0,
+                }
+            },
+        },
+        extra_body={"trainingType": "standard"},
+    )
+    print("Created job:", job.id)
+job = wait_for_job(client, job.id)
 print(job.model_dump_json(indent=2))
 if job.status != "succeeded":
     raise RuntimeError(f"Fine-tuning job {job.id} ended as {job.status}: {job.error}")
@@ -114,16 +141,19 @@ if job.status != "succeeded":
     ),
     code(
         """
-deployment = deploy_fine_tuned_model(job.fine_tuned_model)
-print("Fine-tuned deployment:", deployment["name"])
-print("Provisioning state:", deployment["properties"]["provisioningState"])
+ft_deployment = f"{FT_DEPLOYMENT_PREFIX}-{job.id[-8:]}"
+deployment = deploy_fine_tuned_model(
+    project_client, job.fine_tuned_model, ft_deployment
+)
+print("Fine-tuned deployment:", deployment.name)
+print("Deployed model:", deployment.model_name)
 """
     ),
     code(
         """
 ft_predictions = []
 for row in test_df.itertuples(index=False):
-    raw = classify(client, FT_DEPLOYMENT, prompt, image_data_uri(Path(row.image_path)))
+    raw = classify(client, ft_deployment, prompt, image_data_uri(Path(row.image_path)))
     ft_predictions.append(normalize_prediction(raw, labels))
     print(row.id, row.breed, "=>", ft_predictions[-1])
 
@@ -140,11 +170,10 @@ run_summary = {
     "base_model": BASE_MODEL,
     "base_deployment": BASE_DEPLOYMENT,
     "fine_tuned_model": job.fine_tuned_model,
-    "fine_tuned_deployment": FT_DEPLOYMENT,
+    "fine_tuned_deployment": ft_deployment,
     "training_file_id": training_upload.id,
     "validation_file_id": validation_upload.id,
     "job_id": job.id,
-    "job_link": project_job_link(job.id),
     "job_status": job.status,
     "base_accuracy": base_accuracy,
     "fine_tuned_accuracy": ft_accuracy,
@@ -155,6 +184,12 @@ run_summary = {
     json.dumps(run_summary, indent=2), encoding="utf-8"
 )
 run_summary
+"""
+    ),
+    code(
+        """
+client.close()
+project_client.close()
 """
     ),
 ]
@@ -179,8 +214,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from demo_common import (
-    BASE_DEPLOYMENT, FT_DEPLOYMENT, classification_prompt, classify,
-    get_openai_client, image_data_uri,
+    BASE_DEPLOYMENT, classification_prompt, classify,
+    get_project_client, image_data_uri,
 )
 
 ROOT = Path.cwd()
@@ -189,12 +224,14 @@ LATENCY_OUTPUTS = ROOT / "latency_outputs"
 LATENCY_OUTPUTS.mkdir(exist_ok=True)
 
 run_summary = json.loads((OUTPUTS / "run_summary.json").read_text(encoding="utf-8"))
+ft_deployment = run_summary["fine_tuned_deployment"]
 manifest = pd.read_csv(OUTPUTS / "dataset_manifest.csv")
 test_df = manifest[manifest["split"] == "test"].head(8).copy()
 labels = sorted(manifest["breed"].unique())
 prompt = classification_prompt(labels)
-client = get_openai_client()
-print("Comparing:", BASE_DEPLOYMENT, "vs", FT_DEPLOYMENT)
+project_client = get_project_client()
+client = project_client.get_openai_client()
+print("Comparing:", BASE_DEPLOYMENT, "vs", ft_deployment)
 """
     ),
     code(
@@ -202,7 +239,7 @@ print("Comparing:", BASE_DEPLOYMENT, "vs", FT_DEPLOYMENT)
 records = []
 for deployment, model_kind in (
     (BASE_DEPLOYMENT, "base"),
-    (FT_DEPLOYMENT, "fine_tuned"),
+    (ft_deployment, "fine_tuned"),
 ):
     for row in test_df.itertuples(index=False):
         image_uri = image_data_uri(Path(row.image_path))
@@ -278,6 +315,12 @@ plt.suptitle("")
 plt.tight_layout()
 plt.savefig(LATENCY_OUTPUTS / "latency_boxplot.png", dpi=150)
 plt.show()
+"""
+    ),
+    code(
+        """
+client.close()
+project_client.close()
 """
     ),
 ]

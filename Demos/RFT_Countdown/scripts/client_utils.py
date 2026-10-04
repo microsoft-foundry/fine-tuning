@@ -1,36 +1,49 @@
-import asyncio
 import os
 
 from azure.ai.projects import AIProjectClient
-from azure.identity import AzureCliCredential, get_bearer_token_provider
-from openai import AsyncOpenAI, OpenAI
+from azure.ai.projects.aio import AIProjectClient as AsyncAIProjectClient
+from azure.identity import DefaultAzureCredential
+from azure.identity.aio import DefaultAzureCredential as AsyncDefaultAzureCredential
 
 
-PROJECT_ENDPOINT = os.getenv(
-    "AZURE_AI_PROJECT_ENDPOINT",
-    "https://eastus2-prakharg-demo-2026.services.ai.azure.com/api/projects/eastus2-prakharg-demo-2026",
-).rstrip("/")
-TOKEN_SCOPE = "https://ai.azure.com/.default"
+PROJECT_ENDPOINT = os.getenv("FOUNDRY_PROJECT_ENDPOINT", "").rstrip("/")
+if not PROJECT_ENDPOINT:
+    raise RuntimeError("FOUNDRY_PROJECT_ENDPOINT is required")
 
-_credential = AzureCliCredential(process_timeout=120)
-_token_provider = get_bearer_token_provider(_credential, TOKEN_SCOPE)
+_credential = DefaultAzureCredential()
+_project_client = AIProjectClient(
+    endpoint=PROJECT_ENDPOINT,
+    credential=_credential,
+    allow_preview=True,
+)
 
 
-async def _async_token_provider() -> str:
-    return await asyncio.to_thread(_token_provider)
+class AsyncFoundryChildClient:
+    def __init__(self, **kwargs):
+        self._credential = AsyncDefaultAzureCredential()
+        self._project_client = AsyncAIProjectClient(
+            endpoint=PROJECT_ENDPOINT,
+            credential=self._credential,
+            allow_preview=True,
+        )
+        self._child_client = self._project_client.get_openai_client(**kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._child_client, name)
+
+    async def close(self) -> None:
+        await self._child_client.close()
+        await self._project_client.close()
+        await self._credential.close()
 
 
 def get_project_client() -> AIProjectClient:
-    return AIProjectClient(endpoint=PROJECT_ENDPOINT, credential=_credential, allow_preview=True)
+    return _project_client
 
 
-def get_openai_client(**kwargs) -> OpenAI:
-    return get_project_client().get_openai_client(**kwargs)
+def get_openai_client(**kwargs):
+    return _project_client.get_openai_client(**kwargs)
 
 
-def get_async_openai_client(**kwargs) -> AsyncOpenAI:
-    return AsyncOpenAI(
-        base_url=f"{PROJECT_ENDPOINT}/openai/v1",
-        api_key=_async_token_provider,
-        **kwargs,
-    )
+def get_async_openai_client(**kwargs):
+    return AsyncFoundryChildClient(**kwargs)

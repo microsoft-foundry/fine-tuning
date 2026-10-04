@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from azure.ai.projects import AIProjectClient
-from azure.identity import AzureCliCredential
+from azure.identity import DefaultAzureCredential
 
 
 PROMPTS = [
@@ -110,6 +110,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--project-endpoint", required=True)
     parser.add_argument("--agent-name", required=True)
+    parser.add_argument("--agent-version", required=True)
     parser.add_argument("--model", default="gpt-4.1-mini")
     parser.add_argument("--conversations", type=int, default=30)
     parser.add_argument("--concurrency", type=int, default=4)
@@ -118,10 +119,14 @@ def main():
 
     project = AIProjectClient(
         endpoint=args.project_endpoint,
-        credential=AzureCliCredential(),
+        credential=DefaultAzureCredential(),
         allow_preview=True,
     )
-    client = project.get_openai_client(agent_name=args.agent_name)
+    agent = project.agents.get_version(
+        agent_name=args.agent_name,
+        agent_version=args.agent_version,
+    )
+    model_client = project.get_openai_client(agent_name=agent.name)
     rng = random.Random(42)
     prompts = [
         rng.choice(PROMPTS).format(order_id=f"ZA-{1000 + i}")
@@ -133,7 +138,7 @@ def main():
     failures = []
     with ThreadPoolExecutor(max_workers=args.concurrency) as executor:
         futures = {
-            executor.submit(run_conversation, client, args.model, prompt): (index, prompt)
+            executor.submit(run_conversation, model_client, args.model, prompt): (index, prompt)
             for index, prompt in enumerate(prompts)
         }
         for future in as_completed(futures):

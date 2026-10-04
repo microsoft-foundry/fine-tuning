@@ -1,5 +1,5 @@
 python-dotenv
-openai
+azure-ai-projects>=2.3.0,<3
 ipykernel
 kagglehub
 ipywidgets

@@ -5,8 +5,8 @@ Downloads and analyzes Reinforced Fine-Tuning (RFT) evaluation runs across multi
 This script tracks model improvement across RFT training steps (Step 0, 3, 6, 9).
 
 Usage:
-    python tools/analyze_rft_eval.py RESOURCE_NAME EVAL_ID
-    python tools/analyze_rft_eval.py omi-ignite-demo-resource eval_691c31f82bf0819199e55210bf0595a0
+    python tools/analyze_rft_eval.py EVAL_ID
+    python tools/analyze_rft_eval.py eval_691c31f82bf0819199e55210bf0595a0
 """
 
 import json
@@ -15,33 +15,26 @@ import sys
 import argparse
 from pathlib import Path
 from datetime import datetime
-from openai import AzureOpenAI
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from foundry_clients import create_openai_client, create_project_client
 
 
 class RFTEvaluationDownloader:
     """Download RFT evaluation data across training steps."""
     
-    def __init__(self, eval_id, resource_name):
+    def __init__(self, eval_id):
         """Initialize downloader with evaluation ID."""
         self.eval_id = eval_id
-        self.resource_name = resource_name
         self.output_dir = Path("analysis_charts/rft_eval")
         self.data_dir = self.output_dir / "data"
         self.data_dir.mkdir(parents=True, exist_ok=True)
         
-        # Create Azure OpenAI client
-        print(f"🔧 Initializing Azure OpenAI client...")
-        token_provider = get_bearer_token_provider(
-            DefaultAzureCredential(),
-            "https://cognitiveservices.azure.com/.default"
-        )
-        
-        self.client = AzureOpenAI(
-            azure_endpoint=f"https://{resource_name}.openai.azure.com",
-            azure_ad_token_provider=token_provider,
-            api_version="2025-04-01-preview"
-        )
+        print(f"🔧 Initializing Microsoft Foundry client...")
+        self.project_client = create_project_client()
+        self.client = create_openai_client(self.project_client)
         print(f"✓ Client initialized\n")
         
         self.evaluation = None
@@ -233,7 +226,7 @@ class RFTEvaluationDownloader:
         combined_data = {
             'evaluation_id': self.eval_id,
             'evaluation_name': self.evaluation.name if self.evaluation else None,
-            'resource_name': self.resource_name,
+            'project_endpoint': os.getenv("FOUNDRY_PROJECT_ENDPOINT"),
             'download_date': datetime.now().isoformat(),
             'total_runs': len(self.runs),
             'runs': self.run_data
@@ -302,17 +295,12 @@ def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
         description='Download RFT evaluation data',
-        usage='%(prog)s RESOURCE_NAME EVAL_ID',
+        usage='%(prog)s EVAL_ID',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    python tools/analyze_rft_eval.py omi-ignite-demo-resource eval_691c31f82bf0819199e55210bf0595a0
+    python tools/analyze_rft_eval.py eval_691c31f82bf0819199e55210bf0595a0
         """
-    )
-    
-    parser.add_argument(
-        'resource_name',
-        help='Azure OpenAI resource name'
     )
     
     parser.add_argument(
@@ -323,10 +311,7 @@ Examples:
     args = parser.parse_args()
     
     try:
-        downloader = RFTEvaluationDownloader(
-            eval_id=args.eval_id,
-            resource_name=args.resource_name
-        )
+        downloader = RFTEvaluationDownloader(eval_id=args.eval_id)
         downloader.run_download()
         
     except Exception as e:

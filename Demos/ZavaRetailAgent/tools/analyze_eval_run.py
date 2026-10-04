@@ -1,12 +1,12 @@
 """
 Evaluation Run Analysis Tool
 
-Downloads and analyzes Azure OpenAI evaluation runs, generating comprehensive
+Downloads and analyzes Microsoft Foundry evaluation runs, generating comprehensive
 statistics, comparisons, and visualizations.
 
 Usage:
-    python tools/analyze_eval_run.py RESOURCE_NAME EVAL_ID
-    python tools/analyze_eval_run.py omi-fdp-swc-resource eval_691abff78ca88191ad5c8ffd039a40d1
+    python tools/analyze_eval_run.py EVAL_ID
+    python tools/analyze_eval_run.py eval_691abff78ca88191ad5c8ffd039a40d1
 """
 
 import json
@@ -20,8 +20,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
-from openai import AzureOpenAI
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from foundry_clients import create_openai_client, create_project_client
 
 # Set style for plots
 sns.set_style("whitegrid")
@@ -30,27 +33,17 @@ plt.rcParams['font.size'] = 10
 
 
 class EvaluationAnalyzer:
-    """Analyze Azure OpenAI evaluation runs."""
+    """Analyze Microsoft Foundry evaluation runs."""
     
-    def __init__(self, eval_id, resource_name="omi-fdp-swc-resource"):
+    def __init__(self, eval_id):
         """Initialize analyzer with evaluation ID."""
         self.eval_id = eval_id
-        self.resource_name = resource_name
         self.output_dir = Path("analysis_charts/eval_run")
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Create Azure OpenAI client
-        print(f"🔧 Initializing Azure OpenAI client...")
-        token_provider = get_bearer_token_provider(
-            DefaultAzureCredential(),
-            "https://cognitiveservices.azure.com/.default"
-        )
-        
-        self.client = AzureOpenAI(
-            azure_endpoint=f"https://{resource_name}.openai.azure.com",
-            azure_ad_token_provider=token_provider,
-            api_version="2025-04-01-preview"
-        )
+        print(f"🔧 Initializing Microsoft Foundry client...")
+        self.project_client = create_project_client()
+        self.client = create_openai_client(self.project_client)
         print(f"✓ Client initialized\n")
         
         self.evaluation = None
@@ -584,18 +577,13 @@ class EvaluationAnalyzer:
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description='Analyze Azure OpenAI evaluation runs',
-        usage='%(prog)s RESOURCE_NAME EVAL_ID',
+        description='Analyze Microsoft Foundry evaluation runs',
+        usage='%(prog)s EVAL_ID',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    python tools/analyze_eval_run.py omi-fdp-swc-resource eval_691abff78ca88191ad5c8ffd039a40d1
+    python tools/analyze_eval_run.py eval_691abff78ca88191ad5c8ffd039a40d1
         """
-    )
-    
-    parser.add_argument(
-        'resource_name',
-        help='Azure OpenAI resource name'
     )
     
     parser.add_argument(
@@ -606,10 +594,7 @@ Examples:
     args = parser.parse_args()
     
     try:
-        analyzer = EvaluationAnalyzer(
-            eval_id=args.eval_id,
-            resource_name=args.resource_name
-        )
+        analyzer = EvaluationAnalyzer(eval_id=args.eval_id)
         analyzer.run_analysis()
         
     except Exception as e:

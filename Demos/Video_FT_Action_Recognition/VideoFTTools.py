@@ -116,7 +116,7 @@ class VideoExtractor:
         edges = cv2.dilate(edges, np.ones((2, 2), np.uint8), iterations=1)
         return cv2.cvtColor(255 - edges, cv2.COLOR_GRAY2BGR)
     
-    def transcribe_video(self, uri: str, openai_client, model) -> str:
+    def transcribe_video(self, uri: str, model_client, model) -> str:
         # Extract audio from video
         clip = VideoFileClip(uri)
 
@@ -125,7 +125,7 @@ class VideoExtractor:
             clip.audio.write_audiofile(audio_path, bitrate="32k")
             clip.audio.close()
             print(f"Extracted audio to {audio_path}. Transcription in progress ...")
-            transcription = openai_client.audio.transcriptions.create(
+            transcription = model_client.audio.transcriptions.create(
                 model=model,
                 file=open(audio_path, "rb"),
                 response_format="text")
@@ -307,8 +307,8 @@ class VideoExtractor:
         display(HTML(html_content))
 
 class VideoAnalyzer:
-    def __init__(self, openai_client, model):
-        self.openai_client = openai_client
+    def __init__(self, model_client, model):
+        self.model_client = model_client
         self.model = model
 
     def video_chat(self, base64frames, transcription=None, system_message=None, max_retries=3, retry_delay=2):
@@ -359,7 +359,7 @@ class VideoAnalyzer:
         for attempt in range(max_retries):
             if attempt > 0:
                 print(f"VideoAnalyzer.video_chat() Retry attempt {attempt}")
-            response = self.openai_client.chat.completions.create(
+            response = self.model_client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_message},

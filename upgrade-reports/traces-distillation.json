@@ -1,0 +1,103 @@
+{
+  "demo": "Demos/TracesDistillation",
+  "status": "passed",
+  "completed_at": "2026-10-03T12:51:00-07:00",
+  "upgrade": {
+    "foundry_sdk": {
+      "package": "azure-ai-projects",
+      "required_version": ">=2.7.0,<3",
+      "tested_version": "2.7.0"
+    },
+    "authentication": "Microsoft Entra ID via DefaultAzureCredential",
+    "project_client": "azure.ai.projects.AIProjectClient",
+    "project_endpoint_source": "AZURE_AI_PROJECT_ENDPOINT",
+    "project_child_scope": [
+      "model inference",
+      "fine-tuning files",
+      "fine-tuning jobs"
+    ],
+    "aiprojectclient_surfaces": {
+      "agent": "AIProjectClient.agents",
+      "connections": "AIProjectClient.connections",
+      "data_generation": "AIProjectClient.beta.datasets",
+      "evaluation_context": "AIProjectClient deployment discovery with azure-ai-evaluation orchestration",
+      "deployments": "AIProjectClient.deployments"
+    },
+    "removed": [
+      "direct openai imports and client construction",
+      "API-key authentication and configuration",
+      "hard-coded project endpoint fallback",
+      "raw Azure Resource Manager deployment route",
+      "subscription, resource group, and account deployment configuration",
+      "manual bearer-token acquisition for deployment"
+    ]
+  },
+  "resource_preservation": {
+    "hosted_agent": {
+      "name": "traces-distill-zava-20261003-0805",
+      "version": "2",
+      "status": "active",
+      "reused": true
+    },
+    "application_insights_connection": {
+      "name": "traces-distill-appinsights",
+      "reused": true
+    },
+    "fine_tuning_job": {
+      "id": "ftjob-1b7750a19fde42179b57059addc70228",
+      "terminal_status": "succeeded",
+      "reused": true
+    },
+    "fine_tuned_deployment": {
+      "name": "traces-distil-demo",
+      "status": "inference_ready",
+      "reused": true
+    }
+  },
+  "execution": {
+    "notebook": "Demos/TracesDistillation/notebook.ipynb",
+    "executed_notebook": "Demos/TracesDistillation/notebook.executed.ipynb",
+    "code_cells_executed": 10,
+    "code_cells_failed": 0,
+    "data_generation": {
+      "job_id": "datagen-47f410cd31874e1888a2ecea489d7df8",
+      "terminal_status": "succeeded",
+      "generated_samples": 100,
+      "output_files": 2
+    },
+    "transformation": {
+      "clean_rows": 100,
+      "repaired_tool_call_ids": 53,
+      "train_rows": 80,
+      "validation_rows": 10,
+      "test_rows": 10
+    },
+    "evaluation": {
+      "status": "succeeded",
+      "samples": 10,
+      "baseline_score": 8.5,
+      "baseline_pass_rate_percent": 70.0,
+      "fine_tuned_score": 10.0,
+      "fine_tuned_pass_rate_percent": 100.0,
+      "relative_lift_percent": 17.647058823529413
+    }
+  },
+  "fixes_during_retest": [
+    {
+      "failure": "The first nbconvert attempt selected the machine Anaconda kernel and hit an incompatible Brotli decoder while downloading successful data-generation outputs.",
+      "fix": "Executed with a temporary local kernelspec pinned to Demos/TracesDistillation/.venv, then removed the kernelspec.",
+      "retest": "passed"
+    }
+  ],
+  "verification": {
+    "notebook_python_cells_parse": true,
+    "python_helpers_compile": true,
+    "forbidden_direct_client_patterns_found": false,
+    "terminal_operations_monitored": [
+      "data generation",
+      "fine-tuning job",
+      "deployment inference readiness"
+    ],
+    "nbconvert_execution": "passed"
+  }
+}
