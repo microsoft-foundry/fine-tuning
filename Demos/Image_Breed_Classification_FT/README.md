@@ -5,16 +5,6 @@ This project demonstrates how to use a Vision Language Model (VLM) with **Azure 
 2. A fine-tuned Azure OpenAI vision model (LoRA SFT) on a down-sampled subset
 3. A classic CNN baseline (MobileNetV3-Small) for grounding
 
-> **Executed Azure AI Foundry run (October 3, 2026):** Both notebooks were
-> updated for `DefaultAzureCredential`, Python 3.12, and the supplied Foundry
-> project endpoint. The bounded end-to-end validation used four Stanford Dogs
-> breeds, `gpt-4o-2024-08-06`, 48 submitted training images (30 accepted after
-> vision safety preprocessing), 16 validation images (11 accepted), and 16 held
-> out test images. Base and fine-tuned accuracy were both 93.75%; the fine-tuned
-> deployment reduced mean latency from 2120.7 ms to 1525.0 ms (28.1%) over eight
-> requests per model. The directly relevant, machine-readable accuracy and
-> latency outputs are under `outputs/execution/` and `outputs/latency/`.
-
 <img title="dogs" alt="dogs" src="public/dogs.png" width="400">
 
 ### At-a-Glance Summary
@@ -59,10 +49,7 @@ For cost control: **50 images per breed** → 6,000 images total → split 40 tr
 ├─ images_classification_vlm.ipynb          # Prep + FT + evaluation (renamed)
 ├─ latency_base_ft_models.ipynb             # Latency benchmarking
 ├─ cnn_baseline.py                          # Classic CV baseline
-├─ outputs/
-│  ├─ execution/                            # Dataset, accuracy, and run records
-│  ├─ latency/                              # Latency measurement CSVs
-│  └─ reports/                              # Upgrade and validation reports
+├─ latency_outputs/                         # Latency measurement CSVs
 └─ public/                                  # Plots & diagram assets
 ```
 
@@ -156,8 +143,8 @@ Training cost ≈ 5.616 * 27.5 = $155
 ## Reproducibility & Setup
 ### Prerequisites
 * Azure OpenAI resource (vision + fine-tuning access)
-* Python 3.12
-* An Azure CLI sign-in available to `DefaultAzureCredential`
+* Python 3.10+
+* (Optional) Kaggle account to fetch dataset
 
 ### Environment
 ```
@@ -166,10 +153,23 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-No API keys or account endpoints are used. Copy `.env.sample` values into your
-shell environment, then authenticate with `az login`. The notebooks create
-`AIProjectClient` with `DefaultAzureCredential` and obtain the OpenAI-compatible
-child client only from that project client.
+### Environment Variables (`.env`)
+```
+AZURE_OPENAI_API_KEY="<key>"
+AZURE_OPENAI_ENDPOINT="https://<your-resource>.openai.azure.com/"
+AZURE_OPENAI_API_VERSION="2025-04-01-preview"
+
+# Base interactive deployment
+AZURE_OPENAI_DEPLOYMENT_NAME="gpt-4o-2024-08-06"
+AZURE_OPENAI_DEPLOYMENT_NAME_MODEL_VERSION="2024-08-06"
+
+# Batch deployment (if separate)
+AZURE_OPENAI_BATCH_DEPLOYMENT_NAME="gpt-4o-2024-08-06"
+AZURE_OPENAI_BATCH_DEPLOYMENT_NAME_MODEL_VERSION="2024-08-06"
+
+# Fine-tuned deployment (after job completion)
+AZURE_OPENAI_FT_DEPLOYMENT_NAME="<your-finetuned-deployment-name>"
+```
 
 ### Dataset Down-Sampling Logic
 1. Enumerate breeds (deterministic ordering)
@@ -214,8 +214,7 @@ Minimal example (line-delimited JSON – one object per line):
 - Check that system prompt includes all 120 breed labels
 
 **Authentication Error**
-- Verify `AZURE_AI_PROJECT_ENDPOINT`, `AZURE_SUBSCRIPTION_ID`,
-  `AZURE_RESOURCE_GROUP`, and `AZURE_AI_ACCOUNT_NAME`
+- Verify `.env` contains correct API key and endpoint
 - Run `az login` to refresh credentials
 - Check that you have vision + fine-tuning access enabled
 
@@ -241,4 +240,5 @@ MIT License (see `LICENSE`).
 Costs and pricing are illustrative and may change. Always consult current [Azure OpenAI pricing](https://azure.microsoft.com/en-us/pricing/details/cognitive-services/openai-service/).
 * Some images triggered content filters (faces / people / CAPTCHA-like patterns); approved modifications via Azure process may be required. Use the [official form](https://customervoice.microsoft.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR7en2Ais5pxKtso_Pz4b1_xUMlBQNkZMR0lFRldORTdVQzQ0TEI5Q1ExOSQlQCN0PWcu) for policy-aligned adjustments.
 * Demo scope only—not production hygiene (secrets rotation, monitoring, retraining pipeline) is shown.
-* Protect credentials and respect data governance policies.
+* Protect API keys and respect data governance policies.
+

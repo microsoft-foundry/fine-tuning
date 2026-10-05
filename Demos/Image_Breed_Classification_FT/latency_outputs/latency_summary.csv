@@ -1,0 +1,3 @@
+model,deployment,total_requests,success_count,error_count,mean_ms,median_ms,p50_ms,p90_ms,p95_ms,p99_ms,min_ms,max_ms,std_dev_ms,throughput_rps_est
+base,gpt-4o,600,600,0,1665.08,1629.17,1629.17,1963.85,2182.58,2737.33,1053.66,4693.65,324.15,0.601
+fine_tuned,gpt-4o-2024-08-06-ft,600,600,0,1505.97,1505.29,1505.29,1706.8,1819.48,2302.56,824.95,3381.8,241.33,0.664
