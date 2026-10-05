@@ -1,0 +1,81 @@
+id,breed,filename,split
+n02085620-Chihuahua-00,Chihuahua,n02085620_10074.jpg,train
+n02085620-Chihuahua-01,Chihuahua,n02085620_10131.jpg,train
+n02085620-Chihuahua-02,Chihuahua,n02085620_10621.jpg,train
+n02085620-Chihuahua-03,Chihuahua,n02085620_1073.jpg,train
+n02085620-Chihuahua-04,Chihuahua,n02085620_10976.jpg,train
+n02085620-Chihuahua-05,Chihuahua,n02085620_11140.jpg,train
+n02085620-Chihuahua-06,Chihuahua,n02085620_11238.jpg,train
+n02085620-Chihuahua-07,Chihuahua,n02085620_11258.jpg,train
+n02085620-Chihuahua-08,Chihuahua,n02085620_11337.jpg,train
+n02085620-Chihuahua-09,Chihuahua,n02085620_11477.jpg,train
+n02085620-Chihuahua-10,Chihuahua,n02085620_1152.jpg,train
+n02085620-Chihuahua-11,Chihuahua,n02085620_11696.jpg,train
+n02085620-Chihuahua-12,Chihuahua,n02085620_11818.jpg,validation
+n02085620-Chihuahua-13,Chihuahua,n02085620_11948.jpg,validation
+n02085620-Chihuahua-14,Chihuahua,n02085620_1205.jpg,validation
+n02085620-Chihuahua-15,Chihuahua,n02085620_12101.jpg,validation
+n02085620-Chihuahua-16,Chihuahua,n02085620_12334.jpg,test
+n02085620-Chihuahua-17,Chihuahua,n02085620_1235.jpg,test
+n02085620-Chihuahua-18,Chihuahua,n02085620_1271.jpg,test
+n02085620-Chihuahua-19,Chihuahua,n02085620_12718.jpg,test
+n02092339-Weimaraner-00,Weimaraner,n02092339_1013.jpg,train
+n02092339-Weimaraner-01,Weimaraner,n02092339_107.jpg,train
+n02092339-Weimaraner-02,Weimaraner,n02092339_110.jpg,train
+n02092339-Weimaraner-03,Weimaraner,n02092339_1100.jpg,train
+n02092339-Weimaraner-04,Weimaraner,n02092339_114.jpg,train
+n02092339-Weimaraner-05,Weimaraner,n02092339_120.jpg,train
+n02092339-Weimaraner-06,Weimaraner,n02092339_1331.jpg,train
+n02092339-Weimaraner-07,Weimaraner,n02092339_14.jpg,train
+n02092339-Weimaraner-08,Weimaraner,n02092339_1509.jpg,train
+n02092339-Weimaraner-09,Weimaraner,n02092339_1521.jpg,train
+n02092339-Weimaraner-10,Weimaraner,n02092339_1672.jpg,train
+n02092339-Weimaraner-11,Weimaraner,n02092339_1700.jpg,train
+n02092339-Weimaraner-12,Weimaraner,n02092339_174.jpg,validation
+n02092339-Weimaraner-13,Weimaraner,n02092339_176.jpg,validation
+n02092339-Weimaraner-14,Weimaraner,n02092339_1796.jpg,validation
+n02092339-Weimaraner-15,Weimaraner,n02092339_1849.jpg,validation
+n02092339-Weimaraner-16,Weimaraner,n02092339_1856.jpg,test
+n02092339-Weimaraner-17,Weimaraner,n02092339_1930.jpg,test
+n02092339-Weimaraner-18,Weimaraner,n02092339_1950.jpg,test
+n02092339-Weimaraner-19,Weimaraner,n02092339_2006.jpg,test
+n02109525-Saint_Bernard-00,Saint Bernard,n02109525_10032.jpg,train
+n02109525-Saint_Bernard-01,Saint Bernard,n02109525_10063.jpg,train
+n02109525-Saint_Bernard-02,Saint Bernard,n02109525_10146.jpg,train
+n02109525-Saint_Bernard-03,Saint Bernard,n02109525_10215.jpg,train
+n02109525-Saint_Bernard-04,Saint Bernard,n02109525_10251.jpg,train
+n02109525-Saint_Bernard-05,Saint Bernard,n02109525_10297.jpg,train
+n02109525-Saint_Bernard-06,Saint Bernard,n02109525_10321.jpg,train
+n02109525-Saint_Bernard-07,Saint Bernard,n02109525_10332.jpg,train
+n02109525-Saint_Bernard-08,Saint Bernard,n02109525_10374.jpg,train
+n02109525-Saint_Bernard-09,Saint Bernard,n02109525_10417.jpg,train
+n02109525-Saint_Bernard-10,Saint Bernard,n02109525_10446.jpg,train
+n02109525-Saint_Bernard-11,Saint Bernard,n02109525_10545.jpg,train
+n02109525-Saint_Bernard-12,Saint Bernard,n02109525_10743.jpg,validation
+n02109525-Saint_Bernard-13,Saint Bernard,n02109525_10792.jpg,validation
+n02109525-Saint_Bernard-14,Saint Bernard,n02109525_10805.jpg,validation
+n02109525-Saint_Bernard-15,Saint Bernard,n02109525_10908.jpg,validation
+n02109525-Saint_Bernard-16,Saint Bernard,n02109525_10960.jpg,test
+n02109525-Saint_Bernard-17,Saint Bernard,n02109525_10992.jpg,test
+n02109525-Saint_Bernard-18,Saint Bernard,n02109525_1100.jpg,test
+n02109525-Saint_Bernard-19,Saint Bernard,n02109525_11155.jpg,test
+n02111277-Newfoundland-00,Newfoundland,n02111277_1008.jpg,train
+n02111277-Newfoundland-01,Newfoundland,n02111277_10160.jpg,train
+n02111277-Newfoundland-02,Newfoundland,n02111277_1018.jpg,train
+n02111277-Newfoundland-03,Newfoundland,n02111277_1023.jpg,train
+n02111277-Newfoundland-04,Newfoundland,n02111277_10237.jpg,train
+n02111277-Newfoundland-05,Newfoundland,n02111277_1029.jpg,train
+n02111277-Newfoundland-06,Newfoundland,n02111277_10333.jpg,train
+n02111277-Newfoundland-07,Newfoundland,n02111277_1040.jpg,train
+n02111277-Newfoundland-08,Newfoundland,n02111277_10573.jpg,train
+n02111277-Newfoundland-09,Newfoundland,n02111277_10578.jpg,train
+n02111277-Newfoundland-10,Newfoundland,n02111277_10769.jpg,train
+n02111277-Newfoundland-11,Newfoundland,n02111277_110.jpg,train
+n02111277-Newfoundland-12,Newfoundland,n02111277_11106.jpg,validation
+n02111277-Newfoundland-13,Newfoundland,n02111277_11433.jpg,validation
+n02111277-Newfoundland-14,Newfoundland,n02111277_11530.jpg,validation
+n02111277-Newfoundland-15,Newfoundland,n02111277_1177.jpg,validation
+n02111277-Newfoundland-16,Newfoundland,n02111277_1179.jpg,test
+n02111277-Newfoundland-17,Newfoundland,n02111277_11806.jpg,test
+n02111277-Newfoundland-18,Newfoundland,n02111277_1193.jpg,test
+n02111277-Newfoundland-19,Newfoundland,n02111277_11934.jpg,test

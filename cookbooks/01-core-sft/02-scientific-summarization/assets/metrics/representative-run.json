@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "demo_id": "sft-scientific-summarization",
+  "source_run_date": "2026-10-03",
+  "status": "succeeded",
+  "sanitized": true,
+  "resource_identifiers_removed": true,
+  "recorded_model": "gpt-4.1-2025-04-14",
+  "dataset_scope": "10 training rows and 10 validation rows from a disjoint historical execution subset",
+  "canonical_dataset": {
+    "training_rows": 1000,
+    "validation_rows": 100,
+    "training_sha256": "7e578bf92c922f849853e79e12f1bf23de9b24b56d64dea261093b826a1d5f8e",
+    "validation_sha256": "17349f913142c46e4c28cb10e5d326430d37567fa3ecabc851ccc09f00e08494"
+  },
+  "training": {
+    "duration_minutes": 80,
+    "trained_tokens": 53251,
+    "billed_training_tokens": 46000,
+    "final_training_loss": 0.8785944581031799
+  },
+  "evaluation": {
+    "baseline_score": null,
+    "fine_tuned_score": null,
+    "teacher_score": null,
+    "baseline_pass_rate_percent": null,
+    "fine_tuned_pass_rate_percent": null,
+    "teacher_pass_rate_percent": null,
+    "claim": "The representative run verified training, deployment, and a structured scientific summary with the expected study details; it did not record an independent quality baseline."
+  },
+  "limitations": "The evidence run used a small subset. The canonical notebook validates and uploads the complete preserved 1,000/100 splits and requires human factuality review before any real medical use.",
+  "variability": "Actual results may vary by model version, data, configuration, region availability, and service conditions."
+}

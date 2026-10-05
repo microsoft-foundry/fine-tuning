@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fine-Tuning Cookbook Live Validation Findings</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --text: #172033;
+      --muted: #5d687c;
+      --line: #dce2ec;
+      --accent: #3157d5;
+      --pass: #137a4b;
+      --partial: #9a6500;
+      --nogo: #b42318;
+      --blocked: #6941c6;
+      --running: #3157d5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.55 "Segoe UI", Arial, sans-serif;
+    }
+    header {
+      color: #fff;
+      background: linear-gradient(135deg, #14295f, #3157d5);
+      padding: 42px max(24px, calc((100vw - 1240px) / 2));
+    }
+    header h1 { margin: 0 0 8px; font-size: 32px; }
+    header p { max-width: 900px; margin: 6px 0; color: #e5ebff; }
+    main { width: 100%; margin: 0; padding: 24px; }
+    section, article {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(22, 36, 70, .05);
+      margin-bottom: 20px;
+      padding: 22px;
+    }
+    h2, h3 { margin-top: 0; }
+    h2 { font-size: 23px; }
+    h3 { font-size: 18px; }
+    a { color: var(--accent); }
+    .muted, small { color: var(--muted); }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: #f4f7ff;
+      padding: 12px 15px;
+      margin: 14px 0;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+      background: #fbfcff;
+    }
+    .metric strong { display: block; font-size: 24px; }
+    .metric span { color: var(--muted); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 10px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #f7f9fc; font-weight: 650; }
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: .92em;
+      overflow-wrap: anywhere;
+    }
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .pass { color: var(--pass); background: #eaf8f1; }
+    .partial { color: var(--partial); background: #fff5d9; }
+    .nogo { color: var(--nogo); background: #ffebe8; }
+    .blocked { color: var(--blocked); background: #f1ebff; }
+    .running { color: var(--running); background: #eaf0ff; }
+    .demo {
+      border-top: 5px solid var(--accent);
+    }
+    .demo.pass-border { border-top-color: var(--pass); }
+    .demo.partial-border { border-top-color: var(--partial); }
+    .demo.nogo-border { border-top-color: var(--nogo); }
+    .demo.blocked-border { border-top-color: var(--blocked); }
+    .demo.running-border { border-top-color: var(--running); }
+    .demo-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .demo-head p { margin: 3px 0 0; }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    .kv {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 5px 12px;
+      margin: 10px 0;
+    }
+    .kv dt { color: var(--muted); }
+    .kv dd { margin: 0; overflow-wrap: anywhere; }
+    ul { margin: 8px 0 8px 20px; padding: 0; }
+    .job-list { margin-top: 10px; }
+    .job-list li { margin-bottom: 5px; }
+    footer {
+      color: var(--muted);
+      text-align: center;
+      padding: 12px 24px 30px;
+    }
+    @media (max-width: 900px) {
+      .cards, .two-col { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 620px) {
+      .cards, .two-col { grid-template-columns: 1fr; }
+      .demo-head { display: block; }
+      .kv { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Fine-Tuning Cookbook Live Validation Findings</h1>
+    <p>Live report for the 14-demo rehauled learning curriculum, including historical-parity reruns. Thirteen demos currently have terminal quality outcomes; the Code Distillation parity rerun remains active.</p>
+    <p><strong>Validation date:</strong> October 4, 2026. <strong>Branch:</strong> <code>baseline-with-fixes-pr</code>.</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Executive summary</h2>
+      <div class="cards">
+        <div class="metric"><strong>13</strong><span>terminal quality outcomes</span></div>
+        <div class="metric"><strong>8</strong><span>met the declared outcome</span></div>
+        <div class="metric"><strong>2</strong><span>qualified or mixed outcomes</span></div>
+        <div class="metric"><strong>3</strong><span>no-go or service-blocked</span></div>
+        <div class="metric"><strong>1</strong><span>historical-parity rerun active</span></div>
+      </div>
+      <div class="callout">
+        Agent Traces now passes its restored original contract using a leakage-free 80/10/10 conversation split. Code Distillation is actively running at the historical scale; its earlier bounded result remains provisional. A terminal training job is not treated as proof of quality: promotion verdicts require held-out evaluation, lineage checks, and the declared acceptance contract.
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Learning module demo</th>
+              <th>Foundry project</th>
+              <th>Training model</th>
+              <th>Dataset comparison</th>
+              <th>Gain comparison</th>
+              <th>Loss / reward improvements</th>
+              <th>Fine-tuned deployment</th>
+              <th>Outcome</th>
+              <th>Desired outcome</th>
+              <th>Key result</th>
+            </tr>
+          </thead>
+          <tbody id="summary-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Outcome definitions</h2>
+      <p><span class="badge pass">PASS</span> The live workflow and its declared quality objective succeeded.</p>
+      <p><span class="badge partial">QUALIFIED / MIXED</span> The workflow succeeded, but the quality evidence was incomplete, underpowered, or split across positive and negative metrics.</p>
+      <p><span class="badge nogo">NO-GO</span> Training/deployment worked, but independent evaluation did not justify promotion.</p>
+      <p><span class="badge blocked">SERVICE-BLOCKED</span> The service prevented deployment or endpoint evaluation after reasonable regional and retry remediation.</p>
+      <p><span class="badge running">RERUN IN PROGRESS</span> A prior result exists, but a newly aligned historical-parity pipeline has not yet produced its terminal evaluation.</p>
+    </section>
+
+    <div id="demo-sections"></div>
+
+    <section>
+      <h2>Historical-parity reruns for the two distillation demos</h2>
+      <div class="two-col">
+        <div>
+          <h3>Code Distillation</h3>
+          <p>The earlier bounded run generated 20 rows, accepted 17, and trained on 15 with only two validation rows; both base and fine-tuned students passed the four-case sandbox benchmark.</p>
+          <p>The demo has now been refactored to restore the historical scale and primary gain methodology: roughly 1,500 accepted training examples, one epoch, learning rate 1.3, batch size one, and the original teacher/judge comparison. Fresh live data is required; preserved labels are not substituted.</p>
+          <p><strong>Current state:</strong> the historical-parity live pipeline is still running. The earlier qualified/non-regression verdict remains provisional until the new job and evaluation reach terminal state.</p>
+        </div>
+        <div>
+          <h3>Agent Traces to SFT</h3>
+          <p>The completed parity rerun used 100 independent conversations with exact 80/10/10 conversation-level splits and zero prompt-hash overlap. It restored the original three epochs, learning rate 1.0, batch size one, first-action evaluator, score-at-least-eight pass threshold, and relative-average gain formula.</p>
+          <p>The base student scored 5.5 with a 10% pass rate; the fine-tuned student scored 10.0 with a 100% pass rate. This is an original-compatible relative gain of 81.82% and a 90-point pass-rate improvement.</p>
+          <p>Strict full-trajectory diagnostics also improved from 3.3 to 6.1, with exact trajectory match reaching 30%. The strict score remains below the teacher's 9.1, so complete trajectory quality remains a secondary caution rather than a failure of the original demo outcome.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Cross-demo corrective actions and findings</h2>
+      <ul>
+        <li>Standardized Entra authentication, terminal file/job polling, explicit timeouts, and project failover without storing credentials.</li>
+        <li>Removed unsupported request shapes and parameters, including invalid automatic batch-size submission and incompatible Responses API message/tool formats.</li>
+        <li>Separated service-side grader model identifiers from callable deployment names in Countdown RFT.</li>
+        <li>Preserved exact live-data lineage: generated or fetched inputs were hashed, split, uploaded, and trained without silently replacing them with snapshots.</li>
+        <li>Moved jobs between regions only when model availability, quota, or training type required it; data bytes remained unchanged during controlled retries.</li>
+        <li>Fixed multimodal preprocessing and output truncation, then tested a single controlled lower-learning-rate video run on identical files and holdout order.</li>
+        <li>Corrected Data Designer authentication, token audience, validation APIs, and Windows-safe execution for Code Distillation.</li>
+        <li>Repaired 367 missing trace call identifiers and removed conversation-level leakage in Agent Traces.</li>
+        <li>Kept service failures explicit. Math RFT and the additional GPT-OSS experiment are reported as blocked rather than represented as successful inference runs.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Validation and evidence policy</h2>
+      <p>Runtime files under demo-local <code>outputs/</code> or <code>artifacts/</code> directories contain job responses, hashes, metrics, predictions, and executed notebooks. These directories remain ignored because they include environment-specific resource and job identifiers. This report contains no API keys, bearer tokens, connection strings, or passwords.</p>
+      <p>Representative notebook charts remain educational snapshots; the numbers in this report are from the October 4, 2026 live validation. Actual results may vary by model version, data, region, capacity, safety filtering, and service conditions.</p>
+    </section>
+  </main>
+
+  <footer>Generated from terminal runtime evidence and final worker checkpoints.</footer>
+
+  <script>
+    const subscription = "ba7979f7-d040-49c9-af1a-7414402bf622";
+    const resourceGroup = "prakharg-demo-2026";
+
+    const projectEndpoint = account =>
+      `https://${account}.services.ai.azure.com/api/projects/${account}`;
+
+    const projectLink = account =>
+      `https://ai.azure.com/foundryProject/overview?wsid=/subscriptions/${subscription}/resourceGroups/${resourceGroup}/providers/Microsoft.CognitiveServices/accounts/${account}/projects/${account}`;
+
+    const jobLink = (account, id) =>
+      `${projectEndpoint(account)}/openai/v1/fine_tuning/jobs/${id}`;
+
+    const job = (account, id, status, note = "") => ({ account, id, status, note });
+
+    const demos = [
+      {
+        number: 1,
+        id: "sft-bug-detection",
+        title: "First SFT: Code Bug Detection",
+        stage: "00-foundations",
+        status: "nogo",
+        statusLabel: "NO-GO",
+        desired: "No",
+        account: "eastus2-prakharg-demo-2026",
+        region: "East US 2",
+        models: "gpt-4.1-mini-2025-04-14; evaluator gpt-5.4-mini",
+        datasetComparison: "Yes. The rehaul uses byte-identical 224 training and 20 validation rows and evaluates the same first 10 validation examples.",
+        gainComparison: "Partial. It retains the three-dimension judge and Pass@7 intent, but uses gpt-5.4-mini with a shorter rubric instead of the original gpt-5-4 judge; the original also fixed seed 105.",
+        lossReward: "Mixed. Step validation loss fell 1.223 to 0.523, but full-validation loss slightly worsened 0.392 to 0.402. The LR 0.4 rerun improved full-validation loss 0.416 to 0.406.",
+        deploymentComparison: "Both require base and fine-tuned deployments to measure the claimed gain.",
+        showcase: "Introduces the complete supervised fine-tuning lifecycle: preserved data validation, upload, monitored training, checkpoint/deployment comparison, and rubric-based evaluation.",
+        result: "Best comparable fine-tuned result did not beat the base model. Final controlled LR 0.4 result was 8.33 / 80% versus base 8.43 / 80%.",
+        metrics: [
+          "Initial independent run: base 8.73 / 90%, fine-tuned 8.10 / 80%.",
+          "Best checkpoint reached 8.47 / 90%, but did not establish a robust lift over the exact base contract.",
+          "One controlled lower-learning-rate run also failed to exceed the base; stop criterion was applied."
+        ],
+        jobs: [
+          job("eastus2-prakharg-demo-2026", "ftjob-8c807939bf7544ff92b2b4bb2cf4e1e3", "succeeded", "Canonical SFT job"),
+          job("eastus2-prakharg-demo-2026", "ftjob-6f7b64f3548a4160b9ef1c2face34b0f", "succeeded", "Controlled LR 0.4 corrective job"),
+          job("eastus2-prakharg-demo-2026", "ftjob-97109fd4fff24c86a96fb4f1a0afa471", "failed", "Additional gpt-oss-120b experiment; model registration system error"),
+          job("eastus2-prakharg-demo-2026", "ftjob-11531b22c25d4a6d96ed525a9b5dbaa7", "failed", "Identical gpt-oss-120b retry; same registration error")
+        ],
+        deployment: "bug-detection-sft-ft-2cf4e1e3; corrective bug-detection-sft-lr04. GPT-OSS base deployment bug-detection-gpt-oss-120b-base succeeded, but no fine-tuned GPT-OSS model was exposed.",
+        fixes: [
+          "Removed unsupported explicit batch_size='auto'.",
+          "Evaluated the final model, a checkpoint, and one controlled learning-rate correction under the same fixed examples.",
+          "Retried gpt-oss-120b once with identical files; both jobs completed training metrics but failed model registration, confirming a service-side blocker."
+        ]
+      },
+      {
+        number: 2,
+        id: "sft-news-summarization",
+        title: "SFT Practice: News Summarization",
+        stage: "01-core-sft",
+        status: "pass",
+        statusLabel: "PASS",
+        desired: "Yes",
+        account: "eastus2-prakharg-demo-2026",
+        region: "East US 2",
+        models: "gpt-4o-mini-2024-07-18",
+        datasetComparison: "Yes. The exact original 1,992 training and 229 validation rows are preserved byte-for-byte.",
+        gainComparison: "No direct parity. The original workflow monitored training and tested a deployed response qualitatively; the rehaul adds a fixed base-versus-fine-tuned Token F1 and ROUGE-L contract.",
+        lossReward: "Not established from retained live evidence; the service result curve was not saved in the runtime report.",
+        deploymentComparison: "Both require a fine-tuned deployment for post-training summarization; the rehaul additionally requires the base deployment for measured gain.",
+        showcase: "Demonstrates domain adaptation for concise news summaries with lexical coverage and ROUGE evaluation.",
+        result: "All tracked held-out metrics improved; promote for human factuality review.",
+        metrics: [
+          "Token F1 / coverage: 0.2848 -> 0.3896 (+0.1048).",
+          "ROUGE-L F1: 0.1752 -> 0.2748 (+0.0996).",
+          "1,992 training rows, 229 validation rows, 2,263,943 trained tokens."
+        ],
+        jobs: [
+          job("eastus2-prakharg-demo-2026", "ftjob-36fb0029e5974cfbae8f0fa9fb279d51", "succeeded")
+        ],
+        deployment: "news-summarization-sft-ft-fb279d51 (GlobalStandard, retained)",
+        fixes: [
+          "Failed over from North Central US and Sweden Central because neither exposed the required gpt-4o-mini deployment.",
+          "No demo-source correction was required."
+        ]
+      },
+      {
+        number: 3,
+        id: "sft-scientific-summarization",
+        title: "Domain SFT: Scientific Summarization",
+        stage: "01-core-sft",
+        status: "nogo",
+        statusLabel: "NO-GO",
+        desired: "No",
+        account: "ncus-prakharg-demo-2026",
+        region: "North Central US",
+        models: "gpt-4.1-2025-04-14",
+        datasetComparison: "Partial. It matches the original README's exact 1,000/100 files, but the checked-in original notebook actually executed only 10/10 rows.",
+        gainComparison: "No. The original recorded only qualitative fine-tuned inference. The rehaul introduces base-versus-fine-tuned Token F1, ROUGE-L, domain coverage, and a stricter promotion gate.",
+        lossReward: "Not comparable. The historical subset recorded only a final training loss of 0.879; the current live report does not retain a validation-loss curve.",
+        deploymentComparison: "Both require the fine-tuned deployment for inference; only the rehaul makes a base deployment mandatory for gain measurement.",
+        showcase: "Tests whether supervised fine-tuning can improve scientific abstract summarization while retaining important domain terminology.",
+        result: "Lexical overlap improved, but domain coverage declined; do not promote without human factuality review.",
+        metrics: [
+          "Token F1: 0.4609 -> 0.4999 (+0.0390).",
+          "ROUGE-L F1: 0.2229 -> 0.3282 (+0.1052).",
+          "Domain coverage: 0.4625 -> 0.4357 (-0.0269).",
+          "Exact preserved data: 1,000 training and 100 validation rows."
+        ],
+        jobs: [
+          job("ncus-prakharg-demo-2026", "ftjob-c7e23b3cba43494db8b21df10765b545", "cancelled", "Superseded attempt"),
+          job("ncus-prakharg-demo-2026", "ftjob-a4ba964749b74a4d83ff140f8ce6a1b5", "cancelled", "Superseded attempt"),
+          job("ncus-prakharg-demo-2026", "ftjob-59ebcab1c2094bfc9babca294383ff5e", "succeeded", "Final job")
+        ],
+        deployment: "scientific-summarization-sft-ft-4383ff5e",
+        fixes: [
+          "Canceled superseded attempts and retained the terminal successful run.",
+          "Applied a multi-metric promotion gate instead of relying only on ROUGE improvement."
+        ]
+      },
+      {
+        number: 4,
+        id: "vision-chart-reasoning",
+        title: "Multimodal SFT: Chart Reasoning",
+        stage: "02-multimodal-sft",
+        status: "pass",
+        statusLabel: "PASS",
+        desired: "Yes",
+        account: "australiaeast-prakharg-demo-2026",
+        region: "Australia East",
+        models: "gpt-4.1-2025-04-14",
+        datasetComparison: "No exact size parity. Both use ChartQA, but the original defaults were 500/100/100 and its checked execution used 10/10/20; the rehaul used deterministic 50/20/50 splits.",
+        gainComparison: "Partial. Both compare base and fine-tuned exact-answer accuracy. The rehaul evaluates all 50 untouched holdout rows and adds paired deltas and an exact McNemar test.",
+        lossReward: "Mixed. Training loss fell 6.50 to 0.010, while sampled validation loss ended higher at 6.38 versus 4.10. The single full-validation point reported 95.29% token accuracy.",
+        deploymentComparison: "Both require base and fine-tuned deployments for the accuracy comparison.",
+        showcase: "Fine-tunes a vision-capable model to answer chart questions and validates the result on a completely untouched paired holdout.",
+        result: "Strict exact-match accuracy improved by 20 percentage points with a statistically significant paired result.",
+        metrics: [
+          "Base: 19/50 (38%); fine-tuned: 29/50 (58%).",
+          "12 examples improved, 2 regressed, 36 unchanged.",
+          "Exact McNemar p=0.01294; final full-validation token accuracy 95.29%."
+        ],
+        jobs: [
+          job("australiaeast-prakharg-demo-2026", "ftjob-76ca0528dcc6492591c9a26c89294f94", "succeeded")
+        ],
+        deployment: "chartqa-ft-76ca0528",
+        fixes: [
+          "Added row-level lineage and remote filename/hash verification.",
+          "Rejected job reuse when submitted data did not match.",
+          "Evaluated all 50 holdout examples and waited through transient dependent-service warm-up failures.",
+          "Used the pinned environment after the default kernel exposed an incompatible Brotli decoder."
+        ]
+      },
+      {
+        number: 5,
+        id: "vision-image-classification",
+        title: "Multimodal SFT: Image Classification",
+        stage: "02-multimodal-sft",
+        status: "partial",
+        statusLabel: "RERUN IN PROGRESS",
+        desired: "Pending",
+        account: "ncus-prakharg-demo-2026",
+        region: "North Central US",
+        models: "gpt-4o-2024-08-06",
+        datasetComparison: "Partial. It matches the most recent bounded original execution at four breeds and 48/16/16 rows, but not the original 120-breed 4,800/600/600 study.",
+        gainComparison: "Yes for the bounded rerun: both measure held-out accuracy and serving latency. It is not equivalent to the original full 120-class study.",
+        lossReward: "No meaningful curve improvement. Full-validation loss is a single 0.00049 point with 100% token accuracy; per-step losses are already tiny and noisy.",
+        deploymentComparison: "Both require base and fine-tuned deployments for quality and latency benchmarking.",
+        showcase: "Measures classification quality and serving latency for a bounded dog-breed multimodal fine-tune.",
+        result: "Accuracy remained flat while latency improved. The workflow passed, but the run does not justify a quality-benefit claim.",
+        metrics: [
+          "Accuracy: 93.75% -> 93.75% on 16 held-out images.",
+          "Mean latency improved 7.38%; P95 improved 8.78%; P99 improved 7.35%.",
+          "Safety filtering rejected 35.94% of submitted examples, although every class remained represented."
+        ],
+        jobs: [
+          job("ncus-prakharg-demo-2026", "ftjob-fb9e7c1a71f840ba80bdd462d67efc26", "succeeded")
+        ],
+        deployment: "image-dogs-ft-20261004; base image-dogs-base-20261004",
+        fixes: [
+          "Repaired the local Entra SDK environment.",
+          "Recorded safety-filter attrition and prevented a flat-accuracy result from being described as a quality win."
+        ]
+      },
+      {
+        number: 6,
+        id: "vision-video-action-recognition",
+        title: "Multimodal SFT: Video Action Recognition",
+        stage: "02-multimodal-sft",
+        status: "partial",
+        statusLabel: "QUALIFIED / MIXED",
+        desired: "Partial",
+        account: "canadaeast-prakharg-demo-2026",
+        region: "Canada East",
+        models: "gpt-4.1-2025-04-14",
+        datasetComparison: "Yes. Both use the same UCF101 source, three selected classes, seed 0, and 36/12/15 train/validation/holdout clips.",
+        gainComparison: "Yes. Both compare overall held-out classification accuracy; the rehaul adds per-class, safety-attrition, and controlled learning-rate analysis.",
+        lossReward: "Yes for the retained run. Validation loss fell 0.191 to 0.00091 and validation token accuracy rose 0.90 to 1.00; full-validation loss is a single 0.00078 point.",
+        deploymentComparison: "Both require base and fine-tuned deployments for held-out video classification.",
+        showcase: "Converts videos into representative visual inputs, fine-tunes action recognition, and analyzes aggregate and per-class generalization.",
+        result: "The retained LR 2.0 run improved aggregate accuracy to 53.33%, but safety-filter attrition and class imbalance limited confidence.",
+        metrics: [
+          "Base: 46.67%; retained fine-tune: 53.33% (+6.67 points).",
+          "Controlled LR 0.5 candidate: 46.67%; macro F1 0.4777 versus retained 0.4977.",
+          "The lower LR improved CricketShot recall but reduced TennisSwing and overall performance."
+        ],
+        jobs: [
+          job("canadaeast-prakharg-demo-2026", "ftjob-b0632736c88c4c028f378b7fd5fdb753", "failed", "Rejected edge-preprocessing attempt"),
+          job("canadaeast-prakharg-demo-2026", "ftjob-a6523393361b444fa398b354ce085a71", "failed", "Rejected pixelated-preprocessing attempt"),
+          job("canadaeast-prakharg-demo-2026", "ftjob-47880361cc5743d5877b957309639823", "succeeded", "Retained LR 2.0 control"),
+          job("canadaeast-prakharg-demo-2026", "ftjob-5d51cb3281654e73ad55dfb79923a93a", "succeeded", "Controlled LR 0.5 candidate")
+        ],
+        deployment: "video-action-ucf101-ft-309639823 retained; temporary LR 0.5 deployment deleted",
+        fixes: [
+          "Replaced CAPTCHA-like edge preprocessing with low-frequency color preprocessing.",
+          "Increased inference output allowance to prevent truncated JSON.",
+          "Ran one controlled correction with identical file IDs, seed, epoch count, and holdout order; retained the better model."
+        ]
+      },
+      {
+        number: 7,
+        id: "rft-countdown",
+        title: "RFT Deterministic Reasoning: Countdown",
+        stage: "03-core-rft",
+        status: "pass",
+        statusLabel: "PASS",
+        desired: "Yes",
+        account: "eastus2-prakharg-demo-2026",
+        region: "East US 2",
+        models: "o4-mini-2025-04-16; service grader o3-mini",
+        datasetComparison: "Yes. Every source split is byte-preserved; the canonical path uses the same 100 training, 50 validation, and 100 independent evaluation rows.",
+        gainComparison: "Partial. The grader variants are preserved, but the original evidence used three illustrative cases while the rehaul performs a 20-case independent exact-valid comparison.",
+        lossReward: "Yes. Model-grader validation reward rose 0.848 to 0.926, peaking at 0.930. Python-grader reward rose 4.17 to 4.50, peaking at 4.52. RFT emitted no loss column.",
+        deploymentComparison: "Both require deployments to prove final exact-answer quality; training reward alone is insufficient.",
+        showcase: "Compares model-based and deterministic Python graders for reinforcement fine-tuning on arithmetic expression construction.",
+        result: "Both RFT variants achieved 19/20 exact-valid solutions versus 5/20 for the baseline.",
+        metrics: [
+          "Model-grader final validation reward: 0.926 (maximum 0.930).",
+          "Python-grader final validation reward: 4.50 (maximum 4.52).",
+          "Independent exact evaluation: both fine-tunes 19/20; baseline 5/20."
+        ],
+        jobs: [
+          job("eastus2-prakharg-demo-2026", "ftjob-7cad39edc348414cb0f213d206c297cf", "succeeded", "Model-score grader"),
+          job("eastus2-prakharg-demo-2026", "ftjob-9666eca5d954457d9cf5651dc74e9f6e", "succeeded", "Python grader")
+        ],
+        deployment: "countdown-model-grader-ft and countdown-python-grader-ft",
+        fixes: [
+          "Separated FOUNDRY_GRADER_MODEL from the callable FOUNDRY_GRADER_DEPLOYMENT.",
+          "Added independent exact-valid evaluation rather than relying only on training reward."
+        ]
+      },
+      {
+        number: 8,
+        id: "rft-math-reasoning-advanced",
+        title: "Advanced RFT: Math Reasoning",
+        stage: "03-core-rft",
+        status: "blocked",
+        statusLabel: "SERVICE-BLOCKED",
+        desired: "No",
+        account: "ncus-prakharg-demo-2026",
+        region: "Training job: North Central US; deployment attempts: East US 2 and regional inventory",
+        models: "qwen3.6-35b-a3b / FW-Qwen3.6-35B-A3B",
+        datasetComparison: "Yes. The preserved OpenR1 subsets remain 100 training and 10 validation examples with the same deterministic boxed-answer grader.",
+        gainComparison: "Partial. The original focuses on training reward and deployment availability; the rehaul preserves those checks and adds a live base-endpoint reward comparison.",
+        lossReward: "Yes during training: validation reward rose 0.05 to 0.20 and training reward 0.095 to 0.22. However, the deployed base also scored 0.20, so no endpoint gain was demonstrated.",
+        deploymentComparison: "Both need a fine-tuned deployment for conclusive endpoint quality. That deployment was service-blocked in the rehaul.",
+        showcase: "Uses a deterministic math grader for RFT and compares training reward with an independently deployed base endpoint.",
+        result: "Training succeeded, but reward did not exceed the live base and the fine-tuned Fireworks deployment failed in the dependent service.",
+        metrics: [
+          "Validation reward improved during training from 0.05 to 0.20.",
+          "Live base endpoint reward was also 0.20, so measured lift was zero.",
+          "Fine-tuned endpoint creation failed with FireworksCreateDeploymentError / BadRequestForDependentService."
+        ],
+        jobs: [
+          job("ncus-prakharg-demo-2026", "ftjob-bdba18dfcb9c4110acd6c5967a66f879", "succeeded", "Exact reusable RFT job")
+        ],
+        deployment: "Base endpoint was tested and deleted; fine-tuned endpoint failed and was deleted.",
+        fixes: [
+          "Verified the reusable job against method, hyperparameters, exact file hashes, and local regrading.",
+          "Exhausted supplied regions: most had zero Fireworks quota; East US 2 had quota but returned a terminal dependent-service error.",
+          "Kept the outcome blocked/no-go rather than substituting training reward for endpoint evaluation."
+        ]
+      },
+      {
+        number: 9,
+        id: "agentic-rft-tool-calling",
+        title: "Agentic RFT: Tool Calling",
+        stage: "04-agentic-rft",
+        status: "pass",
+        statusLabel: "PASS",
+        desired: "Yes",
+        account: "swec-prakharg-demo-2026",
+        region: "Sweden Central",
+        models: "o4-mini-2025-04-16",
+        datasetComparison: "Yes. The original 10 training and 10 validation rows are preserved byte-for-byte.",
+        gainComparison: "Partial. The rehaul preserves tool-calling RFT and the composite grader, but excludes the separate endpoint-grader variant and adds a 10-case exact held-out tool-selection check.",
+        lossReward: "Not established for the live job because its result curve was not retained. The checked-in illustrative curve rises from 0.30 to 0.55 before ending at 0.53 and is not live evidence.",
+        deploymentComparison: "Both need the fine-tuned deployment to validate real tool selection after RFT.",
+        showcase: "Trains an agentic reasoning model against a live catalog-search tool and validates exact held-out tool selection.",
+        result: "Successful Sweden Central job and deployment achieved 10/10 exact held-out tool calls.",
+        metrics: [
+          "Exact evaluation: 10/10; every case invoked search_catalog.",
+          "Training and validation bytes were SHA-256 verified before submission.",
+          "198,015 trained tokens."
+        ],
+        jobs: [
+          job("ncus-prakharg-demo-2026", "ftjob-baf73d8e84d24f10a0d2f4cfc1256a7e", "failed", "NDH100v5 SLA-tier quota summed to zero"),
+          job("eastus2-prakharg-demo-2026", "ftjob-5184a12b3a104b1c986de30f12e99711", "cancelled", "Long queue; canceled after Sweden succeeded"),
+          job("swec-prakharg-demo-2026", "ftjob-c42dcce809c74e6bbce4bf982a6ed29c", "succeeded", "Final job")
+        ],
+        deployment: "agentic-tools-c42dcce8",
+        fixes: [
+          "Failed over around regional quota and queue constraints while keeping exact uploaded data.",
+          "Validated the live tool endpoint and deployed model before declaring success."
+        ]
+      },
+      {
+        number: 10,
+        id: "agentic-retail-capstone",
+        title: "Agentic Retail Capstone",
+        stage: "04-agentic-rft",
+        status: "pass",
+        statusLabel: "PASS",
+        desired: "Yes",
+        account: "eastus2-prakharg-demo-2026",
+        region: "East US 2",
+        models: "SFT gpt-4.1-mini-2025-04-14; RFT o4-mini-2025-04-16",
+        datasetComparison: "Yes. SFT 386/103, RFT 10/10, the 280-row evaluation pool, policies, tools, database, and graders are byte-preserved.",
+        gainComparison: "Partial. The original defines both SFT and RFT flows; the rehaul completes them under one non-mutating 20-row next-tool benchmark shared with the base model.",
+        lossReward: "Mixed. SFT training loss fell 0.933 to 0.067, but full-validation loss moved 0.132 to 0.135. RFT has only one full-validation reward point, 0.482, so no time trend is available.",
+        deploymentComparison: "Both SFT and RFT paths require fine-tuned deployments for the shared next-tool comparison.",
+        showcase: "Compares SFT and RFT paths for policy-aware retail next-tool prediction using a common held-out contract.",
+        result: "Both fine-tuned paths improved exact next-tool prediction from 17/20 to 20/20.",
+        metrics: [
+          "Base 17/20; SFT 20/20; RFT 20/20.",
+          "SFT lineage: 386 training / 103 validation rows.",
+          "RFT lineage: 10 training / 10 validation rows; held-out pool 280."
+        ],
+        jobs: [
+          job("eastus2-prakharg-demo-2026", "ftjob-75dc535e811943bd8301fcb9f85c3dd0", "succeeded", "SFT"),
+          job("eastus2-prakharg-demo-2026", "ftjob-17a35e7f29f146ee9ce4387fe5a2a905", "succeeded", "RFT")
+        ],
+        deployment: "retail-sft-f85c3dd0 and retail-rft-e5a2a905",
+        fixes: [
+          "Completed the previously planning-only end-to-end SFT and RFT paths.",
+          "Used a non-mutating evaluation contract: predicted tools were scored but never executed."
+        ]
+      },
+      {
+        number: 11,
+        id: "distillation-teacher-student-basics",
+        title: "Teacher-Student Distillation Basics",
+        stage: "05-data-and-distillation",
+        status: "pass",
+        statusLabel: "PASS",
+        desired: "Yes",
+        account: "koreacentral-prakharg-demo-2026",
+        region: "Korea Central",
+        models: "Teacher gpt-4.1-2025-04-14; student gpt-4.1-nano-2025-04-14; judge o3-mini",
+        datasetComparison: "Partial. The same question sources and teacher-labeling concept are used, but labels are regenerated live; this run generated 48, accepted 47, and split 37/10 plus 12 held out.",
+        gainComparison: "Mostly yes. Both compare teacher, base student, and fine-tuned student with the same style/factuality judge. The rehaul makes sarcasm gain with factuality non-regression primary because overall score has a ceiling effect.",
+        lossReward: "Not available. The live run retained lineage and behavioral evaluation but not the service training-loss CSV.",
+        deploymentComparison: "Both require teacher, base-student, evaluator, and fine-tuned-student deployments for the full comparison.",
+        showcase: "Generates fresh teacher labels and distills a sarcastic-but-correct response style into a smaller student.",
+        result: "Passed the predeclared style-transfer contract: sarcasm improved substantially with no factuality regression. Overall judge score remains a diagnostic caution.",
+        metrics: [
+          "Sarcasm: base 2.75 -> fine-tuned 5.33 (+2.58); teacher 5.42.",
+          "Factuality: 10.0 -> 10.0, no regression.",
+          "Overall: 9.92 -> 9.33 (-0.58), exposing an evaluator calibration/ceiling effect.",
+          "Fresh lineage: 48 generated, 47 accepted, 37 training, 10 validation, 12 held out."
+        ],
+        jobs: [
+          job("koreacentral-prakharg-demo-2026", "ftjob-89de84c8ecb446efa1a23b5462c566ea", "succeeded")
+        ],
+        deployment: "teacher-student-ft-62c566ea",
+        fixes: [
+          "Enforced fresh-output lineage with no stale-data fallback.",
+          "Fixed Responses API input, structured judge output, sequential ARM deployment conflicts, and GlobalStandard training selection.",
+          "Clarified the original acceptance contract: sarcasm improvement subject to factuality non-regression; overall score is diagnostic."
+        ]
+      },
+      {
+        number: 12,
+        id: "distillation-nl-to-python",
+        title: "Code Distillation: Natural Language to Python",
+        stage: "05-data-and-distillation",
+        status: "running",
+        statusLabel: "QUALIFIED / MIXED",
+        desired: "Partial",
+        account: "eastus2-prakharg-demo-2026",
+        region: "East US 2",
+        models: "Teacher/evaluator gpt-5.4-mini; student gpt-4.1-mini-2025-04-14",
+        datasetComparison: "Yes for the historical-parity rerun contract: 2,000 fresh generated rows, exactly 1,500 accepted training rows, 84 validation rows, and an independent zero-overlap 84-row evaluation cohort.",
+        gainComparison: "Yes. The active rerun restores the original one-epoch, LR 1.3, batch-one recipe, correctness/conciseness judge, Pass@8, and relative-gain formula; sandbox execution remains secondary.",
+        lossReward: "Pending. The parity generation/training pipeline is still active, so no terminal validation-loss curve is available yet.",
+        deploymentComparison: "Both require teacher/evaluator and base-student deployments plus a deployment of the fine-tuned student for gain measurement.",
+        showcase: "Uses Data Designer to generate, judge, validate, and distill natural-language-to-Python examples with isolated behavioral testing.",
+        result: "The earlier bounded run established non-regression at 4/4 versus 4/4. A fresh historical-scale parity pipeline is currently running; final promotion status is pending.",
+        metrics: [
+          "20 generated, 17 accepted, 15 training, 2 validation.",
+          "Teacher 3/4, base 4/4, fine-tuned 4/4 on the bounded behavioral benchmark.",
+          "Historical winning evidence used about 1,500 accepted training examples and 84 validation examples, so the bounded run was underpowered.",
+          "Active rerun restores the historical scale, one epoch, LR 1.3, batch size one, and original judge-based gain calculation."
+        ],
+        jobs: [
+          job("eastus2-prakharg-demo-2026", "ftjob-9002c2841594497b900a7d1f8baf7789", "cancelled", "Superseded Standard attempt"),
+          job("eastus2-prakharg-demo-2026", "ftjob-f400d686c40140ad99b77b1ed353c7ba", "succeeded", "GlobalStandard final job")
+        ],
+        deployment: "nl2py-live-7b1ed353c7ba",
+        fixes: [
+          "Corrected Data Designer validator APIs and Entra token audience.",
+          "Removed the literal redacted token and used the runtime bearer token.",
+          "Added Windows-safe execution, exact generated-data lineage, and isolated sandbox evaluation.",
+          "Did not silently use the larger preserved historical data while performing live generation.",
+          "Refactored the live parity path to reproduce the original scale and primary measurement methodology; terminal evidence is pending."
+        ]
+      },
+      {
+        number: 13,
+        id: "synthetic-tool-use-sft",
+        title: "SFT with Synthetic Data and Tool-Use",
+        stage: "05-data-and-distillation",
+        status: "pass",
+        statusLabel: "PASS",
+        desired: "Yes",
+        account: "eastus2-prakharg-demo-2026",
+        region: "Generation: UAE North; training: East US 2",
+        models: "Teacher gpt-4.1-2025-04-14; student gpt-4.1-mini-2025-04-14",
+        datasetComparison: "No exact size parity. Both use the same Zava tool contract and live ToolUseFineTuning recipe, but the original requested about 50 examples; the rehaul generated 180 and split 144/18/18.",
+        gainComparison: "Partial. Both measure structural tool-call correctness. The rehaul evaluates 58 held-out assistant tool-call turns with full prior context instead of one aggregate call list per row.",
+        lossReward: "Not available. The terminal job and behavioral metrics were retained, but the service loss result was not downloaded into the run evidence.",
+        deploymentComparison: "Both require base and fine-tuned student deployments for structural tool-use gain evaluation.",
+        showcase: "Generates synthetic multi-turn tool-use data, preserves exact generation lineage, and measures structural tool-call fidelity.",
+        result: "Strong improvement in exact tool calls, tool-name matching, and structural score.",
+        metrics: [
+          "180 generated rows split into 144 train / 18 validation / 18 test.",
+          "Exact tool calls: 77.59% -> 96.55% (+18.97 points).",
+          "Structural score: 8.2241 -> 9.6897 (+17.82%)."
+        ],
+        jobs: [
+          job("eastus2-prakharg-demo-2026", "ftjob-d46ad5354b1e4c8d82a3d357b4bd1f0e", "succeeded")
+        ],
+        deployment: "synthetic-tools-1004-d46ad5",
+        auxiliary: [
+          "Data-generation jobs: datagen-557e219680bd4b0890b27e4015a405b4, datagen-d7d1623b2dd14208acf9a8fd4ee6ae9d, datagen-3c74873d043242ffb02f8ea9bb02cafd (all succeeded)."
+        ],
+        fixes: [
+          "Changed OpenAPI uploads from assistants to user_data purpose.",
+          "Generated three fresh batches and evaluated each held-out assistant tool-call turn with full prior context.",
+          "Moved training from UAE North to East US 2 when GlobalStandard SFT was rejected, while retaining the exact UAE-generated split.",
+          "Cleared only files created by the aborted attempt when East US 2 file quota was full."
+        ]
+      },
+      {
+        number: 14,
+        id: "agent-traces-to-sft",
+        title: "Agent Traces to SFT Distillation",
+        stage: "05-data-and-distillation",
+        status: "pass",
+        statusLabel: "PASS",
+        desired: "Yes",
+        account: "westus3-prakharg-demo-2026",
+        region: "West US 3",
+        models: "Teacher gpt-4.1-mini-2025-04-14; student gpt-4.1-nano-2025-04-14",
+        datasetComparison: "Yes. The parity rerun uses 100 independent conversations with exact 80/10/10 conversation-level splits and zero prompt overlap, resolving the original row-versus-conversation ambiguity.",
+        gainComparison: "Yes. It restores the original first-action evaluator, Pass@8 threshold, three epochs, LR 1.0, batch size one, and relative-average gain formula; strict trajectory metrics are secondary.",
+        lossReward: "Yes. Validation loss fell 0.245 to 0.084 and full-validation loss 0.240 to 0.176; full-validation token accuracy improved 0.937 to 0.954.",
+        deploymentComparison: "Both require teacher, base-student, and fine-tuned-student deployments for the original-compatible gain comparison.",
+        showcase: "Collects live agent telemetry, repairs trace structure, prevents conversation leakage, and distills tool-selection behavior.",
+        result: "Historical parity achieved without conversation leakage: average score improved 5.5 to 10.0 and pass rate improved 10% to 100%.",
+        metrics: [
+          "120 fresh conversations generated; 100 canonical independent conversations selected.",
+          "Leakage-free split: exactly 80 training / 10 validation / 10 test conversations and rows.",
+          "Original primary metric: base 5.5 / 10% pass; fine-tuned 10.0 / 100% pass.",
+          "Original-compatible relative gain: +81.82%; pass-rate gain: +90 percentage points.",
+          "Secondary strict trajectory score: 3.3 -> 6.1; exact trajectory match: 0% -> 30%."
+        ],
+        jobs: [
+          job("westus3-prakharg-demo-2026", "ftjob-29b546d128094a96910690f3e54b6e81", "succeeded", "Superseded leaked split; deployment deleted"),
+          job("westus3-prakharg-demo-2026", "ftjob-a73d409f30e44c1d84c5ff771a0dd3a8", "cancelled", "Retrying Standard job"),
+          job("westus3-prakharg-demo-2026", "ftjob-33b49ab3559f411ea3d534ee840a3ec3", "succeeded", "Previous incompatible 84/9/3 grouped run"),
+          job("westus3-prakharg-demo-2026", "ftjob-f6e5cea3cfd44ff9b99094300d46b145", "succeeded", "Historical-parity 80/10/10 run")
+        ],
+        deployment: "agent-traces-sft-nano-33b49ab3",
+        auxiliary: [
+          "Previous acquisition job: datagen-6efb516d163742cbbe3623da5eea32e2 (succeeded).",
+          "Parity acquisition job: datagen-54658709e5884f0da23b2d1d1dc70c30 (succeeded)."
+        ],
+        fixes: [
+          "Connected Application Insights and managed-identity telemetry roles.",
+          "Corrected agent model selection and Responses API tool/message shapes.",
+          "Repaired missing call IDs and response references.",
+          "Removed row-level leakage by grouping complete conversations before splitting.",
+          "Pinned GlobalStandard and removed the superseded deployment to free quota.",
+          "Restored the original first-action evaluator and explicit batch size while retaining strict full-trajectory metrics as secondary diagnostics.",
+          "Corrected blank optional deployment handling and recreated the prior deployment name with the new parity model after ARM rejected in-place model replacement."
+        ]
+      }
+    ];
+
+    const badge = demo => `<span class="badge ${demo.status}">${demo.statusLabel}</span>`;
+
+    const renderJobs = jobs => {
+      if (!jobs || !jobs.length) return "<p>No fine-tuning job was submitted.</p>";
+      return `<ul class="job-list">${jobs.map(item => `
+        <li>
+          <a href="${jobLink(item.account, item.id)}"><code>${item.id}</code></a>
+          - <strong>${item.status}</strong>${item.note ? ` - ${item.note}` : ""}
+        </li>`).join("")}</ul>`;
+    };
+
+    document.getElementById("summary-body").innerHTML = demos.map(demo => `
+      <tr>
+        <td>${demo.number}</td>
+        <td><a href="#${demo.id}">${demo.title}</a><br><small>${demo.stage}</small></td>
+        <td><a href="${projectLink(demo.account)}">${demo.account}</a><br><small>${demo.region}</small></td>
+        <td>${demo.models}</td>
+        <td>${demo.datasetComparison}</td>
+        <td>${demo.gainComparison}</td>
+        <td>${demo.lossReward}</td>
+        <td>${demo.deploymentComparison}</td>
+        <td>${badge(demo)}</td>
+        <td>${demo.desired}</td>
+        <td>${demo.result}</td>
+      </tr>`).join("");
+
+    document.getElementById("demo-sections").innerHTML = demos.map(demo => `
+      <article class="demo ${demo.status}-border" id="${demo.id}">
+        <div class="demo-head">
+          <div>
+            <h2>${demo.number}. ${demo.title}</h2>
+            <p class="muted">${demo.stage}</p>
+          </div>
+          ${badge(demo)}
+        </div>
+
+        <p><strong>What it showcases:</strong> ${demo.showcase}</p>
+
+        <div class="two-col">
+          <div>
+            <h3>Resource and model</h3>
+            <dl class="kv">
+              <dt>Foundry project</dt>
+              <dd><a href="${projectLink(demo.account)}">${demo.account}</a></dd>
+              <dt>Region</dt>
+              <dd>${demo.region}</dd>
+              <dt>Project endpoint</dt>
+              <dd><a href="${projectEndpoint(demo.account)}"><code>${projectEndpoint(demo.account)}</code></a></dd>
+              <dt>Model(s)</dt>
+              <dd>${demo.models}</dd>
+              <dt>Deployment(s)</dt>
+              <dd>${demo.deployment}</dd>
+            </dl>
+          </div>
+          <div>
+            <h3>Outcome</h3>
+            <p><strong>${demo.result}</strong></p>
+            <ul>${demo.metrics.map(metric => `<li>${metric}</li>`).join("")}</ul>
+          </div>
+        </div>
+
+        <h3>Fine-tuning jobs</h3>
+        ${renderJobs(demo.jobs)}
+        ${(demo.auxiliary || []).map(item => `<p class="muted">${item}</p>`).join("")}
+
+        <h3>Failures, findings, and corrective fixes</h3>
+        <ul>${demo.fixes.map(fix => `<li>${fix}</li>`).join("")}</ul>
+      </article>`).join("");
+
+    const terminal = demos.every(demo =>
+      ["pass", "partial", "nogo", "blocked"].includes(demo.status));
+    if (!terminal) {
+      document.body.insertAdjacentHTML("afterbegin",
+        "<p style='background:#b42318;color:white;padding:12px;margin:0'>Report error: non-terminal demo status found.</p>");
+    }
+  </script>
+</body>
+</html>

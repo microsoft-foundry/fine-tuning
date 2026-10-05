@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/fine-tuning-cookbooks/experiment-manifest.schema.json",
+  "title": "Fine-tuning experiment manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "demo_id",
+    "hypothesis",
+    "base_model",
+    "dataset_hashes",
+    "hyperparameters",
+    "metrics",
+    "created_at_utc"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "demo_id": {"type": "string"},
+    "hypothesis": {"type": "string"},
+    "base_model": {"type": "string"},
+    "dataset_hashes": {
+      "type": "object",
+      "additionalProperties": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+    },
+    "code_version": {"type": ["string", "null"]},
+    "hyperparameters": {"type": "object"},
+    "metrics": {"type": "object"},
+    "decision": {"type": ["string", "null"]},
+    "created_at_utc": {"type": "string"}
+  },
+  "additionalProperties": false
+}

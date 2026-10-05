@@ -1,0 +1,44 @@
+id: sft-bug-detection
+title: 'First SFT: Code Bug Detection'
+stage: 00-foundations
+status: draft
+path: 00-foundations/02-first-sft-bug-detection
+techniques:
+- sft
+- distillation
+modalities:
+- text
+- code
+notebooks:
+- path: notebooks/demo.ipynb
+  role: end-to-end
+  performs_fine_tuning: true
+  sections:
+  - prepare
+  - baseline
+  - train
+  - monitor
+  - deploy
+  - evaluate
+training:
+  base_models:
+  - gpt-4.1-mini-2025-04-14
+  teacher_models:
+  - runtime-configured
+  evaluator_models:
+  - runtime-configured
+  result_model: runtime-recorded
+capabilities:
+- file-upload
+- sft
+- deployment
+- evaluation
+prerequisites:
+- foundry-project
+- entra-id
+- model-access
+cost_tier: low
+runtime_tier: short
+validation:
+  status: partial
+  notes: Static and offline validation complete; live service workflow not run.

@@ -1,0 +1,117 @@
+{
+  "algorithm": "sha256",
+  "files": [
+    {
+      "path": "data/synthetic-source-train.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/datagen-ToolUse-FineTuneSupervised-train.jsonl",
+      "role": "preserved synthetic generation output",
+      "bytes": 5063507,
+      "sha256": "a4a5fffbf802fd317fb7b37d997f09710c6aa855702dfd64881c7c7111bc8213",
+      "records": 216,
+      "split": "train"
+    },
+    {
+      "path": "data/synthetic-source-validation.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/datagen-ToolUse-FineTuneSupervised-valid.jsonl",
+      "role": "preserved synthetic generation output",
+      "bytes": 1295513,
+      "sha256": "d0b8b0f2fd41e5eb84232bc04ec9628407b1400f461fd03779c7042700df72f8",
+      "records": 55,
+      "split": "validation"
+    },
+    {
+      "path": "data/sft-train.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/sft_train.jsonl",
+      "role": "SFT training",
+      "bytes": 9811914,
+      "sha256": "34f45048e3ad39481a29f721d3290691abb7eef63fcb8296a45f86fad93a410f",
+      "records": 386,
+      "split": "train"
+    },
+    {
+      "path": "data/sft-validation.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/sft_test.jsonl",
+      "role": "SFT validation",
+      "bytes": 2600787,
+      "sha256": "8d2a28912486f484b09f2e2f36862d10235065babbc2a52a2ef70c8894f5556e",
+      "records": 103,
+      "split": "validation"
+    },
+    {
+      "path": "data/rft-train.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/rft_train_fixed.jsonl",
+      "role": "RFT training",
+      "bytes": 260137,
+      "sha256": "d5406a0cfca595bf4a9e692b9e4cd906fddb9b3d210fb4b923ab2f368262a666",
+      "records": 10,
+      "split": "train"
+    },
+    {
+      "path": "data/rft-validation.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/rft_test_fixed.jsonl",
+      "role": "RFT validation",
+      "bytes": 252722,
+      "sha256": "b1c4b640ff3235f3c127d32afc666b1c769457dc198272600bd1e2d8f6d71fd1",
+      "records": 10,
+      "split": "validation"
+    },
+    {
+      "path": "data/next-tool-evaluation.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/eval.jsonl",
+      "role": "next-tool evaluation",
+      "bytes": 6789432,
+      "sha256": "cd545f59f550b1d66fb9d92edcbe21e9e26829b4de4e45e77e464de671b7cb75",
+      "records": 280,
+      "split": "evaluation"
+    },
+    {
+      "path": "data/retail-database.json",
+      "source": "Demos/ZavaRetailAgent/data/db.json",
+      "role": "fictional retail backing data",
+      "bytes": 2956210,
+      "sha256": "626581b8f48ce439f2cedad9f70aaf4ff4cd28eceb8d521e9169628368021176"
+    },
+    {
+      "path": "data/retail-policy.md",
+      "source": "Demos/ZavaRetailAgent/data/policy.md",
+      "role": "agent policy",
+      "bytes": 6835,
+      "sha256": "4313d3fef8acf919f555fa17fbce929cc3ed1cef2dd8f0d35ff5c8c3364de176"
+    },
+    {
+      "path": "configs/retail-openapi-with-policy.json",
+      "source": "Demos/ZavaRetailAgent/data/openapi_with_policy.json",
+      "role": "synthetic generation OpenAPI contract",
+      "bytes": 33229,
+      "sha256": "d8c9afd76ad62f8bbda6fb76fe440b82155fe4ab57d387883f8b31b5000d3668"
+    },
+    {
+      "path": "configs/sft-evaluation-tools.json",
+      "source": "Demos/ZavaRetailAgent/data/retail_tools.json",
+      "role": "SFT and evaluation tool schemas",
+      "bytes": 14923,
+      "sha256": "c1ceeaa59d3c83fe4cb89f8d27d8ad5637dbdecfb4b53bdfcece3e83ae0a8569"
+    },
+    {
+      "path": "configs/rft-tools.json",
+      "source": "Demos/ZavaRetailAgent/data/rft_tools-config.json",
+      "role": "RFT remote tool endpoints",
+      "bytes": 1876,
+      "sha256": "acfb1447d6c2c2826a7308ed1b3973ff03b18958a923f554903ef3f4e9ce4962"
+    },
+    {
+      "path": "configs/rft-policy-grader.json",
+      "source": "Demos/ZavaRetailAgent/data/rft_grader-config.json",
+      "role": "RFT policy grader",
+      "bytes": 4712,
+      "sha256": "83b9d893f4b08e28e092170d089d75f378dc51de61ba6fb661283fcfa634cb2a"
+    },
+    {
+      "path": "graders/next-tool-call-grader.py",
+      "source": "Demos/ZavaRetailAgent/data/tool_call_grader.py",
+      "role": "deterministic next-tool grader",
+      "bytes": 3044,
+      "sha256": "a974b253414ea861b0c0395ca983fd16c82ebdad8aba8b063c4fb4f851b5252f"
+    }
+  ]
+}

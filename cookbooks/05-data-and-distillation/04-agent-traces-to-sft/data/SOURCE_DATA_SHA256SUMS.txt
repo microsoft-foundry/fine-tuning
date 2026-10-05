@@ -1,0 +1,4 @@
+# SHA-256 hashes for byte-for-byte preserved prompt and tool assets.
+# Format: sha256  migrated_path  source_path
+618efb4f2320a62641ee763e45bb795e5f37533dac78bd09d6cce349b693bab7  zava_system_prompt.md  Demos/TracesDistillation/fixtures/zava_system_prompt.md
+f87922fa85b1ea278a1c73855f084f140c86b579b8e0ad83fef681bcc1c57579  zava_tools.json  Demos/TracesDistillation/fixtures/zava_tools.json

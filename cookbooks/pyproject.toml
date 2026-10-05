@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "foundry-fine-tuning-cookbooks"
+version = "0.1.0"
+description = "Shared foundation for Microsoft Foundry fine-tuning cookbooks"
+requires-python = ">=3.11,<3.15"
+dependencies = [
+  "aiohttp>=3.10,<4",
+  "azure-ai-evaluation>=1.18.7,<2",
+  "azure-ai-projects==2.7.0",
+  "azure-functions>=2.3,<3",
+  "azure-identity>=1.26,<2",
+  "azure-mgmt-cognitiveservices>=14,<15",
+  "azure-storage-blob>=12,<13",
+  "colorama>=0.4,<1",
+  "data-designer>=0.9.3,<1",
+  "datasets>=4,<5",
+  "fastapi>=0.141,<1",
+  "httpx>=0.28,<1",
+  "ipykernel>=7,<8",
+  "ipython>=9,<10",
+  "ipywidgets>=8,<9",
+  "jupyter>=1,<2",
+  "jupyterlab>=4.6,<5",
+  "kagglehub>=0.3,<1",
+  "matplotlib>=3.10,<4",
+  "nbclient>=0.11,<1",
+  "nbconvert>=7.17,<8",
+  "nbformat>=5.10,<6",
+  "notebook>=7.6,<8",
+  "numpy>=2,<3",
+  "opencv-python>=4.10,<5",
+  "pandas>=2.3,<3",
+  "pillow>=12.3,<13",
+  "pyarrow>=24,<25",
+  "pydantic>=2,<3",
+  "python-dotenv>=1.1,<2",
+  "PyYAML>=6,<7",
+  "requests>=2.33,<3",
+  "scikit-learn>=1.7,<2",
+  "seaborn>=0.13,<1",
+  "tables>=3.10,<4",
+  "tabulate>=0.9,<1",
+  "tenacity>=9,<10",
+  "tiktoken>=0.11,<1",
+  "torch>=2.7,<3",
+  "torchvision>=0.22,<1",
+  "tqdm>=4.67,<5",
+  "uvicorn>=0.54,<1"
+]
+
+[project.optional-dependencies]
+test = ["pytest>=9,<10"]
+
+[tool.setuptools]
+packages = ["shared"]
+
+[tool.setuptools.package-data]
+shared = ["schemas/*.json", "templates/*"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["shared/tests"]

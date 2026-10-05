@@ -1,0 +1,11 @@
+{
+  "chart_reasoning": {
+    "model_family": "gpt-4.1-2025-04-14",
+    "evaluation_examples": 10,
+    "base_accuracy": 0.9,
+    "fine_tuned_accuracy": 0.8,
+    "absolute_change": -0.1,
+    "interpretation": "Regression on a small held-out sample."
+  },
+  "variability_note": "Recorded values vary with sampling, preprocessing, model and deployment version, service load, region, quota, pricing date, and evaluation method. Small samples have wide uncertainty."
+}

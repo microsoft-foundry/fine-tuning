@@ -1,5 +1,7 @@
 **/__pycache__
 __pycache__
+**/.pytest_cache/
+**/*.egg-info/
 .venv/
 **/.venv/
 .jupyter/
@@ -38,3 +40,14 @@ Demos/**/outputs/reports/
 Demos/**/outputs/execution/
 Demos/**/outputs/run/
 Demos/**/*.executed.ipynb
+
+# Clean-slate cookbook local configuration and runtime artifacts
+/cookbooks/.env
+/cookbooks/**/.env
+/cookbooks/outputs/
+/cookbooks/**/outputs/
+/cookbooks/**/*.executed.ipynb
+/cookbooks/**/parity-live.log
+
+# Exceeds GitHub's 100 MiB per-file limit; retain locally and document via the hash manifest.
+/cookbooks/02-multimodal-sft/01-chart-reasoning/data/preserved/chart-qa-run-20261002-train.jsonl

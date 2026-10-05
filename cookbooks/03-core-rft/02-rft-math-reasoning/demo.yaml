@@ -1,0 +1,42 @@
+id: rft-math-reasoning-advanced
+title: 'Advanced RFT: Math Reasoning'
+stage: 03-core-rft
+status: draft
+path: 03-core-rft/02-rft-math-reasoning
+techniques:
+- rft
+modalities:
+- text
+notebooks:
+- path: notebooks/demo.ipynb
+  role: end-to-end
+  performs_fine_tuning: true
+  sections:
+  - prepare
+  - baseline
+  - train
+  - monitor
+  - deploy
+  - evaluate
+training:
+  base_models:
+  - qwen3.6-35b-a3b
+  teacher_models: []
+  evaluator_models: []
+  result_model: runtime-recorded
+capabilities:
+- file-upload
+- rft
+- grader
+- evaluation
+prerequisites:
+- foundry-project
+- entra-id
+- rft-access
+- model-access
+- quota
+cost_tier: high
+runtime_tier: long
+validation:
+  status: partial
+  notes: Static and offline validation complete; live service workflow not run.

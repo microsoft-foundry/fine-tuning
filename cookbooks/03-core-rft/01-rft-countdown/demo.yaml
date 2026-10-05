@@ -1,0 +1,41 @@
+id: rft-countdown
+title: 'RFT Deterministic Reasoning: Countdown'
+stage: 03-core-rft
+status: draft
+path: 03-core-rft/01-rft-countdown
+techniques:
+- rft
+modalities:
+- text
+notebooks:
+- path: notebooks/demo.ipynb
+  role: end-to-end
+  performs_fine_tuning: true
+  sections:
+  - prepare
+  - baseline
+  - train
+  - monitor
+  - deploy
+  - evaluate
+training:
+  base_models:
+  - o4-mini-2025-04-16
+  teacher_models: []
+  evaluator_models: []
+  result_model: runtime-recorded
+capabilities:
+- file-upload
+- rft
+- deterministic-grader
+- evaluation
+prerequisites:
+- foundry-project
+- entra-id
+- rft-access
+- model-access
+cost_tier: medium
+runtime_tier: long
+validation:
+  status: partial
+  notes: Static and offline validation complete; live service workflow not run.

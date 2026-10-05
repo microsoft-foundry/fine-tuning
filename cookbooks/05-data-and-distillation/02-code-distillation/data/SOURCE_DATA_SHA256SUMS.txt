@@ -1,0 +1,4 @@
+# SHA-256 hashes for byte-for-byte preserved source assets.
+# Format: sha256  migrated_path  source_path
+00788ea6cf790259a5182513ea266e63afc14e30774c56201b0347283ad3181e  training_data.jsonl  Demos/NL_to_Python_Distillation/training_data.jsonl
+7748e629e37217fc8fe617c3a4d8129c016d72a1ff867f66e5d2a78b9c7bd784  validation_data.jsonl  Demos/NL_to_Python_Distillation/validation_data.jsonl

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="330" viewBox="0 0 680 330" role="img" aria-labelledby="title desc">
+      <title id="title">Domain SFT: Scientific Summarization representative run</title>
+      <desc id="desc">Representative subset-run workflow evidence (not a quality baseline)</desc>
+      <rect width="680" height="330" fill="#ffffff"/>
+      <text x="20" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#0f172a">Domain SFT: Scientific Summarization</text>
+      <text x="20" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#475569">Representative subset-run workflow evidence (not a quality baseline)</text>
+      <g font-family="Segoe UI, Arial, sans-serif" fill="#0f172a">
+        <rect x="20" y="90" width="300" height="72" rx="8" fill="#eff6ff" stroke="#93c5fd"/><text x="36" y="116" font-size="14" fill="#475569">Training rows</text><text x="36" y="145" font-size="22" font-weight="700" fill="#0f172a">10</text>
+<rect x="350" y="90" width="300" height="72" rx="8" fill="#eff6ff" stroke="#93c5fd"/><text x="366" y="116" font-size="14" fill="#475569">Trained tokens</text><text x="366" y="145" font-size="22" font-weight="700" fill="#0f172a">53,251</text>
+<rect x="20" y="190" width="300" height="72" rx="8" fill="#eff6ff" stroke="#93c5fd"/><text x="36" y="216" font-size="14" fill="#475569">Duration</text><text x="36" y="245" font-size="22" font-weight="700" fill="#0f172a">80 min</text>
+<rect x="350" y="190" width="300" height="72" rx="8" fill="#eff6ff" stroke="#93c5fd"/><text x="366" y="216" font-size="14" fill="#475569">Job state</text><text x="366" y="245" font-size="22" font-weight="700" fill="#0f172a">succeeded</text>
+      </g>
+      <text x="20" y="310" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#64748b">Sanitized existing-run evidence, 2026-10-03. Actual results may vary.</text>
+    </svg>

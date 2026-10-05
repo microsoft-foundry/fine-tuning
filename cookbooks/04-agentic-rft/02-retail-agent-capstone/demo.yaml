@@ -1,0 +1,51 @@
+id: agentic-retail-capstone
+title: Agentic Retail Capstone
+stage: 04-agentic-rft
+status: draft
+path: 04-agentic-rft/02-retail-agent-capstone
+techniques:
+- sft
+- rft
+- agentic
+- synthetic-data
+modalities:
+- text
+- tool-calls
+notebooks:
+- path: notebooks/demo.ipynb
+  role: end-to-end
+  performs_fine_tuning: true
+  sections:
+  - prepare
+  - baseline
+  - train
+  - monitor
+  - deploy
+  - evaluate
+training:
+  base_models:
+  - runtime-configured
+  teacher_models:
+  - runtime-configured
+  evaluator_models:
+  - runtime-configured
+  result_model: metadata-gap
+capabilities:
+- synthetic-data
+- file-upload
+- sft
+- rft
+- tool-calling
+- deployment
+- evaluation
+prerequisites:
+- foundry-project
+- entra-id
+- preview-access
+- model-access
+- quota
+cost_tier: variable
+runtime_tier: long
+validation:
+  status: partial
+  notes: Static and offline validation complete; live service workflow not run.

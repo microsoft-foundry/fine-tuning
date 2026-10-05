@@ -1,0 +1,46 @@
+id: vision-video-action-recognition
+title: 'Multimodal SFT: Video Action Recognition'
+stage: 02-multimodal-sft
+status: draft
+path: 02-multimodal-sft/03-video-action-recognition
+techniques:
+- sft
+- distillation
+modalities:
+- text
+- video
+- image
+notebooks:
+- path: notebooks/demo.ipynb
+  role: end-to-end
+  performs_fine_tuning: true
+  sections:
+  - prepare
+  - baseline
+  - train
+  - monitor
+  - deploy
+  - evaluate
+training:
+  base_models:
+  - gpt-4.1-2025-04-14
+  teacher_models: []
+  evaluator_models:
+  - runtime-configured
+  result_model: runtime-recorded
+capabilities:
+- video-preprocessing
+- multimodal-data
+- file-upload
+- sft
+- deployment
+- evaluation
+prerequisites:
+- foundry-project
+- entra-id
+- model-access
+cost_tier: high
+runtime_tier: long
+validation:
+  status: partial
+  notes: Static and offline validation complete; live service workflow not run.

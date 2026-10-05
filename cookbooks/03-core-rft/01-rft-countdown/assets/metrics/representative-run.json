@@ -1,0 +1,22 @@
+{
+  "source": "Existing executed source notebooks; identifiers intentionally omitted",
+  "baseline": {
+    "exact_valid_solutions": 1,
+    "cases": 3
+  },
+  "model_score_grader_rft": {
+    "job_status": "succeeded",
+    "deployment_status": "available",
+    "exact_valid_solutions": 3,
+    "cases": 3
+  },
+  "python_grader_rft": {
+    "job_status": "succeeded",
+    "deployment_status": "available",
+    "exact_valid_solutions": 3,
+    "cases": 3
+  },
+  "interpretation": "Both variants improved on the same three illustrative cases. This is representative evidence, not a benchmark.",
+  "variability": "Results vary with model snapshot, grader model, service version, region, sampling, and deployment configuration."
+}
+

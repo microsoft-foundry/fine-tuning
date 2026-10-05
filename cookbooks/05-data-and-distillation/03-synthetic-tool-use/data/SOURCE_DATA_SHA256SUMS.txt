@@ -1,0 +1,4 @@
+# SHA-256 hashes for byte-for-byte preserved source assets.
+# Format: sha256  migrated_path  source_path
+c1ceeaa59d3c83fe4cb89f8d27d8ad5637dbdecfb4b53bdfcece3e83ae0a8569  zava_tools_openai.json  Demos/SyntheticDatagen-ToolUse/fixtures/zava_tools_openai.json
+3854584a3e1a4230c01391ebe2a1af67fdeca028464702bacd25460944677bbb  zava_tools_openapi.json  Demos/SyntheticDatagen-ToolUse/fixtures/zava_tools_openapi.json

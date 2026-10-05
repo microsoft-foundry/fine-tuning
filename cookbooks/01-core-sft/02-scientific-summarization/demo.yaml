@@ -1,0 +1,42 @@
+id: sft-scientific-summarization
+title: 'Domain SFT: Scientific Summarization'
+stage: 01-core-sft
+status: draft
+path: 01-core-sft/02-scientific-summarization
+techniques:
+- sft
+- distillation
+modalities:
+- text
+notebooks:
+- path: notebooks/demo.ipynb
+  role: end-to-end
+  performs_fine_tuning: true
+  sections:
+  - prepare
+  - baseline
+  - train
+  - monitor
+  - deploy
+  - evaluate
+training:
+  base_models:
+  - gpt-4.1-2025-04-14
+  teacher_models: []
+  evaluator_models:
+  - runtime-configured
+  result_model: runtime-recorded
+capabilities:
+- file-upload
+- sft
+- deployment
+- evaluation
+prerequisites:
+- foundry-project
+- entra-id
+- model-access
+cost_tier: medium
+runtime_tier: medium
+validation:
+  status: partial
+  notes: Static and offline validation complete; live service workflow not run.

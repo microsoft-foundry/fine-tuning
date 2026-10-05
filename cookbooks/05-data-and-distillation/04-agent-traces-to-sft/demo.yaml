@@ -1,0 +1,47 @@
+id: agent-traces-to-sft
+title: Agent Traces to SFT Distillation
+stage: 05-data-and-distillation
+status: draft
+path: 05-data-and-distillation/04-agent-traces-to-sft
+techniques:
+- trace-distillation
+- sft
+modalities:
+- text
+- tool-calls
+notebooks:
+- path: notebooks/demo.ipynb
+  role: end-to-end
+  performs_fine_tuning: true
+  sections:
+  - prepare
+  - baseline
+  - train
+  - monitor
+  - deploy
+  - evaluate
+training:
+  base_models:
+  - gpt-4.1-nano-2025-04-14
+  teacher_models:
+  - runtime-configured
+  evaluator_models:
+  - runtime-configured
+  result_model: runtime-recorded
+capabilities:
+- trace-collection
+- data-generation
+- file-upload
+- sft
+- deployment
+- evaluation
+prerequisites:
+- foundry-project
+- entra-id
+- application-insights
+- model-access
+cost_tier: high
+runtime_tier: long
+validation:
+  status: partial
+  notes: Static and offline validation complete; live service workflow not run.

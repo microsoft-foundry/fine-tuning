@@ -1,0 +1,79 @@
+{
+  "algorithm": "sha256",
+  "artifacts": [
+    {
+      "path": "data/preserved/countdown-evaluation-100.jsonl",
+      "source": "Demos/RFT_Countdown/data/countdown_eval_100.jsonl",
+      "bytes": 5535,
+      "rows": 100,
+      "sha256": "1f7fe8ef30a0f70fcc5db112cf385916a2a200fad702fcd0711d81818ef86413"
+    },
+    {
+      "path": "data/preserved/countdown-training-rft-100.jsonl",
+      "source": "Demos/RFT_Countdown/data/countdown_train_100.jsonl",
+      "bytes": 54602,
+      "rows": 100,
+      "sha256": "2554d6a9e9aaebcd67ddbd12ad8df361fa28f769a3a2c5d271db09bf54ba23ad"
+    },
+    {
+      "path": "data/preserved/countdown-training-rft-25.jsonl",
+      "source": "Demos/RFT_Countdown/data/countdown_train_25.jsonl",
+      "bytes": 31566,
+      "rows": 25,
+      "sha256": "5632ccb53e2036b919f90edddea9d7b88144d1df5c6b35c2c6b6d87e63c324a5"
+    },
+    {
+      "path": "data/preserved/countdown-training-source-filtered.jsonl",
+      "source": "Demos/RFT_Countdown/data/countdown_train_raw.jsonl",
+      "bytes": 11145,
+      "rows": 245,
+      "sha256": "16eb3640374cb87d0cfb875ab4bd416c02649740dd9fc1c01cfe8486add4b4f4"
+    },
+    {
+      "path": "data/preserved/countdown-validation-rft-15.jsonl",
+      "source": "Demos/RFT_Countdown/data/countdown_valid_15.jsonl",
+      "bytes": 18948,
+      "rows": 15,
+      "sha256": "20bcb44f68e3084c66ac3f36b03853043967a15059afb1ad9dc67365521007f6"
+    },
+    {
+      "path": "data/preserved/countdown-validation-rft-50.jsonl",
+      "source": "Demos/RFT_Countdown/data/countdown_valid_50.jsonl",
+      "bytes": 27304,
+      "rows": 50,
+      "sha256": "ea0326d3c53c3f5da9dc2c5836fdafd017a9168c55b7dc38b6132ed63b7cf0aa"
+    },
+    {
+      "path": "data/preserved/countdown-validation-source-filtered.jsonl",
+      "source": "Demos/RFT_Countdown/data/countdown_valid_raw.jsonl",
+      "bytes": 11641,
+      "rows": 256,
+      "sha256": "beff44d8c49ca43cd7a7c294834fe46378d4e9d204dbd78dad20984c5d83a13c"
+    },
+    {
+      "path": "graders/preserved/countdown-model-score-grader.json",
+      "source": "Demos/RFT_Countdown/data/grader_config_aoai.json",
+      "bytes": 1743,
+      "sha256": "737dcf994fcc84841b2ee02a488baa0cf68659b24d24f8ceab75ebd5a9f0f509"
+    },
+    {
+      "path": "graders/preserved/countdown-model-score-grader-prompt.txt",
+      "source": "Demos/RFT_Countdown/data/grader_prompt.txt",
+      "bytes": 1424,
+      "sha256": "cc1679f2090270c364fead4e2ec9b5908c504c81d912931dec54fe07f56d3dbe"
+    },
+    {
+      "path": "graders/preserved/countdown-response-schema.json",
+      "source": "Demos/RFT_Countdown/data/response_schema.json",
+      "bytes": 581,
+      "sha256": "5d5b61b988627ea664595b4e4652132efaca605571953e4ed087aed9dff01d91"
+    },
+    {
+      "path": "graders/preserved/countdown-solver-prompt.txt",
+      "source": "Demos/RFT_Countdown/data/system_prompt.txt",
+      "bytes": 1111,
+      "sha256": "aeac445076277aa5e6c8110a6c5024f6195a125d993fe761c5760464fbc9698b"
+    }
+  ]
+}
+

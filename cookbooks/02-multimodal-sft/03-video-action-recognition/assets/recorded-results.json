@@ -1,0 +1,23 @@
+{
+  "video_action_recognition": {
+    "model_family": "gpt-4.1-2025-04-14",
+    "classes": [
+      "Basketball",
+      "CricketShot",
+      "TennisSwing"
+    ],
+    "training_examples": 36,
+    "validation_examples": 12,
+    "holdout_examples": 15,
+    "frames_per_clip": 3,
+    "base_accuracy": 0.7333333333333333,
+    "fine_tuned_accuracy": 0.7333333333333333,
+    "absolute_change": 0.0,
+    "fine_tuned_per_class_recall": {
+      "Basketball": 1.0,
+      "CricketShot": 0.8,
+      "TennisSwing": 0.4
+    }
+  },
+  "variability_note": "Recorded values vary with sampling, preprocessing, model and deployment version, service load, region, quota, pricing date, and evaluation method. Small samples have wide uncertainty."
+}

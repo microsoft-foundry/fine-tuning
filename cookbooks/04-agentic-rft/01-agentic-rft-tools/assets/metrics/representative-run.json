@@ -1,0 +1,7 @@
+{
+  "status": "illustrative_reference",
+  "training_steps": [0, 3, 6, 9, 12, 15],
+  "training_reward": [0.32, 0.41, 0.50, 0.57, 0.63, 0.69],
+  "validation_reward": [0.30, 0.39, 0.46, 0.54, 0.55, 0.53],
+  "note": "Illustrative checkpoint-selection curve retained from the canonical notebook; it is not presented as a completed service run."
+}

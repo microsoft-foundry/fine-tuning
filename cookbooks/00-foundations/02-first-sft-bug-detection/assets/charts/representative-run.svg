@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="330" viewBox="0 0 680 330" role="img" aria-labelledby="title desc">
+      <title id="title">First SFT: Code Bug Detection representative run</title>
+      <desc id="desc">Representative validation-set rubric scores</desc>
+      <rect width="680" height="330" fill="#ffffff"/>
+      <text x="20" y="32" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#0f172a">First SFT: Code Bug Detection</text>
+      <text x="20" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#475569">Representative validation-set rubric scores</text>
+      <g font-family="Segoe UI, Arial, sans-serif" fill="#0f172a">
+        <text x="20" y="102" font-size="16">Base</text><rect x="130" y="80" width="354.2" height="32" rx="4" fill="#64748b"/><text x="494.2" y="102" font-size="16" font-weight="700">8.43/10</text>
+<text x="20" y="172" font-size="16">Fine-tuned</text><rect x="130" y="150" width="369.6" height="32" rx="4" fill="#2563eb"/><text x="509.6" y="172" font-size="16" font-weight="700">8.80/10</text>
+<text x="20" y="242" font-size="16">Teacher</text><rect x="130" y="220" width="390.6" height="32" rx="4" fill="#7c3aed"/><text x="530.6" y="242" font-size="16" font-weight="700">9.30/10</text>
+      </g>
+      <text x="20" y="310" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#64748b">Sanitized existing-run evidence, 2026-10-03. Actual results may vary.</text>
+    </svg>

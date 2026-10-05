@@ -1,0 +1,13 @@
+{
+  "status": "historical_reference",
+  "teacher_model": "gpt-4.1-mini",
+  "student_base_model": "gpt-4.1-nano",
+  "metrics": {
+    "student_base_combined_score": 7.38,
+    "distilled_student_combined_score": 8.6,
+    "student_base_pass_rate_percent": 60.0,
+    "distilled_student_pass_rate_percent": 100.0,
+    "reported_lift_percent": 16.5
+  },
+  "note": "Recorded source-run evidence from trace distillation; results vary with trace mix and service versions."
+}

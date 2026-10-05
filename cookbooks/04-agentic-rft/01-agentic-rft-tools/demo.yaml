@@ -1,0 +1,44 @@
+id: agentic-rft-tool-calling
+title: 'Agentic RFT: Tool Calling'
+stage: 04-agentic-rft
+status: preview
+path: 04-agentic-rft/01-agentic-rft-tools
+techniques:
+- rft
+- agentic
+modalities:
+- text
+- tool-calls
+notebooks:
+- path: notebooks/demo.ipynb
+  role: end-to-end
+  performs_fine_tuning: true
+  sections:
+  - prepare
+  - baseline
+  - train
+  - monitor
+  - deploy
+  - evaluate
+training:
+  base_models:
+  - o4-mini-2025-04-16
+  teacher_models: []
+  evaluator_models: []
+  result_model: runtime-recorded
+capabilities:
+- file-upload
+- rft
+- tool-calling
+- grader
+- evaluation
+prerequisites:
+- foundry-project
+- entra-id
+- private-preview-access
+- model-access
+cost_tier: high
+runtime_tier: long
+validation:
+  status: partial
+  notes: Static and offline validation complete; live service workflow not run.
