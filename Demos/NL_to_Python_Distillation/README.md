@@ -100,8 +100,8 @@ Data Designer uses a pipeline architecture to generate training data:
 | File | Description |
 |------|-------------|
 | `Text_to_Python_Fine_Tuning.ipynb` | Complete end-to-end notebook |
-| `training_data.jsonl` | Pre-built training set (85 examples, chat messages format) |
-| `validation_data.jsonl` | Pre-built validation set (4 examples, chat messages format) |
+| `training_data.jsonl` | Pre-built training set (1,576 examples, chat messages format) |
+| `validation_data.jsonl` | Pre-built validation set (83 examples, chat messages format) |
 | `requirements.txt` | Python dependencies |
 
 > **Don't want to run data generation?** The included `training_data.jsonl` and `validation_data.jsonl` let you skip straight to Step 4 (upload & evaluate). Just comment out the Data Designer cells and load the JSONL files directly.
