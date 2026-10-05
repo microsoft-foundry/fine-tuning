@@ -9,22 +9,21 @@ import json
 import numpy as np
 import io
 import soundfile as sf
-from pathlib import Path
 
 MAX_SAMPLES = 100
 OUTPUT_FILE = "./data/audio_emotion_evaluation.jsonl"
 
 def load_and_create_audio_dataset(dataset_id: str, max_samples: int = MAX_SAMPLES):
-    # Load only the requested slice and keep encoded WAV bytes to avoid FFmpeg.
-    dataset = load_dataset(dataset_id, split=f"train[:{max_samples}]")
-    dataset = dataset.cast_column("audio", Audio(decode=False))
+    # Load the dataset (train split)
+    dataset = load_dataset(dataset_id, split="train")
+    dataset = dataset.cast_column("audio", Audio(decode=True))
 
     eval_data = []
 
-    for i, row in enumerate(dataset):
+    for i in range(min(len(dataset), max_samples)):
         try:
-            item = row["audio"]
-            emotion = row["major_emotion"]
+            item = dataset[i]["audio"]
+            emotion = dataset[i]["major_emotion"]
 
             audio_base64 = _audio_to_base64(item)
 
@@ -42,9 +41,7 @@ def load_and_create_audio_dataset(dataset_id: str, max_samples: int = MAX_SAMPLE
             print(f"❌ Error processing sample {i}: {e}")
             continue
 
-    Path(OUTPUT_FILE).parent.mkdir(parents=True, exist_ok=True)
-
-    # Write to JSONL file
+     # Write to JSONL file
     with open(OUTPUT_FILE, 'w') as f:
         for item in eval_data:
             f.write(json.dumps(item) + '\n')
@@ -58,17 +55,10 @@ def display_items(num_lines: int = 10):
             if i >= num_lines:
                 break
             item = json.loads(line)
-            preview = item.copy()
-            preview["item"] = preview["item"].copy()
-            audio_data = preview["item"]["audio_data"]
-            preview["item"]["audio_data"] = f"<base64 WAV: {len(audio_data)} characters>"
-            print(json.dumps(preview, indent=2))
+            print(json.dumps(item, indent=2))
 
 
 def _audio_to_base64(item) -> str:
-    if item.get("bytes"):
-        return base64.b64encode(item["bytes"]).decode("ascii")
-
     array = np.asarray(item["array"], dtype=np.float32)
     sr = int(item["sampling_rate"])
 
