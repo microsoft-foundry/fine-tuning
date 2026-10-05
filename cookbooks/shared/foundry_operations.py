@@ -15,6 +15,7 @@ from .retry import RetryPolicy, retry_call
 FILE_TERMINAL_STATUSES = {"processed", "error", "expired", "failed", "cancelled"}
 JOB_TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
 REUSABLE_JOB_STATUSES = {
+    "pending",
     "validating_files",
     "queued",
     "running",
@@ -45,8 +46,26 @@ def _resource_id(resource: Any, resource_name: str) -> str:
 
 
 def _iter_page(page: Any) -> list[Any]:
-    data = getattr(page, "data", page)
-    return list(data)
+    if hasattr(page, "has_next_page"):
+        return list(page)
+    return list(getattr(page, "data", page))
+
+
+def _matches_configuration(actual: Any, requested: Any) -> bool:
+    if hasattr(actual, "model_dump"):
+        actual = actual.model_dump()
+    if isinstance(requested, dict):
+        return isinstance(actual, dict) and all(
+            key in actual and _matches_configuration(actual[key], value)
+            for key, value in requested.items()
+        )
+    return actual == requested
+
+
+def _submission_client(client: Any) -> Any:
+    if callable(getattr(client, "with_options", None)):
+        return client.with_options(max_retries=0)
+    return client
 
 
 def _remote_filename(demo_slug: str, purpose: str, path: Path) -> str:
@@ -151,15 +170,12 @@ def upload_or_reuse_file(
 
     def upload() -> Any:
         with selected.open("rb") as stream:
-            return client.files.create(
+            return _submission_client(client).files.create(
                 file=(remote_name, stream, "application/jsonl"),
                 purpose=api_purpose,
             )
 
-    uploaded = retry_call(
-        upload,
-        operation_name="upload file",
-    )
+    uploaded = upload()
     file_id = _resource_id(uploaded, "File")
     if wait:
         uploaded = wait_for_file(
@@ -187,6 +203,14 @@ def _jobs(client: Any) -> list[Any]:
     )
 
 
+def _job_suffix(job: Any) -> str | None:
+    suffix = getattr(job, "suffix", None)
+    metadata = getattr(job, "metadata", None)
+    if suffix is None and isinstance(metadata, dict):
+        suffix = metadata.get("cookbook_suffix")
+    return suffix
+
+
 def create_or_reuse_fine_tuning_job(
     client: Any,
     *,
@@ -212,9 +236,19 @@ def create_or_reuse_fine_tuning_job(
             and getattr(job, "validation_file", None) == validation_file_id
             and (
                 normalized_suffix is None
-                or getattr(job, "suffix", None) == normalized_suffix
+                or _job_suffix(job) == normalized_suffix
             )
             and _status(job) in REUSABLE_JOB_STATUSES
+            and (
+                hyperparameters is None
+                or _matches_configuration(
+                    getattr(job, "hyperparameters", None), hyperparameters
+                )
+            )
+            and (
+                method is None
+                or _matches_configuration(getattr(job, "method", None), method)
+            )
         ]
         if len(matches) > 1:
             raise RuntimeError(
@@ -240,14 +274,13 @@ def create_or_reuse_fine_tuning_job(
         payload["validation_file"] = validation_file_id
     if normalized_suffix:
         payload["suffix"] = normalized_suffix
+        payload["metadata"] = {"cookbook_suffix": normalized_suffix}
     if hyperparameters is not None:
         payload["hyperparameters"] = hyperparameters
     if method is not None:
         payload["method"] = method
-    job = retry_call(
-        lambda: client.fine_tuning.jobs.create(**payload),
-        operation_name="create fine-tuning job",
-    )
+    # An ambiguous POST failure must be reconciled, not automatically resubmitted.
+    job = _submission_client(client).fine_tuning.jobs.create(**payload)
     return OperationResult(
         operation="fine-tuning-job",
         resource_id=_resource_id(job, "Fine-tuning job"),

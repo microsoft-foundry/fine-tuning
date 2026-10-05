@@ -1,9 +1,23 @@
 # UCF101 data
 
-The notebook retrieves the UCF101 Kaggle dataset used by the source demo and starts from its official `train.csv`, `val.csv`, and `test.csv` partitions. It selects the three most common training classes and samples 12 train, 4 validation, and 5 holdout clips per class with seed 0.
+The notebook retrieves the UCF101 Kaggle dataset used by the source demo and
+starts from its official `train.csv` and `val.csv` partitions. It selects the
+three most common training classes and samples 12 training and 4 validation
+clips per class with seed 0. The source test partition is not used by this
+training-only cookbook.
 
-All frames from a source clip stay in one split. Three evenly spaced frames are converted to RGB, reduced to 8 by 8 pixels, smoothly reconstructed to 256 by 256, and strongly blurred. This preserves coarse scene color and temporal change while obscuring identity details and removes the CAPTCHA-like high-frequency and block-edge patterns that the live fine-tuning preprocessor rejected from earlier transforms.
+All frames from a source clip stay in one split. Frame positions exactly match
+the source helper: three indices are selected with
+`linspace(0, duration, 3, endpoint=False) * fps`.
 
-The source demo committed no generated UCF101 train, validation, or holdout JSONL, so there are no preserved files to migrate. Live preparation is authoritative and training consumes the exact generated train and validation paths.
+Each decoded color frame receives a 201 by 201 Gaussian blur at the original
+resolution and is encoded with the default OpenCV JPEG encoder. There is no
+edge transform or timestamp text strip; temporal order carries the frame
+sequence. The generated split contains 36 training rows and 12 validation
+rows, each with three ordered frames.
+
+The source demo committed no generated UCF101 train or validation JSONL, so
+there are no preserved files to migrate. Live preparation is authoritative and
+training consumes the exact generated paths.
 
 Review the [UCF101 dataset](https://www.crcv.ucf.edu/research/data-sets/ucf101/), its citation, and the Kaggle mirror's terms before use.

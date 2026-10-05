@@ -15,11 +15,9 @@ notebooks:
   performs_fine_tuning: true
   sections:
   - prepare
-  - baseline
   - train
   - monitor
-  - deploy
-  - evaluate
+  - metrics
 training:
   base_models:
   - gpt-4o-2024-08-06
@@ -30,9 +28,7 @@ capabilities:
 - multimodal-data
 - file-upload
 - sft
-- deployment
-- evaluation
-- latency
+- training-metrics
 prerequisites:
 - foundry-project
 - entra-id
@@ -41,4 +37,5 @@ cost_tier: medium
 runtime_tier: medium
 validation:
   status: partial
-  notes: Static and offline validation complete; live service workflow not run.
+  notes: Prepares Stanford Dogs images with a deterministic train/validation split and summarizes service
+    training metrics.

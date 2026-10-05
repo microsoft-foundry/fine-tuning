@@ -1,17 +1,37 @@
 # Agentic RFT: Tool Calling
 
-This module teaches reinforcement fine-tuning for a model that must call a catalog tool and return the correct SKU. The canonical lesson is [`notebooks/demo.ipynb`](notebooks/demo.ipynb).
+[`notebooks/demo.ipynb`](notebooks/demo.ipynb) is a self-contained, training-only customer workflow for the Tool Calling RFT contract. It does not depend on a local validation runner.
 
-The notebook is safe by default: it validates preserved data, exercises a local in-process tool contract, builds the grader and job payload, and plots representative metrics without uploading files, starting paid training, or calling a remote endpoint. Opt-in cells perform the complete workflow: HTTPS tool-contract check, content-addressed upload/reuse, RFT submission or existing-job reuse, bounded terminal monitoring, caller-provided deployment resolution, endpoint invocation, and exact-match evaluation on the preserved validation split.
+It:
 
-1. Create a virtual environment and install the centrally pinned `cookbooks/requirements.lock`.
-2. Copy `.env.template` to `.env` and fill only the settings needed for the optional remote steps. `FOUNDRY_RUN_PAID_JOBS` and `FOUNDRY_RUN_LIVE_EVALUATION` are false unless explicitly enabled.
-3. Run the notebook from this module directory.
+- uses the exact canonical 10-row training and 10-row validation files;
+- verifies their row counts, SHA-256 hashes, and `search_catalog` tool schema;
+- checks the remote tool request/response contract using `RFT_TOOL_SERVER_URL`;
+- uploads both files and submits one reinforcement fine-tuning job;
+- uses `Alibaba qwen3.6-35b-a3b`, model version `1`, `GlobalStandard`, and your own compatible project (reference region: Sweden Central);
+- monitors the job to a terminal state;
+- downloads service result metrics and summarizes training and validation reward curves.
 
-`data/manifest.json` records the original source path, byte count, row count, split, and SHA-256 digest for each byte-preserved dataset. Grading stays in-notebook and uses the transparent composite reward shown in the lesson. The current SDK can discover deployments but cannot create them through the same client surface, so live evaluation requires `FOUNDRY_RFT_DEPLOYMENT` to name a deployment created through the caller's approved management path.
+The workflow ends with terminal job state and service-produced reward metrics.
 
-The notebook renders the local [`assets/charts/representative-reward-curve.svg`](assets/charts/representative-reward-curve.svg) and its machine-readable [`assets/metrics/representative-run.json`](assets/metrics/representative-run.json), so the checkpoint-selection lesson can be followed without executing training.
+## Run
+
+1. Install the central environment from `cookbooks/requirements.lock`.
+2. Authenticate with Azure CLI or another credential supported by `DefaultAzureCredential`.
+3. Copy this module's `.env.template` to a module-local `.env` and set your own `FOUNDRY_PROJECT_ENDPOINT` and HTTPS `RFT_TOOL_SERVER_URL`. Do not commit these values. The tool must be reachable by the training service.
+4. Run the notebook from the repository root, this module directory, or its `notebooks` directory. Data and local tool/contract checks run offline by default.
+5. Execute the training cell to validate the remote tool, upload, and submit or resume one paid job.
+
+The visible recipe uses the exact multi-grader (90% exact string match plus 10% fuzzy similarity, invalid grade 0), maximum 10 episode steps, evaluation every 3 steps with 5 samples, compute multiplier 1.0, and medium reasoning effort.
+
+[`tools/catalog_server.py`](tools/catalog_server.py) is a reusable customer tool, not an automation runner. Host it with the checked-in catalog and request/response envelope; an optional `FOUNDRY_TOOL_AUTH_TOKEN` protects its HTTP endpoint. Configure any required authentication in your hosted tool URL before training. [`src/cookbook_utils.py`](src/cookbook_utils.py) retains reusable data-validation and local grading utilities.
+
+For HTTP requests, an explicitly supplied non-null top-level `top_k` takes precedence over `arguments.top_k`; otherwise the nested value is used, defaulting to 3 when omitted. The existing catalog-size limit and function-call output envelope are unchanged.
+
+Runtime evidence is written under ignored `outputs/`. The state file binds each job to its project, full recipe, grader, tool URL, and data hashes. Rerunning resumes that recorded job; a different configuration requires deliberate archival of the state. Job-creation POSTs are submitted once with SDK retries disabled. Reconcile ambiguous submission failures in Foundry before retrying. File and job polling have timeouts, and failed or cancelled jobs raise errors.
+
+The prior successful reference run had training and validation reward fixed at `1.0`. That value is context only; use the fresh job's downloaded metrics for the current conclusion.
+
+Actual results may vary by model version, data, configuration, region availability, and service conditions.
 
 **Next:** [`../02-retail-agent-capstone`](../02-retail-agent-capstone/README.md).
-
-> Actual results may vary by model version, data, configuration, region availability, and service conditions.

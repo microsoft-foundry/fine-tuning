@@ -1,9 +1,22 @@
 # Stanford Dogs data
 
-The notebook downloads the Stanford Dogs Kaggle mirror used by the source demo. It uses four fixed breed folders and the first 20 sorted JPEG filenames per class: indices 0-11 train, 12-15 validation, and 16-19 holdout.
+The notebook downloads the Stanford Dogs Kaggle mirror used by the current
+branch's original demo and reproduces its split exactly:
 
-Images are converted to RGB JPEG thumbnails with a maximum size of 384 by 384 and quality 82. Image IDs are asserted disjoint across splits. Managed vision safety preprocessing can reject rows; record submitted and accepted counts, and fail if a rejection manifest removes an entire class.
+- all 120 breed folders;
+- the first 50 image paths per breed after sorting by cleaned breed name and
+  image path;
+- positions 0-39 for training, 40-44 for validation, and 45-49 retained only
+  as unused split provenance;
+- 4,800 training rows, 600 validation rows, and 600 unused rows.
 
-`preserved/` contains the committed training and validation JSONL byte-for-byte. [`hash-manifest.csv`](hash-manifest.csv) verifies hashes, row counts, and sizes. [`split-membership.csv`](split-membership.csv) retains all 80 bounded-run IDs, filenames, labels, and assignments without absolute workstation paths.
+The training and validation JSONL embed the original JPEG bytes as base64 data
+URIs with image detail `low`. Generated JSONL, split membership, row counts,
+byte sizes, and SHA-256 hashes are stored under ignored
+`outputs/training-only/`.
 
-Stanford Dogs is derived from ImageNet. Review the original image licenses and dataset terms before use or redistribution.
+Stanford Dogs is derived from ImageNet. Follow the source dataset terms when
+using or redistributing it.
+
+For supported image formats and service requirements, see the
+[vision fine-tuning documentation](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/fine-tuning-vision).

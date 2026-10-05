@@ -1,4 +1,4 @@
-# SHA-256 hashes for byte-for-byte preserved source assets.
-# Format: sha256  migrated_path  source_path
-00788ea6cf790259a5182513ea266e63afc14e30774c56201b0347283ad3181e  training_data.jsonl  Demos/NL_to_Python_Distillation/training_data.jsonl
-7748e629e37217fc8fe617c3a4d8129c016d72a1ff867f66e5d2a78b9c7bd784  validation_data.jsonl  Demos/NL_to_Python_Distillation/validation_data.jsonl
+# SHA-256 hashes for byte-for-byte copied source assets.
+# Format: sha256  cookbook_path  source_path  rows
+18950b69bc0d63a4f56b7194b7eafa76b34aa6acecf2aff7321e18f488280708  training_data.jsonl  Demos/NL_to_Python_Distillation/training_data.jsonl  1576
+821a800a749279b540f9562e2ae86fca7649d088f5238f8a23256ec439b0c3cc  validation_data.jsonl  Demos/NL_to_Python_Distillation/validation_data.jsonl  83

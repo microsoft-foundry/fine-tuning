@@ -5,8 +5,8 @@
       "path": "data/tool-calling-train.jsonl",
       "source": "Demos/Agentic_RFT_PrivatePreview/RFT_ToolCall/data/train_tool.jsonl",
       "role": "agentic RFT training",
-      "bytes": 7529,
-      "sha256": "21c1e866c524558e6f0f3f6bfd4b9b4776d4391df5525d15019beb1c66d555d5",
+      "bytes": 7519,
+      "sha256": "11acebfc227c48fee9dd608734ac81b45544bec76c7b814c01e905783b0d6bc4",
       "records": 10,
       "split": "train"
     },
@@ -14,10 +14,11 @@
       "path": "data/tool-calling-validation.jsonl",
       "source": "Demos/Agentic_RFT_PrivatePreview/RFT_ToolCall/data/valid_tool.jsonl",
       "role": "agentic RFT validation",
-      "bytes": 10416,
-      "sha256": "a7d7b86d0e74a2d8fef2523a0a0a7301ef86502d94ae94a7d12cd4a89910c19c",
+      "bytes": 10406,
+      "sha256": "7835cef9a161a1a0311d6b140c782ba60e644aec54641a74746ceab1cdc23517",
       "records": 10,
       "split": "validation"
     }
-  ]
+  ],
+  "normalization": "CRLF-to-LF"
 }

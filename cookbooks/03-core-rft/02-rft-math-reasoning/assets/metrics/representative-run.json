@@ -1,5 +1,5 @@
 {
-  "source": "Existing executed source notebook; runtime identifiers intentionally omitted",
+  "source": "Representative service training metrics; runtime identifiers omitted",
   "training_status": "succeeded",
   "registered_model": true,
   "validation_reward_history": [
@@ -7,15 +7,9 @@
     0.2
   ],
   "representative_correct_response_words": 257,
-  "deployment_status": "blocked_by_quota",
-  "required_global_provisioned_managed_capacity": 90,
-  "available_global_provisioned_managed_capacity": 0,
   "outcome_distinction": {
     "training": "succeeded",
-    "validation": "at least one final-run output received reward 1.0",
-    "deployment": "not available in the tested subscription",
-    "endpoint_evaluation": "not run because no deployment existed"
+    "validation": "at least one final-run output received reward 1.0"
   },
   "variability": "Results vary with model availability, quota, service version, grader behavior, dataset composition, and training stochasticity."
 }
-

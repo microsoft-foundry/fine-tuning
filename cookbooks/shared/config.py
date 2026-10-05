@@ -28,7 +28,12 @@ def _project_endpoint(value: str) -> str:
         raise ConfigError(
             "FOUNDRY_PROJECT_ENDPOINT must be an HTTPS Foundry project endpoint"
         )
-    if "/api/projects/" not in parsed.path:
+    path_parts = parsed.path.split("/")
+    if (
+        len(path_parts) != 4
+        or path_parts[:3] != ["", "api", "projects"]
+        or not path_parts[3].strip()
+    ):
         raise ConfigError(
             "FOUNDRY_PROJECT_ENDPOINT must include '/api/projects/<project-name>'"
         )
@@ -101,7 +106,7 @@ def load_foundry_config(
             "to .env and set the Foundry project endpoint."
         )
 
-    timeout_raw = values.get("FOUNDRY_CREDENTIAL_PROCESS_TIMEOUT_SECONDS", "90")
+    timeout_raw = values.get("FOUNDRY_CREDENTIAL_PROCESS_TIMEOUT_SECONDS") or "90"
     try:
         timeout = int(timeout_raw)
     except ValueError as error:
@@ -116,14 +121,11 @@ def load_foundry_config(
     return FoundryConfig(
         project_endpoint=_project_endpoint(endpoint),
         allow_preview=_parse_bool(
-            "FOUNDRY_ALLOW_PREVIEW", values.get("FOUNDRY_ALLOW_PREVIEW", "false")
+            "FOUNDRY_ALLOW_PREVIEW", values.get("FOUNDRY_ALLOW_PREVIEW") or "false"
         ),
         exclude_interactive_browser_credential=_parse_bool(
             "FOUNDRY_EXCLUDE_INTERACTIVE_BROWSER_CREDENTIAL",
-            values.get(
-                "FOUNDRY_EXCLUDE_INTERACTIVE_BROWSER_CREDENTIAL",
-                "true",
-            ),
+            values.get("FOUNDRY_EXCLUDE_INTERACTIVE_BROWSER_CREDENTIAL") or "true",
         ),
         credential_process_timeout_seconds=timeout,
     )

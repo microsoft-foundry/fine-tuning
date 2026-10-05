@@ -1,22 +1,16 @@
 {
-  "source": "Existing executed source notebooks; identifiers intentionally omitted",
-  "baseline": {
-    "exact_valid_solutions": 1,
-    "cases": 3
-  },
-  "model_score_grader_rft": {
+  "source": "Two successful Countdown Loom demo submissions",
+  "model_score_grader": {
     "job_status": "succeeded",
-    "deployment_status": "available",
-    "exact_valid_solutions": 3,
-    "cases": 3
+    "validation_reward_initial": 0.67,
+    "validation_reward_final": 2.03,
+    "validation_reward_max": 2.36
   },
-  "python_grader_rft": {
+  "python_grader": {
     "job_status": "succeeded",
-    "deployment_status": "available",
-    "exact_valid_solutions": 3,
-    "cases": 3
+    "validation_reward_initial": 0.25,
+    "validation_reward_final": 2.53,
+    "validation_reward_max": 2.58
   },
-  "interpretation": "Both variants improved on the same three illustrative cases. This is representative evidence, not a benchmark.",
-  "variability": "Results vary with model snapshot, grader model, service version, region, sampling, and deployment configuration."
+  "interpretation": "Both validation reward curves improved during training. These are training signals only."
 }
-

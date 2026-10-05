@@ -1,42 +1,10 @@
-# Data provenance: SFT Practice: News Summarization
+# Dataset provenance
 
-These files were copied without transformation. Their byte content and split membership are preserved.
+These files preserve the exact demonstration records, including prompts and answers. Only checkout line endings differ from some source Git blobs. The notebook validates canonical LF byte counts and SHA-256 values without rewriting the checked-in files.
 
-| Target file | Original source | Split | Rows | Bytes | SHA-256 |
-|---|---|---|---:|---:|---|
-| `news-summarization-train.jsonl` | `Demos/SFT_CNN_DailyMail/training.jsonl` | training | 1992 | 9059757 | `cf7e7cc1ed8b02f9959c269113bf396546c1e959599376c17095cee7a14ef7fd` |
-| `news-summarization-validation.jsonl` | `Demos/SFT_CNN_DailyMail/validation.jsonl` | validation | 229 | 986588 | `25901f4b80de3f6c052f026b5184fca4057dfc6be4ca2be61e2c41f18efe92b7` |
+| Cookbook file | Source | Rows | Bytes | SHA-256 |
+|---|---|---:|---:|---|
+| `news-summarization-train.jsonl` | `Demos/SFT_CNN_DailyMail/training.jsonl` | 1992 | 9057765 | `c6dbdefa54a81868d69f568ba7c54a31684a43f2274e0a45e49ebefb662c532a` |
+| `news-summarization-validation.jsonl` | `Demos/SFT_CNN_DailyMail/validation.jsonl` | 229 | 986359 | `a50b24bf6c2edfe5151eb431c018e8ed7d6a45034c8acd19e8150d94e7230910` |
 
-## Schema
-
-Each JSONL line is one object with a `messages` array in this exact order:
-
-```json
-{
-  "messages": [
-    {"role": "system", "content": "..."},
-    {"role": "user", "content": "..."},
-    {"role": "assistant", "content": "..."}
-  ]
-}
-```
-
-The notebook verifies JSON parsing, role order, non-empty content, row count, duplicate rows, and SHA-256
-before upload. The validated target files are the exact upload inputs.
-
-## Split and holdout policy
-
-The training and validation memberships are unchanged. No independent holdout was present in the source
-material, and none was fabricated during migration. The notebook uses a fixed subset of validation rows for
-an instructional base-versus-fine-tuned comparison. Create a separately governed test set for a real project.
-
-## Source, license, and safety
-
-CNN/DailyMail-derived files preserved from Demos/SFT_CNN_DailyMail; source attribution is not a license grant.
-
-Confirm that your intended use complies with the original dataset terms, privacy obligations, and applicable
-policies. Repository inclusion and source attribution do not grant additional rights. Review samples for PII,
-secrets, harmful content, domain risk, and representation gaps before adapting this material.
-
-Do not edit these preserved files to work around a preprocessing or safety failure. Instead, create a new,
-versioned dataset with documented transforms, filters, approvals, and fresh hashes.
+Each non-empty JSONL line is parsed before upload and must contain a non-empty `messages` array. The validated canonical LF bytes are uploaded without changing records, prompts, or answers.

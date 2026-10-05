@@ -1,28 +1,38 @@
-# Teacher-Student Distillation Basics
+# Teacher-Student Sarcasm
 
-Use [`notebooks/demo.ipynb`](notebooks/demo.ipynb) to generate sarcastic-but-correct teacher labels, calibrate an independent evaluator, filter candidates, fine-tune a smaller student, and compare teacher, base student, and distilled student behavior.
+[`notebooks/demo.ipynb`](notebooks/demo.ipynb) preserves the exact
+`Demos/DistillingSarcasm` data and training recipe: shuffle 500 source questions
+with seed 42, select 50, use the first 40 as teacher candidates and hold out the
+last 10. The 26 accepted labels remain byte-for-byte unchanged as 20 training and
+6 validation rows. Generation and judging are not repeated. Read-only guards
+check hashes, chat shape, unique candidate membership, held-out separation and
+the canonical Clippy system prompt.
 
-The canonical live path trains on the exact teacher output produced and validated in the notebook. Preserved source questions and baseline examples remain byte-identical and are documented in `data/SOURCE_DATA_SHA256SUMS.txt`.
-
-## Acceptance contract
-
-The primary goal is to improve the smaller student's teacher-style sarcasm while preserving factual correctness. On the same held-out rows and evaluator, the demo passes when the fine-tuned student's average sarcasm score is higher than the base student's and its average factual score does not regress. The evaluator's overall score is reported as a diagnostic, not as the primary acceptance metric, because its prompt does not define a fixed weighting between factuality and style.
-
-The 2026-10-04 live calibration found that factual, low-sarcasm and high-sarcasm answers all received overall scores of 9–10 while sarcasm averages ranged from 2.75 to 5.42. This ceiling effect makes `overall_score` insufficiently sensitive to the style-transfer objective; inspect factual and sarcasm dimensions separately.
+The source student example is OpenAI-OSS `gpt-oss-120b`, version `1`, with
+`GlobalStandard` and service-default supervised hyperparameters. Set an exact
+fine-tuning model identifier available in your own project; an optional expected
+version checks returned metadata but does not pin an undated alias.
 
 ## Run
 
-Install the central environment from `cookbooks/requirements.lock`, copy `.env.template` to `.env`, authenticate with Entra ID, and open the canonical notebook. Live generation, evaluation, and paid training require explicit opt-in.
+1. Install `cookbooks/requirements.lock` and authenticate with `az login` or another `DefaultAzureCredential` source.
+2. Copy `.env.template` to this module's ignored `.env` and fill `FOUNDRY_PROJECT_ENDPOINT` and `FOUNDRY_MODEL`. Paid jobs default to false.
+3. Open the notebook from this module or its `notebooks` directory. Run local validation, then execute the upload/training cells, which can incur charges.
 
-For an unattended live validation, configure the same environment variables and run
-`python live_validate.py`. The validator tries `FOUNDRY_PROJECT_ENDPOINTS` in order,
-creates a new timestamped `outputs/` directory, generates and judges fresh teacher
-answers, trains only on the accepted rows from that run, waits for uploaded files and
-the fine-tuning job, creates and verifies the fine-tuned deployment, and evaluates the
-teacher, base student, and fine-tuned student on one held-out set.
+The notebook contains the submission workflow; there is no separate runner.
+Creation POSTs disable SDK retries; an ambiguous response requires reconciliation
+instead of blind resubmission. Recorded pending jobs are monitored without
+creating another job, and authentication/service errors propagate.
+It uploads only the exact training/validation files, monitors with bounded
+timeouts, and downloads fresh service loss/token-accuracy metrics. The 10
+held-out questions are never uploaded or used after training. No deployment,
+fine-tuned inference or base-model comparison is performed.
 
-Representative sanitized metrics are in [`assets/metrics/representative-run.json`](assets/metrics/representative-run.json). They show a small historical run where the distilled student matched the teacher's average score; they are evidence, not a guaranteed outcome.
-
-**Next:** [`../02-code-distillation`](../02-code-distillation/README.md).
+Ignored `outputs/<run-id>` stores submission state, lineage, result CSVs,
+`training-summary.json` and a loss plot. A blank `FOUNDRY_RUN_ID` resumes
+`outputs/default`; use a new run ID only for an intentional new paid job.
+See [data provenance](data/README.md) and [track configuration](../README.md).
 
 > Actual results may vary by model version, data, configuration, region availability, and service conditions.
+
+**Next:** [Code Distillation](../02-code-distillation/README.md).

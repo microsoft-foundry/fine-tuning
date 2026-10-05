@@ -1,3 +1,0 @@
-workload,study,examples,base_accuracy,fine_tuned_accuracy,absolute_change
-image_classification,bounded,16,0.9375,0.9375,0.0
-image_classification,historical,600,0.7367,0.8267,0.09

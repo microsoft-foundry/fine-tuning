@@ -75,11 +75,19 @@ def validate_hash_manifest(manifest_path: str | Path, base_dir: str | Path) -> N
     root = Path(base_dir)
     for artifact in manifest["artifacts"]:
         path = root / artifact["path"]
-        actual = sha256_file(path)
+        content = path.read_bytes()
+        if manifest.get("normalization", "").startswith("CRLF-to-LF"):
+            content = content.replace(b"\r\n", b"\n")
+        actual = hashlib.sha256(content).hexdigest()
         expected = artifact["sha256"]
         if actual != expected:
             raise AssertionError(
                 f"Hash mismatch for {path}: expected {expected}, received {actual}"
+            )
+        if "bytes" in artifact and len(content) != artifact["bytes"]:
+            raise AssertionError(
+                f"Byte count mismatch for {path}: expected {artifact['bytes']}, "
+                f"received {len(content)}"
             )
 
 
@@ -125,11 +133,18 @@ def upload_file_once(client: Any, path: str | Path, *, prefix: str, purpose: str
     source = Path(path)
     remote_name = content_addressed_name(prefix, source)
     existing = retry(
-        lambda: list(client.files.list().data),
+        lambda: _page_items(client.files.list()),
         description=f"list files before uploading {remote_name}",
     )
-    match = next((item for item in existing if item.filename == remote_name), None)
-    if match is not None:
+    matches = [item for item in existing if item.filename == remote_name]
+    if len(matches) > 1:
+        raise RuntimeError(f"Multiple remote files match {remote_name}")
+    if matches:
+        match = matches[0]
+        retry(
+            lambda: client.files.wait_for_processing(match.id),
+            description=f"process reused {remote_name}",
+        )
         print(f"Reusing remote file {remote_name}")
         return match
 
@@ -148,10 +163,26 @@ def upload_file_once(client: Any, path: str | Path, *, prefix: str, purpose: str
     return uploaded
 
 
+def _page_items(page: Any) -> list[Any]:
+    return list(page) if hasattr(page, "has_next_page") else list(getattr(page, "data", page))
+
+
+def _matches_recipe(actual: Any, expected: Any) -> bool:
+    if hasattr(actual, "model_dump"):
+        actual = actual.model_dump()
+    if isinstance(expected, dict):
+        return isinstance(actual, dict) and all(
+            key in actual and _matches_recipe(actual[key], value)
+            for key, value in expected.items()
+        )
+    return actual == expected
+
+
 def create_job_once(
     client: Any,
     *,
     existing_job_id: str | None,
+    expected: dict[str, Any],
     create: Callable[[], Any],
 ) -> Any:
     if existing_job_id:
@@ -159,10 +190,25 @@ def create_job_once(
             lambda: client.fine_tuning.jobs.retrieve(existing_job_id),
             description=f"retrieve existing job {existing_job_id}",
         )
-        if job.status not in {"failed", "cancelled"}:
-            print(f"Reusing job {existing_job_id} ({job.status})")
-            return job
-    return retry(create, description="create RFT job")
+        if job.status not in {
+            "pending", "validating_files", "queued", "running", "succeeded"
+        }:
+            raise RuntimeError(
+                f"Existing job {existing_job_id} cannot be reused ({job.status}). "
+                "Clear the existing-job setting only to intentionally submit a new job."
+            )
+        mismatches = [
+            key for key, value in expected.items()
+            if not _matches_recipe(getattr(job, key, None), value)
+        ]
+        if mismatches:
+            raise RuntimeError(
+                f"Existing job {existing_job_id} does not match the requested recipe: "
+                + ", ".join(mismatches)
+            )
+        print(f"Reusing job {existing_job_id} ({job.status})")
+        return job
+    return create()
 
 
 def wait_for_job(
@@ -212,4 +258,3 @@ def extract_training_metrics(messages: Iterable[str]) -> dict[str, list[float]]:
         rewards.extend(float(value) for value in _REWARD_PATTERN.findall(message))
         losses.extend(float(value) for value in _LOSS_PATTERN.findall(message))
     return {"reward": rewards, "loss": losses}
-

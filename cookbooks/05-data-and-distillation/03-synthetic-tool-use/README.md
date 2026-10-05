@@ -1,13 +1,37 @@
-# SFT with Synthetic Data and Tool-Use
+# Synthetic Tool-Use SFT
 
-Use [`notebooks/demo.ipynb`](notebooks/demo.ipynb) to convert an OpenAI tool catalog to OpenAPI, submit a ToolUseFineTuning generation recipe, validate the downloaded examples, fine-tune a student, and evaluate tool-name and argument correctness.
+[`notebooks/demo.ipynb`](notebooks/demo.ipynb) preserves the exact source split
+from `Demos/SyntheticDatagen-ToolUse`: 24 training, 3 validation and 3 unused
+test rows. The original recipe converts the unchanged 15-tool catalog to
+OpenAPI, requests three batches with `max_samples=60`, deduplicates complete
+rows and splits shuffled indices 80/10/10 with seed 42. Returned samples can be
+fewer than requested. The exact generated data are included; generation is not
+repeated and requires no teacher or generation-project settings.
 
-The lineage rule is strict: when live generation is enabled, validation, splitting, evaluation, and training consume the exact downloaded output from that run. The preserved OpenAPI files are reference fixtures, never a silent fallback. The notebook submits multiple fresh generation batches by default because a single job can produce too few unique rows for a useful train/validation/test split.
+The source student example is `gpt-4.1-mini-2025-04-14`. The fixed supervised
+recipe is 3 epochs, learning-rate multiplier 1.0 and `GlobalStandard`.
+Read-only guards verify hashes, row counts, split separation, chat shape and
+tool-call references. Final assistant tool calls are valid prediction targets;
+no test rows are uploaded.
 
-For an unattended validation with regional failover, configure the primary, East US 2, and Sweden Central endpoint variables in `.env.template`, export them in the shell, and run `live_validate.py`. It tries configured projects in that order and writes hashes, service IDs, failures, and structural evaluation results only under ignored `outputs/`. Fine-tuning availability is regional; if generation succeeds but training is unsupported, retain the exact generated split when moving training to the next project.
+## Run
 
-Representative sanitized metrics are in [`assets/metrics/representative-run.json`](assets/metrics/representative-run.json). Install `cookbooks/requirements.lock`, copy `.env.template` to `.env`, and explicitly opt in to generation or paid training.
+1. Install `cookbooks/requirements.lock` and authenticate with `az login` or another `DefaultAzureCredential` source.
+2. Copy `.env.template` to this module's ignored `.env` and configure your own `FOUNDRY_PROJECT_ENDPOINT` and available `FOUNDRY_MODEL`. Paid jobs default to false.
+3. Open the notebook from this module or its `notebooks` directory. Run local validation, then execute the upload/training cells, which can incur charges.
 
-**Next:** [`../04-agent-traces-to-sft`](../04-agent-traces-to-sft/README.md).
+The inline workflow records uploaded IDs before processing waits, submits or
+resumes one job, monitors with bounded timeouts and downloads fresh service
+loss/token-accuracy metrics. No deployment, fine-tuned inference or base-model
+comparison is performed. Creation POSTs disable SDK retries; an ambiguous
+response requires reconciliation instead of blind resubmission. Recorded
+pending jobs are monitored without another creation attempt, and authentication
+or service errors propagate.
+Runtime evidence stays under ignored `outputs/<run-id>`;
+a blank `FOUNDRY_RUN_ID` resumes `outputs/default`.
+
+See [data provenance](data/README.md) and [track configuration](../README.md).
 
 > Actual results may vary by model version, data, configuration, region availability, and service conditions.
+
+**Next:** [Agent Traces to SFT](../04-agent-traces-to-sft/README.md).

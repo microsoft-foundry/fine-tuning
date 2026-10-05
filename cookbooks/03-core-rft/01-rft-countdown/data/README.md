@@ -1,6 +1,5 @@
 # Countdown data
 
-`preserved/` contains byte-identical copies of every JSONL dataset from `Demos/RFT_Countdown/data`. Names identify the split, role, and row count. The canonical notebook uses the 100-row RFT training set, 50-row RFT validation set, and independent 100-row evaluation set; the smaller and pre-conversion splits remain available for reproducibility and comparison.
+`preserved/` contains LF-normalized copies of the current-branch `Demos/RFT_Countdown/data` Git blobs. The canonical notebook trains with the exact restored 100-row training and 50-row validation content. The 100-row evaluation file is validated as provenance but is not uploaded or run.
 
-`hashes.json` is the integrity contract. Do not reformat these JSONL files: even semantically equivalent formatting changes their hashes.
-
+`hashes.json` records canonical LF byte counts and SHA-256 values for its listed artifacts. Notebook guards normalize CRLF to LF before validation and upload so Windows checkout settings cannot change the service input contract. The scoped `.gitattributes` preserves LF endings for the canonical 100/50/100 datasets.

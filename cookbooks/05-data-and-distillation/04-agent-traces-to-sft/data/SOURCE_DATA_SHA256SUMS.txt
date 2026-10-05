@@ -1,4 +1,8 @@
-# SHA-256 hashes for byte-for-byte preserved prompt and tool assets.
+# SHA-256 hashes for byte-for-byte preserved source assets and customer trace data.
 # Format: sha256  migrated_path  source_path
 618efb4f2320a62641ee763e45bb795e5f37533dac78bd09d6cce349b693bab7  zava_system_prompt.md  Demos/TracesDistillation/fixtures/zava_system_prompt.md
 f87922fa85b1ea278a1c73855f084f140c86b579b8e0ad83fef681bcc1c57579  zava_tools.json  Demos/TracesDistillation/fixtures/zava_tools.json
+81083aadd6464293b6acfc9356216c6c685a1ba99ae3f6fe34ba9d7b5b864d71  traces-clean.jsonl  Demos/TracesDistillation/outputs/loom-model-runs/traces-clean.jsonl
+1371b81c70d7f8c20f8eff604932670a3eda8ca9437759264dcfce4c06aeeae3  train.jsonl  Demos/TracesDistillation/outputs/loom-model-runs/train.jsonl
+865ab59e51c81a29ecc89a0bde347a22d0929630f7cd3db1ffb12f1d406034fa  val.jsonl  Demos/TracesDistillation/outputs/loom-model-runs/val.jsonl
+7ea4284e67980cc2db8cfb2a4b5d403da4383bec9821be3fea27316cbd677040  test.jsonl  Demos/TracesDistillation/outputs/loom-model-runs/test.jsonl

@@ -1,30 +1,15 @@
 {
   "algorithm": "sha256",
+  "text_normalization": "crlf-to-lf",
+  "selection": "training-and-comparison",
+  "source_root": "Demos/ZavaRetailAgent",
   "files": [
-    {
-      "path": "data/synthetic-source-train.jsonl",
-      "source": "Demos/ZavaRetailAgent/data/datagen-ToolUse-FineTuneSupervised-train.jsonl",
-      "role": "preserved synthetic generation output",
-      "bytes": 5063507,
-      "sha256": "a4a5fffbf802fd317fb7b37d997f09710c6aa855702dfd64881c7c7111bc8213",
-      "records": 216,
-      "split": "train"
-    },
-    {
-      "path": "data/synthetic-source-validation.jsonl",
-      "source": "Demos/ZavaRetailAgent/data/datagen-ToolUse-FineTuneSupervised-valid.jsonl",
-      "role": "preserved synthetic generation output",
-      "bytes": 1295513,
-      "sha256": "d0b8b0f2fd41e5eb84232bc04ec9628407b1400f461fd03779c7042700df72f8",
-      "records": 55,
-      "split": "validation"
-    },
     {
       "path": "data/sft-train.jsonl",
       "source": "Demos/ZavaRetailAgent/data/sft_train.jsonl",
       "role": "SFT training",
-      "bytes": 9811914,
-      "sha256": "34f45048e3ad39481a29f721d3290691abb7eef63fcb8296a45f86fad93a410f",
+      "bytes": 9811528,
+      "sha256": "4209d6e67a134b646d6264e85c30d950311ad0d33f3f49d397e24d67c8e5779a",
       "records": 386,
       "split": "train"
     },
@@ -32,8 +17,8 @@
       "path": "data/sft-validation.jsonl",
       "source": "Demos/ZavaRetailAgent/data/sft_test.jsonl",
       "role": "SFT validation",
-      "bytes": 2600787,
-      "sha256": "8d2a28912486f484b09f2e2f36862d10235065babbc2a52a2ef70c8894f5556e",
+      "bytes": 2600684,
+      "sha256": "e267cc58148336d9dfaf4bdab1b409c8fcc269cb647510b9d5b8358255031e02",
       "records": 103,
       "split": "validation"
     },
@@ -41,8 +26,8 @@
       "path": "data/rft-train.jsonl",
       "source": "Demos/ZavaRetailAgent/data/rft_train_fixed.jsonl",
       "role": "RFT training",
-      "bytes": 260137,
-      "sha256": "d5406a0cfca595bf4a9e692b9e4cd906fddb9b3d210fb4b923ab2f368262a666",
+      "bytes": 260127,
+      "sha256": "7c9342510b36fe4a0d670f47e50e5e1a427dd113f1073c78073611bd390f08f6",
       "records": 10,
       "split": "train"
     },
@@ -50,68 +35,84 @@
       "path": "data/rft-validation.jsonl",
       "source": "Demos/ZavaRetailAgent/data/rft_test_fixed.jsonl",
       "role": "RFT validation",
-      "bytes": 252722,
-      "sha256": "b1c4b640ff3235f3c127d32afc666b1c769457dc198272600bd1e2d8f6d71fd1",
+      "bytes": 252712,
+      "sha256": "cc6a54161499d162c40ac03c75e5d17ead4c770e31f58c1964dcd89aacf50456",
       "records": 10,
       "split": "validation"
     },
     {
       "path": "data/next-tool-evaluation.jsonl",
       "source": "Demos/ZavaRetailAgent/data/eval.jsonl",
-      "role": "next-tool evaluation",
-      "bytes": 6789432,
-      "sha256": "cd545f59f550b1d66fb9d92edcbe21e9e26829b4de4e45e77e464de671b7cb75",
+      "role": "SFT held-out next-tool comparison",
+      "bytes": 6789152,
+      "sha256": "abd8fac72b82072404f770b743f611570a892faa1482e540221874b2efc7b611",
       "records": 280,
       "split": "evaluation"
     },
     {
-      "path": "data/retail-database.json",
-      "source": "Demos/ZavaRetailAgent/data/db.json",
-      "role": "fictional retail backing data",
-      "bytes": 2956210,
-      "sha256": "626581b8f48ce439f2cedad9f70aaf4ff4cd28eceb8d521e9169628368021176"
-    },
-    {
-      "path": "data/retail-policy.md",
-      "source": "Demos/ZavaRetailAgent/data/policy.md",
-      "role": "agent policy",
-      "bytes": 6835,
-      "sha256": "4313d3fef8acf919f555fa17fbce929cc3ed1cef2dd8f0d35ff5c8c3364de176"
-    },
-    {
-      "path": "configs/retail-openapi-with-policy.json",
-      "source": "Demos/ZavaRetailAgent/data/openapi_with_policy.json",
-      "role": "synthetic generation OpenAPI contract",
-      "bytes": 33229,
-      "sha256": "d8c9afd76ad62f8bbda6fb76fe440b82155fe4ab57d387883f8b31b5000d3668"
-    },
-    {
       "path": "configs/sft-evaluation-tools.json",
       "source": "Demos/ZavaRetailAgent/data/retail_tools.json",
-      "role": "SFT and evaluation tool schemas",
-      "bytes": 14923,
-      "sha256": "c1ceeaa59d3c83fe4cb89f8d27d8ad5637dbdecfb4b53bdfcece3e83ae0a8569"
+      "role": "SFT comparison tool schemas",
+      "bytes": 14505,
+      "sha256": "6cf4120880be0ce2798e8e9e7ead51761117ef2adf197ea9fba6ee664afe8caa"
     },
     {
       "path": "configs/rft-tools.json",
       "source": "Demos/ZavaRetailAgent/data/rft_tools-config.json",
-      "role": "RFT remote tool endpoints",
-      "bytes": 1876,
-      "sha256": "acfb1447d6c2c2826a7308ed1b3973ff03b18958a923f554903ef3f4e9ce4962"
+      "role": "RFT remote tool configuration",
+      "bytes": 1789,
+      "sha256": "f74f01ca713b5338e24c7fd5a8dab1014eef252056f21dd562aabe726db984c9"
     },
     {
       "path": "configs/rft-policy-grader.json",
       "source": "Demos/ZavaRetailAgent/data/rft_grader-config.json",
       "role": "RFT policy grader",
-      "bytes": 4712,
-      "sha256": "83b9d893f4b08e28e092170d089d75f378dc51de61ba6fb661283fcfa634cb2a"
+      "bytes": 4696,
+      "sha256": "0f6d57e8b46f7b26111021bd240f943c4853eccc9a9a928996e6663108bc8374"
     },
     {
       "path": "graders/next-tool-call-grader.py",
       "source": "Demos/ZavaRetailAgent/data/tool_call_grader.py",
-      "role": "deterministic next-tool grader",
-      "bytes": 3044,
-      "sha256": "a974b253414ea861b0c0395ca983fd16c82ebdad8aba8b063c4fb4f851b5252f"
+      "role": "SFT exact next-tool grader",
+      "bytes": 2950,
+      "sha256": "ea31065f266e93fbb75835b476dcd2ca20a915f1f99500407d39177cfc007fd2"
+    },
+    {
+      "path": "data/retail-database.json",
+      "source": "Demos/ZavaRetailAgent/data/db.json",
+      "role": "Original sandbox database fixture",
+      "bytes": 2870936,
+      "sha256": "2cfbd1e0a6f94eaa7d28dc43a3cc0ea204c62ca359d15ae06d296325359f01d8"
+    },
+    {
+      "path": "data/retail-policy.md",
+      "source": "Demos/ZavaRetailAgent/data/policy.md",
+      "role": "Original retail policy",
+      "bytes": 6699,
+      "sha256": "2c9652afbce57d6e087768d37cda64d31c53d50b3e3225cfdb791bac66466467"
+    },
+    {
+      "path": "configs/retail-openapi-with-policy.json",
+      "source": "Demos/ZavaRetailAgent/data/openapi_with_policy.json",
+      "role": "Original tool server API schema",
+      "bytes": 32503,
+      "sha256": "9505557674961aaf01b2eb509d469a46e60760d61c78df141ddfb23f0253d167"
+    },
+    {
+      "path": "data/synthetic-source-train.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/datagen-ToolUse-FineTuneSupervised-train.jsonl",
+      "role": "Original synthetic training source",
+      "bytes": 5063291,
+      "sha256": "df69f870618f77a7c04266b626c85c35a9038c02bd353480b245b521c58853ac",
+      "records": 216
+    },
+    {
+      "path": "data/synthetic-source-validation.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/datagen-ToolUse-FineTuneSupervised-valid.jsonl",
+      "role": "Original synthetic validation source",
+      "bytes": 1295458,
+      "sha256": "832e1df16305a64648fd0e46371a0d8d601d647aa55ee6e7f1ffea048825ff8c",
+      "records": 55
     }
   ]
 }

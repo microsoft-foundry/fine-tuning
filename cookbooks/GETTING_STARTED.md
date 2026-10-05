@@ -19,7 +19,7 @@ python -m venv .venv
 .\.venv\Scripts\python -m pip install -e . --no-deps
 ```
 
-The lock consolidates direct source-demo requirements, and the editable install
+The lock consolidates retained notebook/helper requirements, and the editable install
 makes the shared cookbook helpers importable from every demo. Notebook authors
 must not add drifting per-demo requirements files. Update both `pyproject.toml`
 and `requirements.lock` when a capability genuinely needs a new package.
@@ -27,8 +27,12 @@ and `requirements.lock` when a capability genuinely needs a new package.
 ## Configure without committing identifiers
 
 ```powershell
-Copy-Item shared\templates\.env.template .env
+Copy-Item .env.template .env
 ```
+
+Run this command from the selected cookbook directory, then open its
+`notebooks/demo.ipynb`. Use that cookbook's template because RFT and the Retail
+Capstone require additional settings.
 
 Set `FOUNDRY_PROJECT_ENDPOINT` to the project endpoint shown by Foundry. Keep the
 populated `.env` local. The shared loader validates HTTPS and the
@@ -40,12 +44,18 @@ from shared.config import load_foundry_config
 
 config = load_foundry_config()
 with create_project_context(config) as context:
-    models = list(context.project_client.deployments.list())
+    jobs = list(context.openai_client.fine_tuning.jobs.list(limit=1))
 ```
 
 No API key is required by the shared project context. Authentication failures are
 reported by the Azure Identity SDK; they are not converted into anonymous or
 key-based fallbacks.
+
+Run preparation and validation cells before upload and training cells.
+Executing the training cells submits or resumes live jobs and can incur
+charges; there is no additional execution switch. For the Retail Capstone,
+provision deployments through your approved management workflow before
+running its inference comparison cells.
 
 ## Before a paid or long-running operation
 
@@ -53,9 +63,9 @@ key-based fallbacks.
    `validate_jsonl(...).require_valid()`.
 2. Verify train/validation/test isolation with `validate_split_isolation(...)`.
 3. Record SHA-256 hashes in an `ExperimentManifest`.
-4. Confirm the catalog prerequisites, availability, cost tier, and runtime tier.
+4. Confirm the catalog prerequisites, model availability, cost tier, and runtime tier.
 5. Use a meaningful `NameFactory` name and explicitly choose whether reuse is safe.
 
 Runtime identifiers belong only below the demo's ignored `outputs/` directory.
 Committed representative evidence must be sanitized and clearly labeled as a
-past run, not the reader's result.
+past training run, not the reader's result.

@@ -1,8 +1,9 @@
 # Multimodal SFT: Chart Reasoning
 
-Use [`notebooks/demo.ipynb`](notebooks/demo.ipynb) to prepare ChartQA, fine-tune or reuse a GPT-4.1 job, deploy externally in Foundry, and compare base versus fine-tuned quality on an untouched holdout.
-
-The recorded run completed successfully but regressed from 90% to 80% on 10 held-out questions. This is intentionally retained as evidence that training success is not quality success.
+Use [`notebooks/demo.ipynb`](notebooks/demo.ipynb) to validate and submit the
+original demo's exact ChartQA v4 training and validation files for multimodal
+supervised fine-tuning. The workflow stops after the service reaches a terminal
+job state and downloads the emitted training metrics.
 
 ## Run
 
@@ -14,14 +15,36 @@ az login
 jupyter lab notebooks\demo.ipynb
 ```
 
-`FOUNDRY_RUN_PAID_JOBS=false` prepares and validates data without creating a job. Live preparation records split row IDs and hashes, and the guarded training cell verifies that a reused job's remote filenames contain those exact hashes. `FOUNDRY_RUN_LIVE_EVALUATION=false` displays checked-in representative evidence without remote inference; set it to `true` only after configuring both deployment names. Live evaluation scores all 50 untouched holdout examples, writes predictions and metrics under `outputs/`, and records an improvement, regression, or tie verdict.
+The notebook uses `DefaultAzureCredential`,
+`AIProjectClient.get_openai_client()`, model `gpt-4.1-2025-04-14`, seed 42,
+one epoch, and `GlobalStandard` training. Executing the upload/training cells
+submits or resumes a paid job.
+
+Source validation cells run locally without creating Foundry clients or
+requiring a base-model deployment.
+
+Each execution uses an ignored `outputs/runs/<run-id>/run-state.json`. Reusing
+the same `FOUNDRY_RUN_ID` resumes the same uploaded files and job; a new run ID
+creates fresh state. This prevents an interrupted rerun from submitting a
+duplicate job.
+
+Job creation disables automatic SDK retries. After an ambiguous submission
+failure, reconcile the remote job before clearing state or using a new run ID.
+Resume searches iterate SDK pages, including pending jobs, and reject a
+matching job with a different seed or epoch recipe. An unresolved pending
+submission is not automatically posted again.
+
+The only effectiveness evidence produced is service-emitted training and
+validation loss and mean token accuracy. The workflow does not deploy or invoke
+the fine-tuned model.
 
 ## Contents
 
-- `data/` - source documentation, byte-preserved committed JSONL, and SHA-256 manifest.
-- `assets/` - sanitized ChartQA example and recorded regression evidence.
-- `outputs/` - ignored live JSONL, predictions, and run artifacts.
+- `data/preserved/` - byte-identical v4 train and validation JSONL from the
+  current-branch source demo.
+- `data/hash-manifest.csv` - exact row counts, byte counts, and SHA-256 hashes.
+- `outputs/` - ignored run state, service result files, and metric summaries.
 
 Next: [`../02-image-classification`](../02-image-classification/README.md).
 
-> Recorded accuracy varies with sampling, image encoding, model/deployment version, service conditions, and equivalence rules.
+> Actual results may vary by model version, data, configuration, region availability, and service conditions.

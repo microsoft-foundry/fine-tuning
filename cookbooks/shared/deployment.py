@@ -6,7 +6,16 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+from azure.core.exceptions import ResourceNotFoundError
+
 from .retry import retry_call
+
+
+def _is_not_found(error: Exception) -> bool:
+    status = getattr(error, "status_code", None)
+    if status is None:
+        status = getattr(getattr(error, "response", None), "status_code", None)
+    return isinstance(error, ResourceNotFoundError) or status == 404
 
 
 def ensure_deployment(
@@ -26,7 +35,9 @@ def ensure_deployment(
     """
     try:
         deployment = project_client.deployments.get(deployment_name)
-    except Exception:
+    except Exception as error:
+        if not _is_not_found(error):
+            raise
         if create is None:
             raise RuntimeError(
                 f"Deployment {deployment_name!r} was not found. Supply a create "
@@ -43,7 +54,9 @@ def ensure_deployment(
                     lambda: project_client.deployments.get(deployment_name),
                     operation_name="retrieve deployment",
                 )
-            except Exception:
+            except Exception as error:
+                if not _is_not_found(error):
+                    raise
                 deployment = None
         if deployment is not None:
             model_name = getattr(deployment, "model_name", None)

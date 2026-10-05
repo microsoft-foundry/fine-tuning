@@ -24,7 +24,9 @@ def configure_logging() -> None:
     )
 
 
-def sha256_file(path: Path) -> str:
+def sha256_file(path: Path, *, normalize_line_endings: bool = False) -> str:
+    if normalize_line_endings:
+        return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
     digest = hashlib.sha256()
     with path.open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):

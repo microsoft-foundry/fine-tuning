@@ -17,27 +17,27 @@ notebooks:
   performs_fine_tuning: true
   sections:
   - prepare
-  - baseline
   - train
   - monitor
+  - metrics
   - deploy
-  - evaluate
+  - compare
 training:
   base_models:
-  - runtime-configured
-  teacher_models:
-  - runtime-configured
+  - gpt-4.1-mini-2025-04-14
+  - o4-mini-2025-04-16
+  teacher_models: []
   evaluator_models:
-  - runtime-configured
-  result_model: metadata-gap
+  - o3-mini-2025-01-31
+  result_model: runtime-recorded
 capabilities:
-- synthetic-data
 - file-upload
 - sft
 - rft
 - tool-calling
+- training-metrics
 - deployment
-- evaluation
+- comparison
 prerequisites:
 - foundry-project
 - entra-id
@@ -48,4 +48,5 @@ cost_tier: variable
 runtime_tier: long
 validation:
   status: partial
-  notes: Static and offline validation complete; live service workflow not run.
+  notes: Portable notebook and dataset checks; live outcomes depend on customer model access, region,
+    quota, and configuration.

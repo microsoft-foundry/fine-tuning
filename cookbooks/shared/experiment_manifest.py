@@ -43,7 +43,6 @@ class ExperimentManifest:
     code_version: str | None = None
     hyperparameters: dict[str, Any] = field(default_factory=dict)
     metrics: dict[str, Any] = field(default_factory=dict)
-    decision: str | None = None
     created_at_utc: str = field(default_factory=_utc_now)
     schema_version: str = "1.0"
 

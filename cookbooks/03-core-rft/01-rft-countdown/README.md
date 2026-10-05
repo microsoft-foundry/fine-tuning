@@ -1,21 +1,28 @@
-# RFT Deterministic Reasoning: Countdown
+# Countdown reinforcement fine-tuning
 
-**Role:** TRAINING VARIANTS  
-**Level:** Advanced  
 **Canonical notebook:** [`notebooks/demo.ipynb`](notebooks/demo.ipynb)
 
-The notebook consolidates the former model/score-grader and Python-grader notebooks. Both variants share the same immutable data, prompt, structured response, offline validator, baseline cases, job monitoring, deployment check, and final exact-answer evaluation.
+The single customer-facing notebook contains two training sections: one for the model/score grader and one for the deterministic Python grader. Both use:
 
-## Safe execution
+- `Alibaba/qwen3.6-35b-a3b`, catalog version `1`
+- `GlobalStandard`
+- your own compatible `FOUNDRY_PROJECT_ENDPOINT` (reference region: North Central US)
+- exact restored 100-row training and 50-row validation content, normalized to canonical LF bytes
+- a separately preserved 100-row evaluation file for provenance only
 
-Copy `.env.template` to `.env` and fill only resources you intend to use. Offline data and grader tests require no Azure resources. Remote baseline and grader calibration are separately gated. `FOUNDRY_RUN_PAID_JOBS` is false unless explicitly enabled, so running all cells does not submit training by default.
+Install the central environment from `cookbooks/requirements.lock`. Copy this module's `.env.template` to a module-local `.env`, set your own `FOUNDRY_PROJECT_ENDPOINT`, run `az login`, open the notebook, and execute the cells in order. Authentication uses `DefaultAzureCredential` with `AIProjectClient`; no API key is required.
 
-The notebook uses `DefaultAzureCredential`; run `az login` before remote cells. `FOUNDRY_GRADER_MODEL` is the catalog model used by RFT (for example, `o3-mini`), while `FOUNDRY_GRADER_DEPLOYMENT` is a callable deployment used only for adversarial calibration. Keep them separate because a supported training grader model is not necessarily deployed for chat inference. Install dependencies from the repository's central pinned environment rather than creating a per-demo requirements file.
+Data and grader checks run locally. Executing the client, upload, and submission cells authenticates and submits or resumes **two paid jobs**.
 
-## Preserved evidence
+The notebook normalizes CRLF to LF before validating and uploading dataset bytes, validates both grader contracts, waits for file processing, submits both jobs, monitors them with a timeout, downloads result CSVs, and summarizes validation reward curves. Runtime state and downloaded results are written under ignored `outputs/`, allowing interrupted runs to resume the same recorded job IDs rather than create duplicates. The state fingerprint includes the project, model, recipe, both graders, response schema, and data hashes. A mismatch requires deliberate archival of the previous state. Job-creation POSTs are submitted once with SDK retries disabled. Reconcile ambiguous submission failures in Foundry before retrying.
 
-- Every source Countdown JSONL split and grader input is copied byte-for-byte into `data/preserved/` or `graders/preserved/`.
-- [`data/hashes.json`](data/hashes.json) records source paths, destination names, sizes, row counts, and SHA-256 values.
-- [`assets/metrics/representative-run.json`](assets/metrics/representative-run.json) records the existing representative result: baseline `1/3`, model-grader RFT `3/3`, and Python-grader RFT `3/3`.
+## Reference training metrics
 
-Those three-case numbers demonstrate the workflow, not a statistical benchmark. Results vary with model snapshot, grader model, service version, region, random sampling, and deployment configuration.
+| Grader | Validation reward |
+|---|---|
+| Model/score grader | `0.67 -> 2.03` (max `2.36`) |
+| Deterministic Python grader | `0.25 -> 2.53` (max `2.58`) |
+
+These reward curves are training signals only.
+
+Actual results may vary by model version, data, configuration, region availability, and service conditions.

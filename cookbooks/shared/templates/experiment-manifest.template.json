@@ -11,6 +11,5 @@
   "code_version": "<commit-or-release>",
   "hyperparameters": {},
   "metrics": {},
-  "decision": null,
   "created_at_utc": "<ISO-8601 UTC timestamp>"
 }

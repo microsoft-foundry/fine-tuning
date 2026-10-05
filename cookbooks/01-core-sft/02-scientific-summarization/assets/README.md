@@ -1,14 +1,4 @@
-# Sanitized representative evidence
+# Assets
 
-These assets summarize an existing completed run for **Domain SFT: Scientific Summarization**. Resource endpoints,
-subscriptions, tenants, resource groups, file IDs, job IDs, result-model IDs, deployment names, URLs, and
-credentials were removed.
-
-- `metrics/representative-run.json`: structured scope, metrics, and limitations.
-- `metrics/representative-run.csv`: compact table for inspection or reuse.
-- `charts/representative-run.svg`: read-only notebook visual.
-
-The evidence scope can differ from the canonical preserved dataset. Read the limitations before drawing
-any quality conclusion.
-
-*Actual results may vary by model version, data, configuration, region availability, and service conditions.*
+This training-only workflow downloads service CSVs and writes result summaries under the
+ignored `outputs/` directory when run.

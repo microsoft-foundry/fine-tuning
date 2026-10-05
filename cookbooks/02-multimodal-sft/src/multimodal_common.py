@@ -4,7 +4,6 @@ import base64
 import hashlib
 import io
 import json
-import os
 import random
 import time
 from contextlib import contextmanager
@@ -224,6 +223,8 @@ def wait_for_job(
 
 
 def _iter_page(page: Any) -> list[Any]:
+    if hasattr(page, "has_next_page"):
+        return list(page)
     return list(getattr(page, "data", page))
 
 
@@ -278,19 +279,15 @@ def resolve_or_create_job(
     suffix: str,
     seed: int,
     training_type: str,
-    run_paid_jobs: bool,
     file_timeout_seconds: float = 600,
     job_timeout_seconds: float = 24 * 60 * 60,
-) -> Any | None:
+) -> Any:
     if reuse_id:
         return wait_for_job(
             client,
             reuse_id,
             timeout_seconds=job_timeout_seconds,
         )
-    if not run_paid_jobs:
-        print("Paid training disabled; exact inputs:", train, validation)
-        return None
     training = upload_or_reuse_file(
         client,
         train,
@@ -301,65 +298,20 @@ def resolve_or_create_job(
         validation,
         timeout_seconds=file_timeout_seconds,
     )
-    job = retry_call(
-        lambda: client.fine_tuning.jobs.create(
-            model=model,
-            training_file=_resource_id(training, "Training file"),
-            validation_file=_resource_id(validation_file, "Validation file"),
-            seed=seed,
-            suffix=suffix,
-            method={
-                "type": "supervised",
-                "supervised": {"hyperparameters": {"n_epochs": 1}},
-            },
-            extra_body={"trainingType": training_type},
-        ),
-        operation_name="create fine-tuning job",
+    job = client.with_options(max_retries=0).fine_tuning.jobs.create(
+        model=model,
+        training_file=_resource_id(training, "Training file"),
+        validation_file=_resource_id(validation_file, "Validation file"),
+        seed=seed,
+        suffix=suffix,
+        method={
+            "type": "supervised",
+            "supervised": {"hyperparameters": {"n_epochs": 1}},
+        },
+        extra_body={"trainingType": training_type},
     )
     return wait_for_job(
         client,
         _resource_id(job, "Fine-tuning job"),
         timeout_seconds=job_timeout_seconds,
-    )
-
-
-def vision_chat(
-    client: Any,
-    deployment: str,
-    system: str,
-    text: str,
-    images: list[str],
-    max_tokens: int = 80,
-) -> str:
-    content = [{"type": "text", "text": text}]
-    content.extend(
-        {
-            "type": "image_url",
-            "image_url": {"url": uri, "detail": "low"},
-        }
-        for uri in images
-    )
-    response = retry_call(
-        lambda: client.chat.completions.create(
-            model=deployment,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": content},
-            ],
-            temperature=0,
-            max_tokens=max_tokens,
-        ),
-        operation_name=f"invoke deployment {deployment}",
-    )
-    return (response.choices[0].message.content or "").strip()
-
-
-def paid_jobs_enabled() -> bool:
-    return os.getenv("FOUNDRY_RUN_PAID_JOBS", "false").strip().lower() == "true"
-
-
-def live_evaluation_enabled() -> bool:
-    return (
-        os.getenv("FOUNDRY_RUN_LIVE_EVALUATION", "false").strip().lower()
-        == "true"
     )

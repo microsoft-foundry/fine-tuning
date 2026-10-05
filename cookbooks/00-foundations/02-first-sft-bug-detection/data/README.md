@@ -1,42 +1,12 @@
-# Data provenance: First SFT: Code Bug Detection
+# Dataset provenance
 
-These files were copied without transformation. Their byte content and split membership are preserved.
+These files preserve the exact demonstration records, including prompts and answers. Only checkout line endings differ from some source Git blobs. The notebook validates canonical LF byte counts and SHA-256 values without rewriting the checked-in files.
 
-| Target file | Original source | Split | Rows | Bytes | SHA-256 |
-|---|---|---|---:|---:|---|
-| `bug-detection-train.jsonl` | `Sample_Datasets/Supervised_Fine_Tuning/Text-Bug-Detection/training_data.jsonl` | training | 224 | 214155 | `9d7a3c11a6ba7cf0a644702557665e79882cbf1ceb074fabf3866e914e7969ca` |
-| `bug-detection-validation.jsonl` | `Sample_Datasets/Supervised_Fine_Tuning/Text-Bug-Detection/validation_data.jsonl` | validation | 20 | 20915 | `781c1e3a44e8bdb814beb6f2443b9307bc1698d1c76c2653566f2095a8e98229` |
+| Cookbook file | Source | Rows | Bytes | SHA-256 |
+|---|---|---:|---:|---|
+| `bug-detection-train.jsonl` | `Sample_Datasets/Supervised_Fine_Tuning/Text-Bug-Detection/training_data.jsonl (the file used by Demos/SFT_Bug_Detection)` | 224 | 213931 | `5f0514a7ae2f529e0f78f7ba2a00beb54c525b16832030e616894025dbe3f1df` |
+| `bug-detection-validation.jsonl` | `Sample_Datasets/Supervised_Fine_Tuning/Text-Bug-Detection/validation_data.jsonl (the file used by Demos/SFT_Bug_Detection)` | 20 | 20895 | `dd89ca979020003573bbf0b199b93fa712168ba56d953881648e90cff41e924c` |
 
-## Schema
+The source demo also tracked a 10-row held-out scale. Those rows are not copied, uploaded, or used here.
 
-Each JSONL line is one object with a `messages` array in this exact order:
-
-```json
-{
-  "messages": [
-    {"role": "system", "content": "..."},
-    {"role": "user", "content": "..."},
-    {"role": "assistant", "content": "..."}
-  ]
-}
-```
-
-The notebook verifies JSON parsing, role order, non-empty content, row count, duplicate rows, and SHA-256
-before upload. The validated target files are the exact upload inputs.
-
-## Split and holdout policy
-
-The training and validation memberships are unchanged. No independent holdout was present in the source
-material, and none was fabricated during migration. The notebook uses a fixed subset of validation rows for
-an instructional base-versus-fine-tuned comparison. Create a separately governed test set for a real project.
-
-## Source, license, and safety
-
-Repository sample dataset; original external license is not recorded.
-
-Confirm that your intended use complies with the original dataset terms, privacy obligations, and applicable
-policies. Repository inclusion and source attribution do not grant additional rights. Review samples for PII,
-secrets, harmful content, domain risk, and representation gaps before adapting this material.
-
-Do not edit these preserved files to work around a preprocessing or safety failure. Instead, create a new,
-versioned dataset with documented transforms, filters, approvals, and fresh hashes.
+Each non-empty JSONL line is parsed before upload and must contain a non-empty `messages` array. The validated canonical LF bytes are uploaded without changing records, prompts, or answers.

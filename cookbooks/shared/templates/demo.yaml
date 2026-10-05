@@ -9,13 +9,13 @@ notebooks:
   - path: notebooks/demo.ipynb
     role: end-to-end
     performs_fine_tuning: true
-    sections: [prepare, baseline, train, monitor, deploy, evaluate]
+    sections: [prepare, train, monitor, metrics]
 training:
   base_models: [runtime-configured]
   teacher_models: []
   evaluator_models: []
   result_model: runtime-recorded
-capabilities: [file-upload, fine-tuning, deployment, evaluation]
+capabilities: [file-upload, fine-tuning, training-metrics]
 prerequisites: [foundry-project, entra-id, model-access]
 cost_tier: low
 runtime_tier: short

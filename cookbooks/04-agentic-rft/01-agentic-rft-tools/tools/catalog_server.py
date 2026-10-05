@@ -72,7 +72,11 @@ def search_catalog(
         arguments = parsed
 
     query = request.query or str(arguments.get("query", ""))
-    top_k = request.top_k if request.top_k is not None else arguments.get("top_k", 3)
+    top_k = (
+        request.top_k
+        if "top_k" in request.model_fields_set and request.top_k is not None
+        else arguments.get("top_k", 3)
+    )
     if not isinstance(top_k, int):
         raise HTTPException(status_code=400, detail="top_k must be an integer")
 

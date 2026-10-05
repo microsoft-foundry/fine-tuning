@@ -1,20 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="420" viewBox="0 0 760 420" role="img" aria-labelledby="title desc">
-  <title id="title">Illustrative Agentic RFT reward curves</title>
-  <desc id="desc">Training reward rises from 0.32 to 0.69. Validation reward peaks at 0.55 before ending at 0.53.</desc>
+  <title id="title">Prior successful Tool Calling RFT reward reference</title>
+  <desc id="desc">Training and validation reward remained at 1.0. This is reference context only.</desc>
   <rect width="760" height="420" fill="#ffffff"/>
   <line x1="80" y1="340" x2="710" y2="340" stroke="#333"/>
   <line x1="80" y1="50" x2="80" y2="340" stroke="#333"/>
   <g fill="#444" font-family="Arial, sans-serif" font-size="14">
     <text x="345" y="395">Training step</text>
-    <text x="18" y="205" transform="rotate(-90 18 205)">Reward</text>
-    <text x="70" y="365">0</text><text x="190" y="365">3</text><text x="315" y="365">6</text>
-    <text x="440" y="365">9</text><text x="558" y="365">12</text><text x="683" y="365">15</text>
-    <text x="45" y="345">0.0</text><text x="45" y="287">0.2</text><text x="45" y="229">0.4</text>
-    <text x="45" y="171">0.6</text><text x="45" y="113">0.8</text><text x="45" y="55">1.0</text>
+    <text x="18" y="205" transform="rotate(-90 18 205)">Mean reward</text>
+    <text x="75" y="365">1</text>
+    <text x="700" y="365">2</text>
+    <text x="45" y="345">0.0</text>
+    <text x="45" y="287">0.2</text>
+    <text x="45" y="229">0.4</text>
+    <text x="45" y="171">0.6</text>
+    <text x="45" y="113">0.8</text>
+    <text x="45" y="55">1.0</text>
   </g>
-  <polyline points="80,247 206,221 332,195 458,175 584,157 710,140" fill="none" stroke="#0067b8" stroke-width="4"/>
-  <polyline points="80,253 206,227 332,207 458,183 584,180 710,186" fill="none" stroke="#d83b01" stroke-width="4"/>
-  <g fill="#0067b8"><circle cx="80" cy="247" r="5"/><circle cx="206" cy="221" r="5"/><circle cx="332" cy="195" r="5"/><circle cx="458" cy="175" r="5"/><circle cx="584" cy="157" r="5"/><circle cx="710" cy="140" r="5"/></g>
-  <g fill="#d83b01"><circle cx="80" cy="253" r="5"/><circle cx="206" cy="227" r="5"/><circle cx="332" cy="207" r="5"/><circle cx="458" cy="183" r="5"/><circle cx="584" cy="180" r="5"/><circle cx="710" cy="186" r="5"/></g>
-  <g font-family="Arial, sans-serif" font-size="14"><line x1="480" y1="35" x2="515" y2="35" stroke="#0067b8" stroke-width="4"/><text x="525" y="40">Training reward</text><line x1="480" y1="60" x2="515" y2="60" stroke="#d83b01" stroke-width="4"/><text x="525" y="65">Validation reward</text></g>
+  <polyline points="80,50 710,50" fill="none" stroke="#0067b8" stroke-width="4"/>
+  <polyline points="80,58 710,58" fill="none" stroke="#d83b01" stroke-width="4"/>
+  <g fill="#0067b8">
+    <circle cx="80" cy="50" r="5"/>
+    <circle cx="710" cy="50" r="5"/>
+  </g>
+  <g fill="#d83b01">
+    <circle cx="80" cy="58" r="5"/>
+    <circle cx="710" cy="58" r="5"/>
+  </g>
+  <g font-family="Arial, sans-serif" font-size="14">
+    <line x1="450" y1="105" x2="485" y2="105" stroke="#0067b8" stroke-width="4"/>
+    <text x="495" y="110">Training reward</text>
+    <line x1="450" y1="130" x2="485" y2="130" stroke="#d83b01" stroke-width="4"/>
+    <text x="495" y="135">Validation reward</text>
+    <text x="80" y="385">Prior run only; the notebook uses fresh service metrics.</text>
+  </g>
 </svg>

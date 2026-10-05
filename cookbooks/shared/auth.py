@@ -77,7 +77,9 @@ def create_project_context(
             credential=credential,
             allow_preview=config.allow_preview,
         )
-        openai_client = project_client.get_openai_client(agent_name=agent_name)
+        openai_client = project_client.get_openai_client(
+            agent_name=agent_name, max_retries=0
+        )
     except Exception:
         if owns_credential:
             close = getattr(credential, "close", None)

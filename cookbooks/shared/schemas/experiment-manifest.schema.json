@@ -25,7 +25,6 @@
     "code_version": {"type": ["string", "null"]},
     "hyperparameters": {"type": "object"},
     "metrics": {"type": "object"},
-    "decision": {"type": ["string", "null"]},
     "created_at_utc": {"type": "string"}
   },
   "additionalProperties": false

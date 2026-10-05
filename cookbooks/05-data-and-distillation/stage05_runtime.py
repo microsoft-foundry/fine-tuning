@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+import math
 import time
 from pathlib import Path
 from typing import Any
 
-FILE_TERMINAL_STATES = {"processed", "error", "expired", "failed", "cancelled"}
-JOB_TERMINAL_STATES = {"succeeded", "failed", "cancelled"}
+FILE_TERMINAL_STATES = {"processed", "error", "expired", "failed", "cancelled", "canceled"}
+JOB_TERMINAL_STATES = {"succeeded", "failed", "cancelled", "canceled"}
 
 
 def _status(resource: Any) -> str:
-    return str(getattr(resource, "status", "")).casefold()
+    return str(getattr(resource, "status", "")).split(".")[-1].casefold()
 
 
 def _require_id(resource: Any, resource_name: str) -> str:
@@ -22,10 +23,10 @@ def _require_id(resource: Any, resource_name: str) -> str:
 
 
 def _validate_wait(poll_interval_seconds: float, timeout_seconds: float) -> None:
-    if poll_interval_seconds <= 0:
-        raise ValueError("poll_interval_seconds must be greater than zero.")
-    if timeout_seconds <= 0:
-        raise ValueError("timeout_seconds must be greater than zero.")
+    if not math.isfinite(poll_interval_seconds) or poll_interval_seconds <= 0:
+        raise ValueError("poll_interval_seconds must be finite and greater than zero.")
+    if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be finite and greater than zero.")
 
 
 def wait_for_file_processed(

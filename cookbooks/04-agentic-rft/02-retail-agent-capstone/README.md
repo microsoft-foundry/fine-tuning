@@ -1,18 +1,86 @@
 # Agentic Retail Capstone
 
-This capstone combines policy-constrained tools, MCP integration, deterministic next-tool evaluation, SFT, and policy-reward RFT. The canonical lesson is [`notebooks/demo.ipynb`](notebooks/demo.ipynb).
+The canonical lesson is [`notebooks/demo.ipynb`](notebooks/demo.ipynb): validate
+the original Zava inputs, train SFT and RFT models, inspect service metrics,
+then provision deployments through your approved process and optionally
+verify, invoke, and compare base versus fine-tuned models.
 
-The committed notebook is offline-safe by default. Opt-in cells provide complete SFT and RFT paths: content-addressed upload/reuse, paid submission or existing-job reuse, bounded terminal monitoring, caller-provided deployment resolution, invocation, and held-out next-tool evaluation. The evaluation path predicts only the next tool call and never executes mutating retail tools.
+The preserved recipes are SFT `gpt-4.1-mini-2025-04-14` (386/103 rows, batch
+size 1, learning-rate multiplier 2, three epochs) and RFT
+`o4-mini-2025-04-16` (10/10 rows, original `o3-mini` policy grader, remote
+tools, one epoch). Data, tool schemas, and grader files are unchanged.
+`data/manifest.json` verifies their LF-canonical byte counts, SHA-256 hashes,
+and row counts. CRLF is normalized only for lineage checks; files and upload
+payloads are not rewritten.
 
-All source datasets, policy files, tool schemas, OpenAPI definitions, and graders used by the lesson are byte-preserved. `data/manifest.json` records their source paths, roles, sizes, row counts where applicable, and SHA-256 hashes. Set `FOUNDRY_USE_LIVE_GENERATED_OUTPUT=true` together with both `FOUNDRY_LIVE_GENERATED_*_PATH` values to select live generated SFT data. Those exact files are validated and uploaded; missing or invalid live output raises an error and never falls back to preserved data.
+Install the repository's shared dependencies as described in
+[Getting started](../../GETTING_STARTED.md), copy `.env.template` to `.env`,
+and run the notebook from this directory or `notebooks`. The `.env` is local
+to this cookbook, not the repository or shared-helper directory. Standard
+`python-dotenv` loading preserves environment variables already set by you.
+The preparation cells validate local inputs without service calls.
+Executing subsequent cells authenticates, uploads, trains, verifies deployments,
+and runs inference comparisons. There is no local runner dependency.
+The notebook uses the genuine `cookbooks/shared` configuration, retry, and
+polling helpers.
 
-The current SDK can discover deployments but cannot create them through the same client surface. Create deployments through your approved management path, then set `FOUNDRY_SFT_MODEL_NAME` and/or `FOUNDRY_RFT_MODEL_NAME` before enabling live evaluation.
+**Training and inference can incur charges.** Execute only the cells for the
+stages you intend to run; no additional execution switches are required.
+Deployment checks are read-only and do not create or replace deployments.
+Select customer-owned Foundry projects with access, quota, and RFT remote-tool
+preview support. Training uses `DefaultAzureCredential`,
+`AIProjectClient.get_openai_client()`, and GlobalStandard training. The notebook
+does not discover alternate projects or silently substitute models.
 
-For an operator-run, end-to-end validation with ordered regional failover, use
-`scripts/live_validate.py` and pass the primary and repeated failover project
-endpoints explicitly. It validates the committed lineage, submits both jobs before
-polling, creates deployments through Azure CLI, and evaluates next-tool predictions
-without executing any returned retail tool. The ignored
-`outputs/live-validation.json` file is updated after every material state change.
-Set `FOUNDRY_TOOLS_SERVER_URL` to the approved HTTPS retail simulator endpoint; no
-credentials or resource-specific values are written to tracked files.
+RFT training retains the original mutating tools: point
+`FOUNDRY_TOOLS_SERVER_URL` at an approved HTTPS server backed by an **isolated,
+disposable copy** of the retail database, then set
+`FOUNDRY_TOOL_SERVER_IS_SANDBOX=true`. Never use a production retail backend.
+Comparison excludes validation scenario 7 and enforces a read-only tool
+allowlist before every remote request, including model-generated calls.
+Unknown and mutating calls fail before contacting the server.
+
+After successful training, use the saved `fine_tuned_model` artifacts in
+`outputs/notebook-state.json` to provision GlobalStandard deployments through
+your approved Foundry portal or management workflow, with explicit unique
+names and appropriate capacity. Provision SFT base/fine-tuned models in the
+SFT account and RFT base/fine-tuned models in the RFT account. Supply your
+subscription, resource group, account names, and four distinct deployment
+names in `.env`. Existing deployments must match model, version, format, SKU,
+and provisioning state; collisions and missing resources fail explicitly.
+The notebook performs **read-only discovery**, never creation, updates, or
+deletion. It makes no claim about ARM conditional-create support.
+
+To complete comparison with preprovisioned deployments, preserve the
+successful training state and its configuration. Run setup, local validation,
+client initialization, the saved-state loading cell, deployment readiness
+checks, and comparison cells; skip the upload/training and metric-download
+cells if the jobs have already completed. Deployment readiness is verified
+before inference. No creation-verification flag, UUID suffix, or capacity
+setting is required. Execute the deployment readiness cell alone to check
+readiness without inference.
+Comparison also requires an existing `o3-mini` grader deployment in your
+configured grader project. The notebook does not create the grader.
+
+Runtime state, service CSVs, and customer comparison results are created only
+when the corresponding cells execute under ignored `outputs/`. Preserve the state file to resume;
+it is bound to endpoints, input hashes, and methods. An uncertain submission
+stops for explicit reconciliation rather than silently submitting twice.
+Retail submission uses the visible SDK call to preserve the required
+`trainingType=globalStandard` extension, which the shared job helper does not
+accept. SDK write retries are disabled, and the pending marker is saved before
+the POST; no failed creation is automatically resubmitted.
+SFT reports single-call original-grader reward alongside exact and
+tool-name accuracy over all 280 held-out rows. RFT reports policy reward,
+pass count, and exact tool sequence over the same nine read-only scenarios
+for both models. No representative result is promised.
+
+The original next-tool grader is preserved verbatim. Its multi-call matching
+can double-credit an expected call, so the comparison validates that each of
+the 280 original rows expects exactly one next call and awards one row score
+only when the model predicts exactly one call. Missing or extra calls receive
+zero reward and zero exact/name accuracy; valid single-call predictions use
+the unchanged grader's normalization and partial-credit rules. Reported
+`mean_single_call_grader_reward` is not exact accuracy.
+
+Actual results may vary by model version, data, configuration, region availability, and service conditions.

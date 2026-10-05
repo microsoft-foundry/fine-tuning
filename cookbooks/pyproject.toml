@@ -9,14 +9,12 @@ description = "Shared foundation for Microsoft Foundry fine-tuning cookbooks"
 requires-python = ">=3.11,<3.15"
 dependencies = [
   "aiohttp>=3.10,<4",
-  "azure-ai-evaluation>=1.18.7,<2",
   "azure-ai-projects==2.7.0",
   "azure-functions>=2.3,<3",
   "azure-identity>=1.26,<2",
   "azure-mgmt-cognitiveservices>=14,<15",
   "azure-storage-blob>=12,<13",
   "colorama>=0.4,<1",
-  "data-designer>=0.9.3,<1",
   "datasets>=4,<5",
   "fastapi>=0.141,<1",
   "httpx>=0.28,<1",
@@ -27,8 +25,6 @@ dependencies = [
   "jupyterlab>=4.6,<5",
   "kagglehub>=0.3,<1",
   "matplotlib>=3.10,<4",
-  "nbclient>=0.11,<1",
-  "nbconvert>=7.17,<8",
   "nbformat>=5.10,<6",
   "notebook>=7.6,<8",
   "numpy>=2,<3",
@@ -41,13 +37,9 @@ dependencies = [
   "PyYAML>=6,<7",
   "requests>=2.33,<3",
   "scikit-learn>=1.7,<2",
-  "seaborn>=0.13,<1",
-  "tables>=3.10,<4",
   "tabulate>=0.9,<1",
   "tenacity>=9,<10",
   "tiktoken>=0.11,<1",
-  "torch>=2.7,<3",
-  "torchvision>=0.22,<1",
   "tqdm>=4.67,<5",
   "uvicorn>=0.54,<1"
 ]
@@ -59,8 +51,13 @@ test = ["pytest>=9,<10"]
 packages = ["shared"]
 
 [tool.setuptools.package-data]
-shared = ["schemas/*.json", "templates/*"]
+shared = ["schemas/*.json", "templates/*", "templates/.env.template"]
 
 [tool.pytest.ini_options]
 addopts = "-q"
-testpaths = ["shared/tests"]
+testpaths = [
+  "shared/tests",
+  "02-multimodal-sft/tests",
+  "04-agentic-rft/01-agentic-rft-tools/tests"
+]
+norecursedirs = ["outputs", "downloads", "build", "dist", ".venv", ".git", ".ipynb_checkpoints"]
