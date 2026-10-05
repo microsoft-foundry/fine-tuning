@@ -3,3 +3,4 @@
 __pycache__/
 *.pyc
 execution_summary.json
+outputs/loom-model-runs/

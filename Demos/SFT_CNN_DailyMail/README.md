@@ -46,7 +46,7 @@ This cookbook teaches you how to:
 3. Upload datasets to Microsoft Foundry
 4. Create and configure a supervised fine-tuning job
 5. Monitor training progress
-6. Deploy and test your fine-tuned model
+6. Download service metrics and assess training convergence
 
 ## Prerequisites
 
@@ -85,30 +85,17 @@ The training and validation JSONL files are already provided in this directory. 
 pip install -r requirements.txt
 ```
 
-### 3. Set Up Environment Variables
+### 3. Authenticate
 
-Copy the file `.env.template` (located in this folder), and save it as file named `.env`. Enter appropriate values for the environment variables used for the job you want to run.
+Run `az login` before executing the notebook. Authentication uses
+`DefaultAzureCredential` with `AIProjectClient`; API keys are not used.
 
+Configure the Microsoft Foundry project before running:
+
+```properties
+AZURE_AI_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
+AZURE_AI_REGION=<region>
 ```
-MICROSOFT_FOUNDRY_PROJECT_ENDPOINT=<your-endpoint> 
-MODEL_NAME=<your-gpt-model-name>
-AZURE_SUBSCRIPTION_ID=<your-subscription-id>
-AZURE_RESOURCE_GROUP=<your-resource-group>
-EXISTING_TRAINING_FILE_ID=<optional-project-file-id>
-EXISTING_VALIDATION_FILE_ID=<optional-project-file-id>
-EXISTING_FINE_TUNE_JOB_ID=<optional-completed-job-id>
-```
-
-Use the project endpoint shown in Microsoft Foundry, for example
-`https://<account>.services.ai.azure.com/api/projects/<project>`. The account
-name used for deployment is derived from this project endpoint. Authentication
-uses `DefaultAzureCredential`, which can select the signed-in Azure CLI identity
-for local development. API keys and account-level inference endpoints are not
-supported by this notebook.
-
-If the project has reached its file quota, set both existing file IDs to reuse
-previously uploaded training and validation files. Leave both unset to upload
-the local demonstration files.
 
 ### 4. Run the Notebook
 
@@ -137,8 +124,9 @@ Each training example contains:
 
 The cookbook uses the following hyperparameters:
 
-- **Model**: gpt-4.1
-- **Epochs**: 3
+- **Model**: Muse-Glimmer-30B, version 1
+- **Training type**: GlobalStandard
+- **Epochs**: 1
 - **Batch Size**: 1
 - **Learning Rate Multiplier**: 1.0
 
@@ -146,13 +134,12 @@ These can be adjusted based on your specific requirements.
 
 ## Expected Outcomes
 
-After fine-tuning with the CNN/DailyMail dataset, your model should:
-
-- Generate concise, accurate news summaries
-- Better understand journalistic writing styles
-- Improve factual accuracy in summarizations
-- Produce summaries similar to professional journalist output
-- Handle various news topics and article lengths
+This run is intentionally training-only. It preserves all 1,992 training rows
+and all 229 validation rows, then bases its conclusion on service-reported
+validation loss and validation token accuracy. It does not deploy either the
+base model or fine-tuned model and does not run inference. If the service omits
+token accuracy, the notebook reports the loss trend and marks the two-metric
+conclusion as qualified rather than fabricating the missing metric.
 
 ## Monitoring
 
@@ -160,17 +147,16 @@ The notebook includes sections for:
 
 - Real-time training progress monitoring
 - Validation loss tracking
-- Model deployment and testing
+- Validation token-accuracy tracking
+- Terminal evidence capture under `outputs/loom-model-runs/`
 
 ## Next Steps
 
 After completing this cookbook, you can:
 
-1. Fine-tune on your own news or document summarization data
-2. Experiment with different hyperparameters
-3. Combine with retrieval-augmented generation (RAG)
-4. Deploy to production applications
-5. Integrate into content management systems
+1. Review the service validation metrics and terminal job status
+2. Experiment with different hyperparameters in a separate controlled run
+3. Add deployment and held-out inference evaluation only when explicitly needed
 
 ## Troubleshooting
 

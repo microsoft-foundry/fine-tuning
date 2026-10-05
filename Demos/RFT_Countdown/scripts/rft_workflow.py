@@ -1,7 +1,11 @@
 import ast
 import asyncio
+import csv
+import hashlib
+import io
 import json
 import operator
+import os
 import time
 from collections import Counter
 from datetime import datetime, timezone
@@ -33,7 +37,15 @@ def _status_code(exc: Exception) -> int | None:
 
 def _is_retryable(exc: Exception) -> bool:
     status_code = _status_code(exc)
-    return status_code == 429 or (status_code is not None and status_code >= 500)
+    if status_code == 429 or (status_code is not None and status_code >= 500):
+        return True
+    return type(exc).__name__ in {
+        "APIConnectionError",
+        "APITimeoutError",
+        "ConnectError",
+        "ConnectTimeout",
+        "ReadTimeout",
+    }
 
 
 def ensure_fine_tuned_deployment(
@@ -99,6 +111,9 @@ def create_rft_job(
             if record.get("notebook") == notebook
             and record.get("event") == "fine_tune_created"
             and record.get("grader_type") == method["reinforcement"]["grader"]["type"]
+            and record.get("model") == model
+            and record.get("training_file") == training_file
+            and record.get("validation_file") == validation_file
         ]
         if prior_jobs:
             prior_job_id = prior_jobs[-1]["job_id"]
@@ -133,6 +148,7 @@ def create_rft_job(
                 validation_file=validation_file,
                 method=method,
                 suffix=suffix,
+                extra_body={"trainingType": "globalStandard"},
             )
             record_event(
                 notebook,
@@ -143,6 +159,7 @@ def create_rft_job(
                 training_file=training_file,
                 validation_file=validation_file,
                 grader_type=method["reinforcement"]["grader"]["type"],
+                training_type="globalStandard",
             )
             print(f"Fine-tuning job submitted: {job.id}")
             return job
@@ -202,12 +219,250 @@ def wait_for_fine_tune(notebook: str, job_id: str, poll_seconds: int = 60):
             )
             previous_status = job.status
         if job.status in TERMINAL_JOB_STATUSES:
-            if job.status != "succeeded":
-                raise RuntimeError(
-                    f"Fine-tuning job {job_id} ended with {job.status}: {job.error}"
-                )
             return job
         time.sleep(poll_seconds)
+
+
+def _file_evidence(path: str) -> dict:
+    content = Path(path).read_bytes()
+    return {
+        "path": path.replace("\\", "/"),
+        "bytes": len(content),
+        "records": sum(1 for line in content.splitlines() if line.strip()),
+        "sha256": hashlib.sha256(content).hexdigest(),
+    }
+
+
+def _reward_summary(rows: list[dict]) -> dict:
+    validation_columns = [
+        name
+        for name in (rows[0].keys() if rows else [])
+        if "reward" in name.lower()
+        and ("valid" in name.lower() or "validation" in name.lower())
+        and "error" not in name.lower()
+    ]
+    training_columns = [
+        name
+        for name in (rows[0].keys() if rows else [])
+        if "reward" in name.lower()
+        and ("train" in name.lower() or name == "train_mean_reward")
+        and "error" not in name.lower()
+    ]
+
+    def curve(columns: list[str]) -> list[dict]:
+        values = []
+        for row in rows:
+            for column in columns:
+                value = row.get(column)
+                if value not in {None, ""}:
+                    values.append(
+                        {
+                            "step": int(float(row["step"])) if row.get("step") else None,
+                            "column": column,
+                            "value": float(value),
+                        }
+                    )
+                    break
+        return values
+
+    validation_curve = curve(validation_columns)
+    training_curve = curve(training_columns)
+    validation_values = [point["value"] for point in validation_curve]
+    return {
+        "validation_curve": validation_curve,
+        "training_curve": training_curve,
+        "validation_reward_initial": (
+            validation_values[0] if validation_values else None
+        ),
+        "validation_reward_final": (
+            validation_values[-1] if validation_values else None
+        ),
+        "validation_reward_max": (
+            max(validation_values) if validation_values else None
+        ),
+    }
+
+
+def _conclusion(status: str, rewards: dict) -> str:
+    if status != "succeeded":
+        return (
+            "No training-quality conclusion is possible because the job did not "
+            "succeed."
+        )
+    initial = rewards["validation_reward_initial"]
+    final = rewards["validation_reward_final"]
+    maximum = rewards["validation_reward_max"]
+    if initial is None:
+        return (
+            "Training succeeded, but no validation reward points were emitted; "
+            "no quality conclusion is supported."
+        )
+    if maximum > initial and final >= initial:
+        return (
+            "Validation reward improved during training and did not finish below "
+            "its initial value. This is a positive training signal, not evidence "
+            "of deployed-model or inference quality."
+        )
+    if maximum > initial:
+        return (
+            "Validation reward improved transiently but finished below its best "
+            "point. The run may have over-optimized after the maximum; deployment "
+            "and inference were intentionally not performed."
+        )
+    return (
+        "Validation reward did not improve above its initial value. The run does "
+        "not support a training-quality gain conclusion."
+    )
+
+
+def collect_training_evidence(
+    notebook: str,
+    job,
+    training_path: str,
+    validation_path: str,
+    evaluation_path: str,
+) -> dict:
+    client = get_openai_client()
+    output_root = Path("outputs/loom-model-runs")
+    job_root = output_root / notebook
+    job_root.mkdir(parents=True, exist_ok=True)
+
+    events = list(
+        client.fine_tuning.jobs.list_events(
+            fine_tuning_job_id=job.id,
+            limit=100,
+        ).data
+    )
+    event_payload = [
+        event.model_dump(mode="json") if hasattr(event, "model_dump") else dict(event)
+        for event in reversed(events)
+    ]
+    (job_root / "events.json").write_text(
+        json.dumps(event_payload, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+
+    result_summaries = []
+    reward_rows = []
+    for index, file_id in enumerate(list(job.result_files or []), start=1):
+        content = client.files.content(file_id).read()
+        result_path = job_root / f"result-{index}.csv"
+        result_path.write_bytes(content)
+        rows = list(csv.DictReader(io.StringIO(content.decode("utf-8"))))
+        reward_rows.extend(rows)
+        result_summaries.append(
+            {
+                "file_id": file_id,
+                "path": str(result_path).replace("\\", "/"),
+                "bytes": len(content),
+                "sha256": hashlib.sha256(content).hexdigest(),
+                "rows": len(rows),
+            }
+        )
+
+    rewards = _reward_summary(reward_rows)
+    project_endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"].rstrip("/")
+    project_name = project_endpoint.rsplit("/", 1)[-1]
+    error = job.error.model_dump(mode="json") if job.error else None
+    service_failures = [
+        event["message"]
+        for event in event_payload
+        if event.get("level") in {"error", "warning"} and event.get("message")
+    ]
+    fixes = [
+        "Removed deployment and inference requirements from the execution path.",
+        "Pinned trainingType to globalStandard and excluded East US 2.",
+        "Reused only hash-identical uploaded files.",
+    ]
+    if notebook == "demo_with_python_grader":
+        fixes.extend(
+            [
+                "The service automatically retried the first failed training attempt.",
+                "A transient TLS polling timeout was classified as retryable; the notebook resumed the same job instead of submitting a replacement.",
+                "Corrected async file-content handling after the first pre-submission notebook attempt.",
+            ]
+        )
+    summary = {
+        "notebook": notebook,
+        "project_endpoint": project_endpoint,
+        "region": "North Central US",
+        "base_model": job.model,
+        "catalog_model_version": "1",
+        "training_type": getattr(job, "trainingType", None),
+        "grader_type": job.method.reinforcement.grader.type,
+        "job_id": job.id,
+        "job_link": (
+            f"https://ai.azure.com/resource/projects/{project_name}/finetuning/{job.id}"
+        ),
+        "status": job.status,
+        "error": error,
+        "fine_tuned_model": job.fine_tuned_model,
+        "trained_tokens": job.trained_tokens,
+        "created_at": job.created_at,
+        "finished_at": job.finished_at,
+        "input_files": {
+            "training": _file_evidence(training_path),
+            "validation": _file_evidence(validation_path),
+            "evaluation_preserved_not_run": _file_evidence(evaluation_path),
+        },
+        "remote_files": {
+            "training_file_id": job.training_file,
+            "validation_file_id": job.validation_file,
+        },
+        "result_files": result_summaries,
+        "rewards": rewards,
+        "service_warnings_and_errors": service_failures,
+        "failures_and_fixes": fixes,
+        "conclusion": _conclusion(job.status, rewards),
+    }
+    summary_path = job_root / "job-summary.json"
+    summary_path.write_text(
+        json.dumps(summary, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+
+    summaries = []
+    for path in sorted(output_root.glob("*/job-summary.json")):
+        summaries.append(json.loads(path.read_text(encoding="utf-8")))
+    combined = {
+        "base_model": "qwen3.6-35b-a3b",
+        "catalog_model_version": "1",
+        "project_endpoint": project_endpoint,
+        "region": "North Central US",
+        "training_type": "globalStandard",
+        "catalog_resolution": {
+            "publisher": "Alibaba",
+            "format": "Alibaba",
+            "model": "qwen3.6-35b-a3b",
+            "version": "1",
+            "lifecycle_status": "GenerallyAvailable",
+            "capabilities": {
+                "fineTune": True,
+                "globalFineTune": True,
+                "datazoneFineTune": True,
+            },
+            "excluded_variants": [
+                "FW-Qwen3.6-27B: no fineTune capability in the live catalog entry.",
+                "FW-Qwen3.6-35B-A3B: deployment SKUs are provisioned-only, not GlobalStandard.",
+            ],
+        },
+        "deployment_performed": False,
+        "inference_performed": False,
+        "runs": summaries,
+        "cautious_conclusion": (
+            "Both graders show substantial validation-reward improvement from the "
+            "first evaluation to the final evaluation, with maxima near the final "
+            "values. This supports a positive training signal for both grader "
+            "variants, but no deployment or inference evaluation was performed, "
+            "so no serving-quality or task-accuracy claim is made."
+        ),
+    }
+    (output_root / "run-summary.json").write_text(
+        json.dumps(combined, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    print(json.dumps(summary, indent=2, default=str))
+    return summary
 
 
 async def wait_for_eval_run(

@@ -91,6 +91,8 @@ Create a `.env` file in your project root (or set env vars in your shell). Examp
 ```bash
 # Microsoft Foundry project
 FOUNDRY_PROJECT_ENDPOINT="https://<resource>.services.ai.azure.com/api/projects/<project>"
+AZURE_AI_REGION="<region>"
+RFT_TOOL_SERVER_URL="https://<your-tool-host>/tool/search_catalog"
 
 # Azure Function App
 FUNC_APP_NAME="<your-function-app-name>"

@@ -53,6 +53,7 @@ pip install -r requirements.txt
 
 ```bash
 set AZURE_AI_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
+set AZURE_AI_REGION=<region>
 set AZURE_AI_AGENT_NAME=<your-hosted-agent>
 set AZURE_AI_AGENT_VERSION=<version>
 set AZURE_FINE_TUNED_DEPLOYMENT=traces-distil-demo

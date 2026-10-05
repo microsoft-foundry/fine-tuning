@@ -29,6 +29,12 @@ from data_designer.interface.errors import (
     DataDesignerGenerationError,
 )
 from dotenv import load_dotenv
+from openai import (
+    APIConnectionError,
+    APITimeoutError,
+    InternalServerError,
+    RateLimitError,
+)
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
@@ -768,16 +774,23 @@ def deploy_model(
 
 
 def generate_candidate(client: Any, deployment: str, instruction: str) -> str:
-    response = client.chat.completions.create(
-        model=deployment,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": instruction},
-        ],
-        temperature=0,
-        max_completion_tokens=16_384,
-    )
-    return response.choices[0].message.content or ""
+    for attempt in range(1, 7):
+        try:
+            response = client.chat.completions.create(
+                model=deployment,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": instruction},
+                ],
+                temperature=0,
+                max_completion_tokens=16_384,
+            )
+            return response.choices[0].message.content or ""
+        except (RateLimitError, APIConnectionError, APITimeoutError, InternalServerError):
+            if attempt == 6:
+                raise
+            time.sleep(min(120, 10 * (2 ** (attempt - 1))))
+    raise RuntimeError("Candidate generation retry loop exited unexpectedly.")
 
 
 def parse_integer_score(text: str) -> int:
@@ -795,22 +808,29 @@ def judge_dimension(
     reference: str,
     candidate: str,
 ) -> int:
-    response = client.chat.completions.create(
-        model=evaluator,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt_template.format(
-                    instruction=instruction,
-                    reference=reference,
-                    candidate=candidate,
-                ),
-            }
-        ],
-        temperature=0,
-        max_completion_tokens=32,
-    )
-    return parse_integer_score(response.choices[0].message.content or "")
+    for attempt in range(1, 7):
+        try:
+            response = client.chat.completions.create(
+                model=evaluator,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt_template.format(
+                            instruction=instruction,
+                            reference=reference,
+                            candidate=candidate,
+                        ),
+                    }
+                ],
+                temperature=0,
+                max_completion_tokens=32,
+            )
+            return parse_integer_score(response.choices[0].message.content or "")
+        except (RateLimitError, APIConnectionError, APITimeoutError, InternalServerError):
+            if attempt == 6:
+                raise
+            time.sleep(min(120, 10 * (2 ** (attempt - 1))))
+    raise RuntimeError("Evaluator retry loop exited unexpectedly.")
 
 
 def evaluate_one(
@@ -1009,7 +1029,7 @@ def main() -> None:
     file_timeout = env_int("FOUNDRY_FILE_TIMEOUT_SECONDS", 1_800)
     job_timeout = env_int("FOUNDRY_JOB_TIMEOUT_SECONDS", 86_400)
     poll_interval = env_int("FOUNDRY_POLL_INTERVAL_SECONDS", 30)
-    eval_workers = env_int("FOUNDRY_EVALUATION_WORKERS", 4)
+    eval_workers = env_int("FOUNDRY_EVALUATION_WORKERS", 2)
     generation_parallelism = env_int("FOUNDRY_GENERATION_PARALLELISM", 12)
 
     credential = AzureCliCredential()
@@ -1116,18 +1136,29 @@ def main() -> None:
 
     evaluation_details: dict[str, Any] = {}
     evaluation_summary: dict[str, Any] = {}
+    resume_evaluation = os.environ.get("FOUNDRY_RESUME_EVALUATION", "").strip()
+    resume_evaluation_dir = Path(resume_evaluation) if resume_evaluation else None
     for role, deployment in (
         ("teacher", teacher),
         ("student_base", student_base),
         ("student_fine_tuned", fine_tuned_deployment),
     ):
-        items, summary = evaluate_deployment(
-            client,
-            evaluator,
-            deployment,
-            evaluation_rows,
-            eval_workers,
+        cached_path = (
+            resume_evaluation_dir / f"evaluation-{role}.json"
+            if resume_evaluation_dir
+            else None
         )
+        if cached_path and cached_path.is_file():
+            items = json.loads(cached_path.read_text(encoding="utf-8"))
+            summary = summarize_evaluation(items)
+        else:
+            items, summary = evaluate_deployment(
+                client,
+                evaluator,
+                deployment,
+                evaluation_rows,
+                eval_workers,
+            )
         evaluation_details[role] = items
         evaluation_summary[role] = summary
         write_json(OUTPUTS / f"evaluation-{role}.json", items)

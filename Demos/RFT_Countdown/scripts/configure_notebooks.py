@@ -43,12 +43,11 @@ for index in random.sample(range(len(dataset)), 5):
 CONSTANTS = '''import os
 
 PROJECT_ENDPOINT = os.environ["FOUNDRY_PROJECT_ENDPOINT"]
-BASE_MODEL = os.getenv("FOUNDRY_BASE_MODEL", "o4-mini-2025-04-16")
-BASELINE_DEPLOYMENT = os.environ["FOUNDRY_BASELINE_DEPLOYMENT"]
+BASE_MODEL = os.getenv("FOUNDRY_BASE_MODEL", "qwen3.6-35b-a3b")
 GRADER_MODEL = "o3-mini"
 print("Project endpoint:", PROJECT_ENDPOINT)
 print("RFT base model:", BASE_MODEL)
-print("Baseline deployment:", BASELINE_DEPLOYMENT)
+print("Training type: globalStandard")
 print("RFT grader model:", GRADER_MODEL)'''
 
 MODEL_GRADER = '''custom_grader = {
@@ -86,45 +85,59 @@ custom_grader = {
     "source": python_grader_source,
 }'''
 
-EVAL_DATA = '''from datasets import load_dataset
-from scripts.dataset_utils import save_dataset_in_eval_format
+EVAL_DATA = '''from pathlib import Path
 
-test_dataset = load_dataset("predibase/countdown", split="test")
 eval_ready_path = "data/countdown_eval_100.jsonl"
-save_dataset_in_eval_format(test_dataset, eval_ready_path, max_records=100)'''
+if not Path(eval_ready_path).is_file():
+    raise FileNotFoundError(eval_ready_path)
+print("Preserved evaluation file (not executed):", eval_ready_path)'''
 
-UPLOAD_EVAL = '''from scripts.io_utils import upload_file
+UPLOAD_EVAL = '''print(
+    "Evaluation upload skipped: this run is training-only and preserves the "
+    "original evaluation file unchanged."
+)'''
 
-eval_file_id = await upload_file(
-    file_name="countdown_evals_100.jsonl",
-    file_path=eval_ready_path,
-    purpose="evals",
-)
-print("Eval file ID:", eval_file_id)'''
+TRAIN_DATA = '''import hashlib
+from pathlib import Path
 
-TRAIN_DATA = '''from datasets import load_dataset
-from scripts.dataset_utils import save_dataset_as_jsonl, convert_to_rft_dataset
-
-train_raw_path = "data/countdown_train_raw.jsonl"
-valid_raw_path = "data/countdown_valid_raw.jsonl"
 train_rft_path = "data/countdown_train_100.jsonl"
 valid_rft_path = "data/countdown_valid_50.jsonl"
 
-dataset = load_dataset("predibase/countdown", split="train")
-train_split = dataset.select(range(500))
-valid_split = dataset.select(range(500, 1000))
-save_dataset_as_jsonl(train_split, train_raw_path)
-save_dataset_as_jsonl(valid_split, valid_raw_path)
-convert_to_rft_dataset(train_raw_path, train_rft_path, instruction, max_records=100)
-convert_to_rft_dataset(valid_raw_path, valid_rft_path, instruction, max_records=50)'''
+expected_files = {
+    train_rft_path: {
+        "records": 100,
+        "bytes": 54602,
+        "sha256": "2554d6a9e9aaebcd67ddbd12ad8df361fa28f769a3a2c5d271db09bf54ba23ad",
+    },
+    valid_rft_path: {
+        "records": 50,
+        "bytes": 27304,
+        "sha256": "ea0326d3c53c3f5da9dc2c5836fdafd017a9168c55b7dc38b6132ed63b7cf0aa",
+    },
+    eval_ready_path: {
+        "records": 100,
+        "bytes": 5535,
+        "sha256": "1f7fe8ef30a0f70fcc5db112cf385916a2a200fad702fcd0711d81818ef86413",
+    },
+}
+for path, expected in expected_files.items():
+    content = Path(path).read_bytes()
+    actual = {
+        "records": sum(1 for line in content.splitlines() if line.strip()),
+        "bytes": len(content),
+        "sha256": hashlib.sha256(content).hexdigest(),
+    }
+    if actual != expected:
+        raise RuntimeError(f"Preserved input changed: {path}: {actual} != {expected}")
+    print(path, actual)'''
 
 UPLOAD_TRAIN = '''from scripts.io_utils import upload_file
 
 train_file_id = await upload_file(
-    "countdown_train_100.jsonl", train_rft_path, purpose="fine-tune"
+    "countdown_train_100-qwen36.jsonl", train_rft_path, purpose="fine-tune"
 )
 valid_file_id = await upload_file(
-    "countdown_valid_50.jsonl", valid_rft_path, purpose="fine-tune"
+    "countdown_valid_50-qwen36.jsonl", valid_rft_path, purpose="fine-tune"
 )
 print("Training file ID:", train_file_id)
 print("Validation file ID:", valid_file_id)'''
@@ -156,15 +169,20 @@ finetune_job = create_rft_job(
     suffix=JOB_SUFFIX,
 )
 finetune_job = wait_for_fine_tune(NOTEBOOK_NAME, finetune_job.id)
-fine_tuned_model = finetune_job.fine_tuned_model
-print("Fine-tuned model:", fine_tuned_model)
+from scripts.rft_workflow import collect_training_evidence
 
-from scripts.rft_workflow import ensure_fine_tuned_deployment
-fine_tuned_deployment = ensure_fine_tuned_deployment(
+job_summary = collect_training_evidence(
     NOTEBOOK_NAME,
-    fine_tuned_model,
-    DEPLOYMENT_NAME,
-)'''
+    finetune_job,
+    train_rft_path,
+    valid_rft_path,
+    eval_ready_path,
+)
+print("Terminal status:", finetune_job.status)
+print("Validation reward initial:", job_summary["rewards"]["validation_reward_initial"])
+print("Validation reward final:", job_summary["rewards"]["validation_reward_final"])
+print("Validation reward max:", job_summary["rewards"]["validation_reward_max"])
+print(job_summary["conclusion"])'''
 
 VALIDATION_CASES = '''validation_cases = [
     {"target": 24, "nums": [1, 2, 3, 4]},
@@ -191,59 +209,23 @@ print(
 
 def model_eval_cells(name: str) -> dict[int, str]:
     return {
-        17: VALIDATION_CASES + '''
-from scripts.rft_workflow import solve_and_validate
-
-baseline_validation_results = solve_and_validate(
-    NOTEBOOK_NAME,
-    BASELINE_DEPLOYMENT,
-    instruction,
-    response_schema,
-    validation_cases,
-)
-print("Baseline validation complete")''',
-        19: '''baseline_passed = sum(
-    result["valid"] for result in baseline_validation_results
-)
-print("Baseline exact solutions:", baseline_passed, "/", len(validation_cases))''',
-        20: '''print("Baseline grader model:", GRADER_MODEL)''',
-        31: VALIDATE,
-        32: '''fine_tuned_passed = sum(
-    result["valid"] for result in fine_tuned_validation_results
-)
-print("Fine-tuned exact solutions:", fine_tuned_passed, "/", len(validation_cases))''',
-        33: '''if fine_tuned_passed == 0:
-    raise RuntimeError("Fine-tuned model produced no exact Countdown solutions")
-print("Countdown outcome validated")''',
+        17: '''print("Baseline inference skipped by design.")''',
+        19: '''print("No deployment-based baseline metrics were collected.")''',
+        20: '''print("Model grader semantics preserved; grader model:", GRADER_MODEL)''',
+        31: '''print("Fine-tuned deployment and inference skipped by design.")''',
+        32: '''print("Use the validation reward curve in job_summary for conclusions.")''',
+        33: '''print("Training-only Countdown run complete.")''',
     }
 
 
 def python_eval_cells(name: str) -> dict[int, str]:
     return {
-        16: VALIDATION_CASES + '''
-from scripts.rft_workflow import solve_and_validate
-
-baseline_validation_results = solve_and_validate(
-    NOTEBOOK_NAME,
-    BASELINE_DEPLOYMENT,
-    instruction,
-    response_schema,
-    validation_cases,
-)
-print("Baseline validation complete")''',
-        18: '''baseline_passed = sum(
-    result["valid"] for result in baseline_validation_results
-)
-print("Baseline exact solutions:", baseline_passed, "/", len(validation_cases))''',
-        19: '''print("RFT grader type:", custom_grader["type"])''',
-        30: VALIDATE,
-        31: '''fine_tuned_passed = sum(
-    result["valid"] for result in fine_tuned_validation_results
-)
-print("Fine-tuned exact solutions:", fine_tuned_passed, "/", len(validation_cases))''',
-        32: '''if fine_tuned_passed == 0:
-    raise RuntimeError("Fine-tuned model produced no exact Countdown solutions")
-print("Countdown outcome validated")''',
+        16: '''print("Baseline inference skipped by design.")''',
+        18: '''print("No deployment-based baseline metrics were collected.")''',
+        19: '''print("Python grader semantics preserved; grader type:", custom_grader["type"])''',
+        30: '''print("Fine-tuned deployment and inference skipped by design.")''',
+        31: '''print("Use the validation reward curve in job_summary for conclusions.")''',
+        32: '''print("Training-only Countdown run complete.")''',
     }
 
 
@@ -270,16 +252,14 @@ def configure(path: Path, python_grader: bool) -> None:
         replacements.update(model_eval_cells(path.stem))
         name_cell = 10
 
-    suffix = "countdown-python-grader" if python_grader else "countdown-model-grader"
-    deployment_name = (
-        "countdown-python-grader-ft"
+    suffix = (
+        "qwen36-countdown-python-grader"
         if python_grader
-        else "countdown-model-grader-ft"
+        else "qwen36-countdown-model-grader"
     )
     replacements[name_cell] += (
         f'\nNOTEBOOK_NAME = "{path.stem}"'
         f'\nJOB_SUFFIX = "{suffix}"'
-        f'\nDEPLOYMENT_NAME = "{deployment_name}"'
     )
 
     for index, source in replacements.items():
@@ -294,6 +274,33 @@ def configure(path: Path, python_grader: bool) -> None:
             cell["source"] = []
             cell["outputs"] = []
             cell["execution_count"] = None
+
+    for cell in cells:
+        if cell.get("cell_type") != "markdown":
+            continue
+        source = "".join(cell.get("source", []))
+        source = source.replace("`o4-mini`", "`qwen3.6-35b-a3b`")
+        source = source.replace("o4-mini", "qwen3.6-35b-a3b")
+        source = source.replace(
+            "Evaluating Base Models",
+            "Preserving Evaluation Inputs (Execution Skipped)",
+        )
+        source = source.replace(
+            "Fine-Tuned Model Evaluation",
+            "Training-Only Reward Analysis",
+        )
+        source = source.replace(
+            "Deployment & Inference",
+            "Terminal Training Evidence",
+        )
+        if "approaches o3" in source or "inference cost" in source:
+            source = (
+                "## Training-only conclusion\n\n"
+                "No deployment or inference is performed. Conclusions are limited "
+                "to the validation reward curve and its initial, final, and maximum "
+                "values from the terminal training result."
+            )
+        cell["source"] = [line + "\n" for line in source.splitlines()]
 
     notebook.setdefault("metadata", {})["kernelspec"] = {
         "display_name": "RFT Countdown Python 3.12",

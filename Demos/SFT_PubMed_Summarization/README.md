@@ -73,7 +73,7 @@ This cookbook teaches you how to:
 3. Upload datasets through your Microsoft Foundry project endpoint
 4. Create and configure a supervised fine-tuning job
 5. Monitor training progress and review metrics
-6. Resolve, monitor, and test the fine-tuned model deployment in the project
+6. Draw training-only conclusions from validation loss and token accuracy
 
 ## Prerequisites
 
@@ -117,11 +117,10 @@ Copy the file `.env.template` (located in this folder), and save it as file name
 
 ```
 MICROSOFT_FOUNDRY_PROJECT_ENDPOINT=<your-endpoint> 
-MODEL_NAME=gpt-4.1
+MODEL_NAME=qwen3.8-27b
 
-# Optional: reuse an existing terminal job and its deployment.
+# Optional: reuse an existing terminal job.
 FINE_TUNE_JOB_ID=<existing-ftjob-id>
-DEPLOYMENT_NAME=<existing-project-deployment-name>
 ```
 
 The project endpoint must have the form
@@ -137,11 +136,17 @@ Open sft_pubmed_summarization.ipynb and follow the step-by-step instructions.
 
 The cookbook uses the following hyperparameters:
 
-- **Model**: gpt-4.1
+- **Model**: qwen3.8-27b
 - **Epochs**: 3
 - **Batch Size**: 1
 - **Learning Rate Multiplier**: 1.0
+- **Training type**: GlobalStandard
 - **Suffix**: pubmed-summarization
+
+The notebook uploads the checked-in 1,000-row training file and 100-row
+validation file byte-for-byte. It does not create a deployment or run
+inference; conclusions are limited to the training result CSV's validation
+loss and token-accuracy metrics.
 
 These can be adjusted based on your specific requirements and dataset characteristics.
 
@@ -175,11 +180,6 @@ After completing this cookbook, you can:
 **Quota Exceeded**
 - Request additional quota in Azure Portal → Azure OpenAI → Quotas
 - Try a different Azure region with available capacity
-
-**Deployment Is Not Found**
-- Verify the fine-tuned model completed training successfully
-- Create a deployment for the fine-tuned model in the same Foundry project, then set `DEPLOYMENT_NAME`
-- Confirm the deployment appears in the project's **Models + endpoints** page
 
 ## References
 
