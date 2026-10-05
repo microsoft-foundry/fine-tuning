@@ -27,12 +27,8 @@ Authentication is exclusively through `DefaultAzureCredential`.
 
 ## Run
 
-Open and run either notebook in order, or execute both from the directory:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\configure_notebooks.py
-.\.venv\Scripts\python.exe scripts\execute_notebooks.py
-```
+Open `demo.ipynb` or `demo_with_python_grader.ipynb` and run the cells in
+order.
 
 The notebooks hash-check the preserved 100-row training, 50-row validation, and
 100-row evaluation files; upload the unchanged training and validation files;

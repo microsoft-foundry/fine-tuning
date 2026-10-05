@@ -12,6 +12,4 @@ tabulate
 
 # Jupyter support
 ipykernel
-nbclient
-nbformat
 python-dotenv
