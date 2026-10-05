@@ -29,7 +29,7 @@ The `gpt-4.1-nano` student, fine-tuned on traces from a `gpt-4.1-mini` teacher a
 
 - An Azure AI Foundry project with a **deployed hosted agent** that has historical traces in App Insights. If you don't have one yet:
   - Use any existing agent (any hosted Foundry agent emits traces automatically)
-  - Or run `generate_traces.py` against a prompt agent with local function tools to populate complete multi-turn trace history
+  - Or run `fixtures/push_prompts.py` to populate complete multi-turn function-calling trace history
 - A project-level **Application Insights connection**. Trace data generation fails with `DataGenerationJobInvalidAppInsightsSetup` when the project has no App Insights connection.
 - One **student** model deployment that supports fine-tuning (e.g. `gpt-4.1-nano`, `gpt-4.1-mini`)
 - Azure CLI (`az login`) or another `DefaultAzureCredential` source for secretless Entra ID authentication
@@ -44,8 +44,7 @@ pip install -r requirements.txt
 | File | Purpose |
 |------|---------|
 | `notebook.ipynb` | End-to-end runnable walkthrough — **fully self-contained**, no external scripts required |
-| `generate_traces.py` | Generates complete multi-turn function-calling conversations through a hosted prompt agent without Search or Functions resources |
-| `fixtures/push_prompts.py` | Optional standalone script that pushes diverse retail prompts through any hosted agent (use this before the notebook if your agent has no trace history yet) |
+| `fixtures/push_prompts.py` | Optional standalone script that creates complete multi-turn function-calling conversations through a hosted agent (use this before the notebook if your agent has no trace history yet) |
 | `fixtures/zava_system_prompt.md` | Sample system prompt for the Zava resolution-desk agent (replace with your own) |
 | `fixtures/zava_tools.json` | Sample tool catalog (OpenAI chat-completions format) — replace with your own |
 
@@ -60,9 +59,10 @@ set AZURE_FINE_TUNED_DEPLOYMENT=traces-distil-demo
 set AZURE_FINE_TUNING_JOB_ID=<existing-successful-job-id>
 
 # (Optional) populate complete function-calling trace history first:
-python generate_traces.py ^
+python fixtures/push_prompts.py ^
     --project-endpoint %AZURE_AI_PROJECT_ENDPOINT% ^
     --agent-name <your-hosted-agent> ^
+    --agent-version <version> ^
     --model gpt-4.1-mini ^
     --conversations 40
 
