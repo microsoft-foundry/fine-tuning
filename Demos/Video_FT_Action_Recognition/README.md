@@ -34,15 +34,29 @@ Install the required packages. Navigate to the `Video_FT_Action_Recognition` fol
 pip install -r requirements.txt
 ```
 
+The notebook uses Foundry SDK 2.x `AIProjectClient` with
+`DefaultAzureCredential`. Files, fine-tuning jobs, deployment discovery, and
+inference all use one Foundry project endpoint. It does not use API keys,
+construct an OpenAI client directly, call manual management routes, or require a
+parent Azure AI Services account endpoint.
+
+The notebook can also use privacy-preserving edge frames. This removes the
+original photographic person/face content and timestamp overlay while retaining
+ordered pose, object, and motion cues for action recognition.
+
 __Required Services:__
-- An Azure OpenAI resource with the following model deployments:
-   - GPT-4.1
+- A Microsoft Foundry project in a region that supports global vision
+  fine-tuning, with:
+  - A GPT-4.1 base deployment
+  - A deployment of the completed fine-tuned model
+- Azure CLI authentication available to `DefaultAzureCredential`
 
 __Optional Services:__
 - Azure AI Foundry for managing fine-tuning in the UI
 - An Azure Storage Account
 
-Rename the environemt file template `.env.template` to `.env` and add your credentials by editing the file.
+Rename `.env.template` to `.env` and set `AZURE_AI_PROJECT_ENDPOINT`. Run
+`az login` before executing the notebook. No API key is required.
 
 Navigate to the video fine-tuning notebook:
 
@@ -70,9 +84,9 @@ sudo apt install libgl1-mesa-glx
 - Select "Modified Content Filtering" for Inferencing and Fine Tuning
 
 **Authentication Error**
-- Verify `.env` contains correct API key and endpoint
+- Verify `.env` contains the Foundry project endpoint
 - Run `az login` to refresh Azure credentials
-- Ensure your Azure OpenAI resource has GPT-4.1 deployed
+- Ensure your identity can access the Foundry project and its deployments
 
 **Training Job Fails**
 - Verify video frames are properly extracted and encoded

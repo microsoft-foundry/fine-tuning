@@ -1,4 +1,5 @@
 ipykernel
-openai
-dotenv
+azure-ai-projects>=2.3.0,<3
+azure-identity>=1.17.0
+python-dotenv
 requests

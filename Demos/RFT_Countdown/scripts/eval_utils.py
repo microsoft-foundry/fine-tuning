@@ -1,21 +1,9 @@
 import json
-import os
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from dotenv import load_dotenv
-from openai import AsyncOpenAI
-
-# Load environment variables from the .env file
-load_dotenv()
-
-# API keys and endpoint
-OAI_API_TYPE = os.getenv("OAI_API_TYPE", "azure").lower()
-AZURE_API_KEY = os.getenv("AZURE_API_KEY", None)
-AZURE_API_ENDPOINT = os.getenv("AZURE_API_ENDPOINT", "") + "/openai/v1"
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", None)
-OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "") + "/v1"
+from scripts.client_utils import get_async_openai_client
 
 # -------------------------------------------------------------------------------
 # --                           Eval Client Class                               --
@@ -26,15 +14,7 @@ class AsyncEvalClient:
         """ 
         Initialize the AsyncEvalClient with the appropriate OpenAI client based on the API type.
         """
-        params = {"aoai-evals": "preview"} if OAI_API_TYPE != "openai" else None
-        base_url = AZURE_API_ENDPOINT if OAI_API_TYPE != "openai" else OPENAI_API_BASE
-        api_key = AZURE_API_KEY if OAI_API_TYPE != "openai" else OPENAI_API_KEY
-
-        self.client = AsyncOpenAI(
-            base_url=base_url,
-            api_key=api_key,
-            default_query=params
-        )
+        self.client = get_async_openai_client(default_query={"aoai-evals": "preview"})
 
 
     # ---------------------------- Evaluation Methods ----------------------------
@@ -316,73 +296,52 @@ async def create_eval( name: str, grader_model: str, pass_threshold: float):
         )
 
 python_grader_source = """
-import json, re, ast
+import ast
+import json
+
+OPS = {
+    ast.Add: lambda a, b: a + b,
+    ast.Sub: lambda a, b: a - b,
+    ast.Mult: lambda a, b: a * b,
+    ast.Div: lambda a, b: a / b,
+}
 
 
-def safe_eval(e):
-    return _eval(ast.parse(e, mode='eval').body)
-
-
-def _eval(n):
-    if isinstance(n, ast.Constant):
-        return n.value
-
-    if isinstance(n, ast.BinOp) and type(n.op) in {
-        ast.Add: lambda a, b: a + b,
-        ast.Sub: lambda a, b: a - b,
-        ast.Mult: lambda a, b: a * b,
-        ast.Div: lambda a, b: a / b,
-        ast.FloorDiv: lambda a, b: a // b,
-        ast.Mod: lambda a, b: a % b,
-        ast.Pow: lambda a, b: a ** b,
-    }:
-        return {
-            ast.Add: lambda a, b: a + b,
-            ast.Sub: lambda a, b: a - b,
-            ast.Mult: lambda a, b: a * b,
-            ast.Div: lambda a, b: a / b,
-            ast.FloorDiv: lambda a, b: a // b,
-            ast.Mod: lambda a, b: a % b,
-            ast.Pow: lambda a, b: a ** b,
-        }[type(n.op)](_eval(n.left), _eval(n.right))
-
-    if isinstance(n, ast.UnaryOp) and type(n.op) in {
-        ast.UAdd: lambda a: +a,
-        ast.USub: lambda a: -a,
-    }:
-        return {
-            ast.UAdd: lambda a: +a,
-            ast.USub: lambda a: -a,
-        }[type(n.op)](_eval(n.operand))
-
-    raise ValueError('bad expr')
+def evaluate(node, numbers):
+    if isinstance(node, ast.Expression):
+        return evaluate(node.body, numbers)
+    if isinstance(node, ast.Constant) and type(node.value) in (int, float):
+        numbers.append(float(node.value))
+        return float(node.value)
+    if isinstance(node, ast.BinOp) and type(node.op) in OPS:
+        return OPS[type(node.op)](
+            evaluate(node.left, numbers),
+            evaluate(node.right, numbers),
+        )
+    raise ValueError("Only numeric literals and +, -, *, / are allowed")
 
 
 def grade(sample, item) -> float:
     try:
-        expr = sample['output_json']['expression']
-        expr_val = safe_eval(expr)
-
-        # Check numbers used
-        if sorted(map(int, re.findall(r'-?\d+', expr))) != sorted(
-            map(int, json.loads(item['nums']))
-        ):
+        expression = sample["output_json"]["expression"]
+        used_numbers = []
+        calculated = evaluate(ast.parse(expression, mode="eval"), used_numbers)
+        expected_numbers = sorted(float(value) for value in json.loads(item["nums"]))
+        if sorted(used_numbers) != expected_numbers:
             return 0
-
-        sr = int(float(sample['output_json']['result']))
-        it = int(float(item['target']))
-
-        if expr_val != sr:
+        reported = float(sample["output_json"]["result"])
+        target = float(item["target"])
+        if abs(calculated - reported) > 1e-9:
             return 1
-        if sr == it:
+        difference = abs(calculated - target)
+        if difference < 1e-9:
             return 5
-        if abs(sr - it) <= 1:
+        if difference <= 1:
             return 4
-        if abs(sr - it) <= 5:
+        if difference <= 5:
             return 3
         return 2
-
-    except:
+    except (KeyError, TypeError, ValueError, SyntaxError, ZeroDivisionError, json.JSONDecodeError):
         return 0
 """
 

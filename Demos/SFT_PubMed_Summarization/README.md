@@ -70,15 +70,15 @@ This cookbook teaches you how to:
 
 1. Set up your Microsoft Foundry environment for supervised fine-tuning
 2. Prepare and format medical research data in JSONL format
-3. Upload datasets to Microsoft Foundry
+3. Upload datasets through your Microsoft Foundry project endpoint
 4. Create and configure a supervised fine-tuning job
 5. Monitor training progress and review metrics
-6. Deploy and test your fine-tuned model
+6. Draw training-only conclusions from validation loss and token accuracy
 
 ## Prerequisites
 
-- Azure subscription with Microsoft Foundry project; you must have **Azure AI User** role
-- Python 3.9 or higher
+- Azure subscription with a Microsoft Foundry project; you must have **Azure AI User** role
+- Python 3.10 or higher
 - Familiarity with Jupyter notebooks
 - Basic understanding of medical/scientific literature (helpful but not required)
 
@@ -117,11 +117,16 @@ Copy the file `.env.template` (located in this folder), and save it as file name
 
 ```
 MICROSOFT_FOUNDRY_PROJECT_ENDPOINT=<your-endpoint> 
-MODEL_NAME=gpt-4.1
-AZURE_SUBSCRIPTION_ID=<your-subscription-id>
-AZURE_RESOURCE_GROUP=<your-resource-group>
-AZURE_AOAI_ACCOUNT=<your-foundry-account-name>
+MODEL_NAME=qwen3.8-27b
+
+# Optional: reuse an existing terminal job.
+FINE_TUNE_JOB_ID=<existing-ftjob-id>
 ```
+
+The project endpoint must have the form
+`https://<account>.services.ai.azure.com/api/projects/<project>`. Authentication
+uses `DefaultAzureCredential`; no API key or separately constructed account
+endpoint is required.
 
 ### 4. Run the Notebook
 
@@ -131,11 +136,17 @@ Open sft_pubmed_summarization.ipynb and follow the step-by-step instructions.
 
 The cookbook uses the following hyperparameters:
 
-- **Model**: gpt-4.1
+- **Model**: qwen3.8-27b
 - **Epochs**: 3
 - **Batch Size**: 1
 - **Learning Rate Multiplier**: 1.0
+- **Training type**: GlobalStandard
 - **Suffix**: pubmed-summarization
+
+The notebook uploads the checked-in 1,000-row training file and 100-row
+validation file byte-for-byte. It does not create a deployment or run
+inference; conclusions are limited to the training result CSV's validation
+loss and token-accuracy metrics.
 
 These can be adjusted based on your specific requirements and dataset characteristics.
 
@@ -169,10 +180,6 @@ After completing this cookbook, you can:
 **Quota Exceeded**
 - Request additional quota in Azure Portal → Azure OpenAI → Quotas
 - Try a different Azure region with available capacity
-
-**Model Deployment Fails**
-- Ensure you have **Cognitive Services OpenAI User** role
-- Verify the fine-tuned model completed training successfully
 
 ## References
 

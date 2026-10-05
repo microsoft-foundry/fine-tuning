@@ -26,13 +26,21 @@ pip install -r requirements.txt
 ```
 
 __Required Services:__
-- An Azure OpenAI resource with the following model deployments:
-   - GPT-4.1
+- An Azure AI Foundry project with:
+  - A GPT-4.1 deployment.
+  - Fine-tuning access for GPT-4.1.
+  - A deployment for the succeeded fine-tuned model before running evaluation.
 
-__Optional Services:__
-- Azure AI Foundry for managing fine-tuning in the UI
+The notebook uses `azure-ai-projects` 2.x and Microsoft Entra ID. Sign in with
+`az login`, copy `.env.template` to `.env`, and set the project endpoint and
+deployment names. No API key, Azure OpenAI account endpoint, or manually
+constructed service route is required.
 
-Rename the environemt file template `.env.template` to `.env` and add your credentials by editing the file.
+The Azure AI Foundry SDK currently exposes project-scoped deployment discovery,
+not deployment creation. Create the fine-tuned deployment in the Foundry portal,
+then set `CHART_FT_DEPLOYMENT`. You can set `CHART_FT_REUSE_JOB_ID` to the
+matching succeeded job when rerunning the notebook without starting another
+training job.
 
 Navigate to the vision fine-tuning notebook:
 
@@ -43,9 +51,10 @@ Navigate to the vision fine-tuning notebook:
 ### Common Issues
 
 **Authentication Error**
-- Verify `.env` contains correct API key and endpoint
+- Verify `.env` contains the Azure AI Foundry project endpoint
 - Run `az login` to refresh Azure credentials
-- Ensure your Azure OpenAI resource has GPT-4.1 deployed
+- Ensure your identity has access to the project
+- Ensure the project has GPT-4.1 deployed
 
 **Training Job Fails**
 - Verify JSONL format matches the expected schema

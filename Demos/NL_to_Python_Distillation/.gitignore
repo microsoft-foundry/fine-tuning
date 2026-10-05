@@ -5,3 +5,4 @@ __pycache__/
 .env
 training_results.csv
 training_curve.png
+outputs/loom-model-runs/

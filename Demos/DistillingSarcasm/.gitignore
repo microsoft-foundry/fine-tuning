@@ -6,3 +6,4 @@ sarcasm-posttraining-*.jsonl
 .venv
 **/__pycache__
 __pycache__
+outputs/loom-model-runs/

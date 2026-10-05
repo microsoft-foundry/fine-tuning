@@ -1,0 +1,118 @@
+{
+  "algorithm": "sha256",
+  "text_normalization": "crlf-to-lf",
+  "selection": "training-and-comparison",
+  "source_root": "Demos/ZavaRetailAgent",
+  "files": [
+    {
+      "path": "data/sft-train.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/sft_train.jsonl",
+      "role": "SFT training",
+      "bytes": 9811528,
+      "sha256": "4209d6e67a134b646d6264e85c30d950311ad0d33f3f49d397e24d67c8e5779a",
+      "records": 386,
+      "split": "train"
+    },
+    {
+      "path": "data/sft-validation.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/sft_test.jsonl",
+      "role": "SFT validation",
+      "bytes": 2600684,
+      "sha256": "e267cc58148336d9dfaf4bdab1b409c8fcc269cb647510b9d5b8358255031e02",
+      "records": 103,
+      "split": "validation"
+    },
+    {
+      "path": "data/rft-train.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/rft_train_fixed.jsonl",
+      "role": "RFT training",
+      "bytes": 260127,
+      "sha256": "7c9342510b36fe4a0d670f47e50e5e1a427dd113f1073c78073611bd390f08f6",
+      "records": 10,
+      "split": "train"
+    },
+    {
+      "path": "data/rft-validation.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/rft_test_fixed.jsonl",
+      "role": "RFT validation",
+      "bytes": 252712,
+      "sha256": "cc6a54161499d162c40ac03c75e5d17ead4c770e31f58c1964dcd89aacf50456",
+      "records": 10,
+      "split": "validation"
+    },
+    {
+      "path": "data/next-tool-evaluation.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/eval.jsonl",
+      "role": "SFT held-out next-tool comparison",
+      "bytes": 6789152,
+      "sha256": "abd8fac72b82072404f770b743f611570a892faa1482e540221874b2efc7b611",
+      "records": 280,
+      "split": "evaluation"
+    },
+    {
+      "path": "configs/sft-evaluation-tools.json",
+      "source": "Demos/ZavaRetailAgent/data/retail_tools.json",
+      "role": "SFT comparison tool schemas",
+      "bytes": 14505,
+      "sha256": "6cf4120880be0ce2798e8e9e7ead51761117ef2adf197ea9fba6ee664afe8caa"
+    },
+    {
+      "path": "configs/rft-tools.json",
+      "source": "Demos/ZavaRetailAgent/data/rft_tools-config.json",
+      "role": "RFT remote tool configuration",
+      "bytes": 1789,
+      "sha256": "f74f01ca713b5338e24c7fd5a8dab1014eef252056f21dd562aabe726db984c9"
+    },
+    {
+      "path": "configs/rft-policy-grader.json",
+      "source": "Demos/ZavaRetailAgent/data/rft_grader-config.json",
+      "role": "RFT policy grader",
+      "bytes": 4696,
+      "sha256": "0f6d57e8b46f7b26111021bd240f943c4853eccc9a9a928996e6663108bc8374"
+    },
+    {
+      "path": "graders/next-tool-call-grader.py",
+      "source": "Demos/ZavaRetailAgent/data/tool_call_grader.py",
+      "role": "SFT exact next-tool grader",
+      "bytes": 2950,
+      "sha256": "ea31065f266e93fbb75835b476dcd2ca20a915f1f99500407d39177cfc007fd2"
+    },
+    {
+      "path": "data/retail-database.json",
+      "source": "Demos/ZavaRetailAgent/data/db.json",
+      "role": "Original sandbox database fixture",
+      "bytes": 2870936,
+      "sha256": "2cfbd1e0a6f94eaa7d28dc43a3cc0ea204c62ca359d15ae06d296325359f01d8"
+    },
+    {
+      "path": "data/retail-policy.md",
+      "source": "Demos/ZavaRetailAgent/data/policy.md",
+      "role": "Original retail policy",
+      "bytes": 6699,
+      "sha256": "2c9652afbce57d6e087768d37cda64d31c53d50b3e3225cfdb791bac66466467"
+    },
+    {
+      "path": "configs/retail-openapi-with-policy.json",
+      "source": "Demos/ZavaRetailAgent/data/openapi_with_policy.json",
+      "role": "Original tool server API schema",
+      "bytes": 32503,
+      "sha256": "9505557674961aaf01b2eb509d469a46e60760d61c78df141ddfb23f0253d167"
+    },
+    {
+      "path": "data/synthetic-source-train.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/datagen-ToolUse-FineTuneSupervised-train.jsonl",
+      "role": "Original synthetic training source",
+      "bytes": 5063291,
+      "sha256": "df69f870618f77a7c04266b626c85c35a9038c02bd353480b245b521c58853ac",
+      "records": 216
+    },
+    {
+      "path": "data/synthetic-source-validation.jsonl",
+      "source": "Demos/ZavaRetailAgent/data/datagen-ToolUse-FineTuneSupervised-valid.jsonl",
+      "role": "Original synthetic validation source",
+      "bytes": 1295458,
+      "sha256": "832e1df16305a64648fd0e46371a0d8d601d647aa55ee6e7f1ffea048825ff8c",
+      "records": 55
+    }
+  ]
+}

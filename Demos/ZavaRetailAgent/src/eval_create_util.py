@@ -1,6 +1,4 @@
-"""
-Azure OpenAI Evaluation utilities for creating evaluations and runs.
-"""
+"""Microsoft Foundry evaluation utilities."""
 
 import json
 import time
@@ -13,10 +11,10 @@ def create_azure_evaluation(
     client, pass_threshold: float, python_grader_path: str
 ):
     """
-    Create an Azure OpenAI evaluation with custom Python grader.
+    Create a Microsoft Foundry evaluation with a custom Python grader.
 
     Args:
-        client: Azure OpenAI client
+        client: Project-compatible model operations child client
         pass_threshold: Score threshold for passing the evaluation
         python_grader_path: Path to the Python grader file (required)
 
@@ -75,7 +73,7 @@ def create_evaluation_runs(
     Create evaluation runs for each model using the same evaluation dataset with sampling parameters.
 
     Args:
-        client: Azure OpenAI client
+        client: Project-compatible model operations child client
         evaluation_id: ID of the created evaluation
         models_to_evaluate: List of model names
         eval_file_id: File ID of the evaluation data
@@ -119,6 +117,7 @@ def create_evaluation_runs(
             name=model,
             eval_id=evaluation_id,
             data_source=data_source,
+            extra_body={"evaluation_level": "conversation"},
         )
 
         eval_runs.append(eval_run)

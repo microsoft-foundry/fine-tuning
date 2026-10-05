@@ -1,0 +1,2 @@
+# Preserve the exact bytes recorded in the dataset hash manifest.
+data/preserved/*.jsonl -text

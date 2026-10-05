@@ -1,10 +1,7 @@
-# Azure AI SDK for fine-tuning
-azure-ai-projects>=2.0.0b1
+# Microsoft Foundry SDK for project-scoped fine-tuning and inference
+azure-ai-projects>=2.0.0,<3.0.0
 
-# OpenAI SDK
-openai
-
-# Azure Cognitive Services for model deployment
+# Entra ID and Azure management plane deployment
 azure-identity
 azure-mgmt-cognitiveservices
 

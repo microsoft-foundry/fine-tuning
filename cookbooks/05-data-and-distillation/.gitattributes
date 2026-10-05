@@ -1,0 +1,2 @@
+# Preserve byte-pinned bundled datasets across platforms.
+*.jsonl -text

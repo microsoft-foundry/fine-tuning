@@ -1,0 +1,95 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "get_order_details",
+      "description": "Retrieve order details: line items, customer info (loyalty tier), payment method, dates, and totals. Always call this first.",
+      "parameters": {
+        "type": "object",
+        "properties": {"order_id": {"type": "string", "description": "Order identifier such as 'ORD-001'."}},
+        "required": ["order_id"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "get_fulfillment_status",
+      "description": "Get per-item shipping/fulfillment status (processing/shipped/delivered/lost), delivery dates, late_delivery flag, days_late, days_since_delivery.",
+      "parameters": {
+        "type": "object",
+        "properties": {"order_id": {"type": "string"}},
+        "required": ["order_id"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "check_resolution_policy",
+      "description": "Verify whether a specific item is eligible for the customer's requested resolution (refund / exchange / replacement) given the customer's loyalty tier, item category, return window, and the reason.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {"type": "string"},
+          "item_id": {"type": "string"},
+          "reason": {"type": "string", "description": "Customer-stated reason, e.g. 'defective', 'changed_mind', 'wrong_size'."}
+        },
+        "required": ["order_id", "item_id", "reason"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "check_inventory",
+      "description": "Check stock for a SKU. Call ONLY when processing an exchange.",
+      "parameters": {
+        "type": "object",
+        "properties": {"sku": {"type": "string"}},
+        "required": ["sku"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "calculate_resolution",
+      "description": "Compute refund amounts, restocking fees, credits for the full list of item actions before submitting the resolution.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {"type": "string"},
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item_id": {"type": "string"},
+                "action": {"type": "string", "description": "e.g. 'refund', 'exchange', 'shipping_credit', 'deny'"},
+                "reason": {"type": "string"}
+              },
+              "required": ["item_id", "action"]
+            }
+          }
+        },
+        "required": ["order_id", "items"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "submit_resolution",
+      "description": "Finalize the resolution. ONLY call after calculate_resolution has confirmed amounts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {"type": "string"},
+          "resolution_summary": {"type": "string"}
+        },
+        "required": ["order_id", "resolution_summary"]
+      }
+    }
+  }
+]

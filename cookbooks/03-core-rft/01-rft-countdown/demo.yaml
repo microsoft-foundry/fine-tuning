@@ -1,0 +1,40 @@
+id: rft-countdown
+title: 'RFT Deterministic Reasoning: Countdown'
+stage: 03-core-rft
+status: draft
+path: 03-core-rft/01-rft-countdown
+techniques:
+- rft
+modalities:
+- text
+notebooks:
+- path: notebooks/demo.ipynb
+  role: end-to-end
+  performs_fine_tuning: true
+  sections:
+  - prepare
+  - train
+  - monitor
+  - metrics
+training:
+  base_models:
+  - qwen3.6-35b-a3b
+  teacher_models: []
+  evaluator_models: []
+  result_model: runtime-recorded
+capabilities:
+- file-upload
+- rft
+- deterministic-grader
+- training-metrics
+prerequisites:
+- foundry-project
+- entra-id
+- rft-access
+- model-access
+cost_tier: medium
+runtime_tier: long
+validation:
+  status: partial
+  notes: Portable notebook and dataset checks; live outcomes depend on customer model access, region,
+    quota, and configuration.

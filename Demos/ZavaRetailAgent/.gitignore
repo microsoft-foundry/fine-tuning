@@ -4,8 +4,10 @@
 
 # Conversation logs
 conversations/
+outputs/
 
 # Python
+.venv/
 __pycache__/
 *.py[cod]
 *$py.class

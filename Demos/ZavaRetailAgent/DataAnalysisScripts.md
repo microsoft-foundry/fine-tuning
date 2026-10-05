@@ -59,14 +59,14 @@ python tools/analyze_synthetic_datagen.py
 
 ### 3. `analyze_rft_eval.py`
 
-**Purpose**: Downloads RFT (Reinforced Fine-Tuning) evaluation data from Azure OpenAI service with all detailed fields.
+**Purpose**: Downloads RFT (Reinforced Fine-Tuning) evaluation data from Microsoft Foundry with all detailed fields.
 
 **Usage**:
 ```bash
 python tools/analyze_rft_eval.py
 ```
 
-**Configuration**: Requires Azure OpenAI credentials and evaluation run ID in the script.
+**Configuration**: Requires `FOUNDRY_PROJECT_ENDPOINT`, Entra ID authentication, and an evaluation run ID.
 
 **Output**:
 - **Directory**: `analysis_charts/rft_eval/data/`
@@ -182,14 +182,14 @@ Performance Summary:
 
 ### 6. `analyze_eval_run.py`
 
-**Purpose**: Analyzes a single evaluation run from Azure OpenAI.
+**Purpose**: Analyzes a single evaluation run from Microsoft Foundry.
 
 **Usage**:
 ```bash
 python tools/analyze_eval_run.py
 ```
 
-**Configuration**: Requires Azure OpenAI credentials and run ID in the script.
+**Configuration**: Requires `FOUNDRY_PROJECT_ENDPOINT`, Entra ID authentication, and a run ID.
 
 **Output**:
 - Evaluation metrics and statistics
@@ -256,7 +256,7 @@ python tools/test_mcp_connectivity.py
 
 ### 10. `convert_to_eval.py`
 
-**Purpose**: Converts training data format to evaluation format required by Azure OpenAI evaluation API.
+**Purpose**: Converts training data into the format required by Microsoft Foundry evaluations.
 
 **Usage**:
 ```bash
@@ -350,7 +350,7 @@ All tools require the following Python packages:
 - `matplotlib` - For visualizations
 - `pandas` - For data analysis
 - `numpy` - For numerical operations
-- `azure-ai-projects` - For Azure OpenAI API access
+- `azure-ai-projects` - Microsoft Foundry SDK 2.x project access
 - `azure-identity` - For Azure authentication
 - `json` - For JSON processing
 - `pathlib` - For file path handling

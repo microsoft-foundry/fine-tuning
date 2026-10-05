@@ -1,0 +1,87 @@
+[
+  {
+    "name": "calculate",
+    "server_url": "#TOOLS_SERVER_URL#",
+     "headers": {}
+},
+  {
+    "name": "cancel_pending_order",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}   
+  },
+  {
+    "name": "exchange_delivered_order_items",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}
+  },
+  {
+    "name": "find_user_id_by_email",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}
+  },
+  {
+    "name": "find_user_id_by_name_zip",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}
+  },
+  {
+    "name": "get_order_details",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}
+  },
+  {
+    "name": "get_product_details",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}
+  },
+  {
+    "name": "get_user_details",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}
+  },
+  {
+    "name": "list_all_product_types",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}
+  },
+  {
+    "name": "list_user_orders",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}   
+  },
+  {
+    "name": "modify_pending_order_address",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}
+  },
+  {
+    "name": "modify_pending_order_items",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}   
+  },
+  {
+    "name": "modify_pending_order_payment",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}
+  },
+  {
+    "name": "modify_user_address",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}
+  },
+  {
+    "name": "policy_verify_return",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}
+  },
+  {
+    "name": "return_delivered_order_items",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}
+  },
+  {
+    "name": "transfer_to_human_agents",
+    "server_url": "#TOOLS_SERVER_URL#",
+    "headers": {}
+  }
+]

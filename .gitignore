@@ -1,5 +1,13 @@
 **/__pycache__
 __pycache__
+**/.pytest_cache/
+**/*.egg-info/
+.venv/
+**/.venv/
+.jupyter/
+**/.jupyter/
+.kagglehub/
+**/.kagglehub/
 env*/
 .env
 .vs/
@@ -20,3 +28,37 @@ Skills/check_runs.ps1
 Skills/test_chunked/
 Skills/test_cobol_full_dataset/
 Skills/test_probe_*/
+
+# Large generated demo datasets and binary evaluation artifacts
+Demos/Image_FT_Chart_Analysis/chart-qa-run-*.jsonl
+Demos/Image_FT_Chart_Analysis/eval-*.h5
+
+# Internal demo-refactor tracking and generated execution artifacts
+/findings.html
+/findings-upgrade.html
+/rehaul.html
+/loom-demo-rehaul.html
+/loom-demo-runs.html
+Demos/**/outputs/reports/
+Demos/**/outputs/execution/
+Demos/**/outputs/run/
+Demos/**/*.executed.ipynb
+Demos/NL_to_Python_Distillation/retry_qwen38_canonical.py
+Demos/NL_to_Python_Distillation/run_qwen38_service_validation.py
+
+# Clean-slate cookbook local configuration and runtime artifacts
+/cookbooks/.env
+/cookbooks/**/.env
+/cookbooks/outputs/
+/cookbooks/**/outputs/
+/cookbooks/**/*.executed.ipynb
+/cookbooks/**/parity-live.log
+/cookbooks/**/.ipynb_checkpoints/
+/cookbooks/**/*.log
+/cookbooks/**/*.tmp
+/cookbooks/**/*.bak
+/cookbooks/build/
+/cookbooks/dist/
+
+# Exceeds GitHub's 100 MiB per-file limit; retain locally and document via the hash manifest.
+/cookbooks/02-multimodal-sft/01-chart-reasoning/data/preserved/chart-qa-run-20261002-train.jsonl

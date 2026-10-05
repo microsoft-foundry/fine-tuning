@@ -1,13 +1,13 @@
 # Original version from:
 # https://raw.githubusercontent.com/azure-ai-foundry/build-2025-demos/refs/heads/main/Azure%20AI%20Model%20Customization/DistillationDemo/scripts/eval_utils.py
-import openai
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np  # Import numpy for percentile calculations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any
 
-def get_eval_runs_list(client: openai.Client, eval_id: str) -> list:
+def get_eval_runs_list(client: Any, eval_id: str) -> list:
     """
     Fetch the list of evaluation runs for a given evaluation ID.
 
@@ -44,7 +44,7 @@ def get_eval_runs_list(client: openai.Client, eval_id: str) -> list:
     return list_runs
 
 
-def get_eval_details(client: openai.Client, eval_id: str) -> dict:
+def get_eval_details(client: Any, eval_id: str) -> dict:
     """
     Fetch the details of a specific evaluation.
 
@@ -62,7 +62,7 @@ def get_eval_details(client: openai.Client, eval_id: str) -> dict:
         return {"name": f"Unknown Evaluation ({eval_id})"}
 
 
-def display_evaluation_summary(client: openai.Client, eval_ids: list, x_range = (0, 7)):
+def display_evaluation_summary(client: Any, eval_ids: list, x_range = (0, 7)):
     """
     Fetch and display a summary of evaluation runs for a list of evaluation IDs, including a horizontal bar chart,
     average score, and score distribution for all runs in a single chart with a maximum of 4 graphs per row.
@@ -228,7 +228,7 @@ def display_evaluation_summary(client: openai.Client, eval_ids: list, x_range = 
         print("=" * 50)
 
 
-def get_eval_run_output_items(client: openai.Client, eval_id: str, run_id: str) -> list:
+def get_eval_run_output_items(client: Any, eval_id: str, run_id: str) -> list:
     """
     Fetch the output items for a specific evaluation run and extract the result scores.
 

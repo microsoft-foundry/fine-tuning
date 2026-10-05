@@ -1,0 +1,3 @@
+dataset,source_path,preserved_path,split,rows,bytes,source_sha256,preserved_sha256,byte_match
+chartqa,Demos/Image_FT_Chart_Analysis/chart-qa-run-20261002-v4-train.jsonl,data/preserved/chart-qa-run-20261002-v4-train.jsonl,train,50,4380971,2024e5d28f1d7b4c8027b6842196c3f5bcaf105f250bf8bc86a3520b9aa8c5f8,2024e5d28f1d7b4c8027b6842196c3f5bcaf105f250bf8bc86a3520b9aa8c5f8,True
+chartqa,Demos/Image_FT_Chart_Analysis/chart-qa-run-20261002-v4-val.jsonl,data/preserved/chart-qa-run-20261002-v4-val.jsonl,validation,20,1852980,6b569a58c36f4955a33a4cbb79a90a40e63a2f399ed13bf9877dc62eda74e58b,6b569a58c36f4955a33a4cbb79a90a40e63a2f399ed13bf9877dc62eda74e58b,True

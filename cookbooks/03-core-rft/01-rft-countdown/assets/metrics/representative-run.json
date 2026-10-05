@@ -1,0 +1,16 @@
+{
+  "source": "Two successful Countdown Loom demo submissions",
+  "model_score_grader": {
+    "job_status": "succeeded",
+    "validation_reward_initial": 0.67,
+    "validation_reward_final": 2.03,
+    "validation_reward_max": 2.36
+  },
+  "python_grader": {
+    "job_status": "succeeded",
+    "validation_reward_initial": 0.25,
+    "validation_reward_final": 2.53,
+    "validation_reward_max": 2.58
+  },
+  "interpretation": "Both validation reward curves improved during training. These are training signals only."
+}

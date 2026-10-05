@@ -46,18 +46,19 @@ This cookbook teaches you how to:
 3. Upload datasets to Microsoft Foundry
 4. Create and configure a supervised fine-tuning job
 5. Monitor training progress
-6. Deploy and test your fine-tuned model
+6. Download service metrics and assess training convergence
 
 ## Prerequisites
 
 - Azure subscription with Microsoft Foundry project, you must have **Azure AI User** role
+- An Entra ID identity available to `DefaultAzureCredential`; for local development, run `az login`
 - Python 3.9 or higher
 - Familiarity with Jupyter notebooks
 - CNN/DailyMail dataset CSV files (download from Kaggle)
 
 ## Supported Models
 
-Find the supported DPO fine-tuning models in Microsoft foundry [here](https://learn.microsoft.com/en-us/azure/ai-foundry/concepts/fine-tuning-overview?view=foundry-classic). Model availability may vary by region. Check the [Azure OpenAI model availability](https://learn.microsoft.com/azure/ai-services/openai/concepts/models) page for the most current regional support.
+Find the supported fine-tuning models in Microsoft Foundry [here](https://learn.microsoft.com/en-us/azure/ai-foundry/concepts/fine-tuning-overview?view=foundry-classic). Model availability may vary by region. Check the [Azure OpenAI model availability](https://learn.microsoft.com/azure/ai-services/openai/concepts/models) page for the most current regional support.
 
 ## Files in This Cookbook
 
@@ -84,16 +85,16 @@ The training and validation JSONL files are already provided in this directory. 
 pip install -r requirements.txt
 ```
 
-### 3. Set Up Environment Variables
+### 3. Authenticate
 
-Copy the file `.env.template` (located in this folder), and save it as file named `.env`. Enter appropriate values for the environment variables used for the job you want to run.
+Run `az login` before executing the notebook. Authentication uses
+`DefaultAzureCredential` with `AIProjectClient`; API keys are not used.
 
-```
-MICROSOFT_FOUNDRY_PROJECT_ENDPOINT=<your-endpoint> 
-MODEL_NAME=<your-gpt-model-name>
-AZURE_SUBSCRIPTION_ID=<your-subscription-id>
-AZURE_RESOURCE_GROUP=<your-resource-group>
-AZURE_AOAI_ACCOUNT=<your-foundry-account-name>
+Configure the Microsoft Foundry project before running:
+
+```properties
+AZURE_AI_PROJECT_ENDPOINT=https://<resource>.services.ai.azure.com/api/projects/<project>
+AZURE_AI_REGION=<region>
 ```
 
 ### 4. Run the Notebook
@@ -123,8 +124,9 @@ Each training example contains:
 
 The cookbook uses the following hyperparameters:
 
-- **Model**: gpt-4.1
-- **Epochs**: 3
+- **Model**: Muse-Glimmer-30B, version 1
+- **Training type**: GlobalStandard
+- **Epochs**: 1
 - **Batch Size**: 1
 - **Learning Rate Multiplier**: 1.0
 
@@ -132,13 +134,12 @@ These can be adjusted based on your specific requirements.
 
 ## Expected Outcomes
 
-After fine-tuning with the CNN/DailyMail dataset, your model should:
-
-- Generate concise, accurate news summaries
-- Better understand journalistic writing styles
-- Improve factual accuracy in summarizations
-- Produce summaries similar to professional journalist output
-- Handle various news topics and article lengths
+This run is intentionally training-only. It preserves all 1,992 training rows
+and all 229 validation rows, then bases its conclusion on service-reported
+validation loss and validation token accuracy. It does not deploy either the
+base model or fine-tuned model and does not run inference. If the service omits
+token accuracy, the notebook reports the loss trend and marks the two-metric
+conclusion as qualified rather than fabricating the missing metric.
 
 ## Monitoring
 
@@ -146,17 +147,16 @@ The notebook includes sections for:
 
 - Real-time training progress monitoring
 - Validation loss tracking
-- Model deployment and testing
+- Validation token-accuracy tracking
+- Terminal evidence capture under `outputs/loom-model-runs/`
 
 ## Next Steps
 
 After completing this cookbook, you can:
 
-1. Fine-tune on your own news or document summarization data
-2. Experiment with different hyperparameters
-3. Combine with retrieval-augmented generation (RAG)
-4. Deploy to production applications
-5. Integrate into content management systems
+1. Review the service validation metrics and terminal job status
+2. Experiment with different hyperparameters in a separate controlled run
+3. Add deployment and held-out inference evaluation only when explicitly needed
 
 ## Troubleshooting
 

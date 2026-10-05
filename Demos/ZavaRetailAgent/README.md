@@ -1,6 +1,6 @@
 # Zava Retail Agent
 
-A retail customer service agent built using Azure OpenAI, designed to handle customer inquiries about orders, returns, and product information.
+A retail customer service agent built with Microsoft Foundry SDK 2.x and Microsoft Entra ID.
 
 ## Overview
 
@@ -43,16 +43,21 @@ ZavaRetailAgent/
 
 3. **Configure environment variables**
    
-   Copy `.env.example` to `.env` and fill in your Azure OpenAI credentials:
+   Copy `.env.example` to `.env` and configure the Foundry project:
    ```bash
    cp .env.example .env
    ```
    
-   Then edit `.env` with your actual values:
-   - `AZURE_OPENAI_ENDPOINT`: Your Azure OpenAI endpoint URL
-   - `AZURE_OPENAI_API_KEY`: Your Azure OpenAI API key
-   - `AZURE_OPENAI_DEPLOYMENT_NAME`: Your deployment name
-   - `AZURE_OPENAI_API_VERSION`: API version (default: 2024-08-01-preview)
+   Then edit `.env` with:
+   - `FOUNDRY_PROJECT_ENDPOINT`: Project endpoint ending in `/api/projects/<project>`
+   - `FOUNDRY_MODEL_NAME`: Model deployment name
+   - `MCP_SERVER_URL`: Zava retail MCP endpoint ending in `/mcp`
+   - `TOOLS_SERVER_URL`: Remote tool endpoint used by RFT rollouts
+
+   Authenticate with Entra ID:
+   ```bash
+   az login
+   ```
 
 4. **Run the demo**
    ```bash
@@ -76,7 +81,7 @@ The project includes both supervised fine-tuning (SFT) and reinforcement fine-tu
 ## Requirements
 
 - Python 3.12+
-- Azure OpenAI Service access
+- Microsoft Foundry project access with an Entra role assignment
 - Required Python packages (see `requirements.txt`)
 
 ## License
@@ -88,9 +93,9 @@ See the main repository for license information.
 ### Common Issues
 
 **Authentication Error**
-- Verify `.env` contains correct API key and endpoint
+- Verify `FOUNDRY_PROJECT_ENDPOINT` is a project endpoint, not an account endpoint
 - Run `az login` to refresh Azure credentials
-- Check that deployment name matches your Azure OpenAI deployment
+- Check that `FOUNDRY_MODEL_NAME` matches a project deployment
 
 **Tool Execution Fails**
 - Ensure `data/db.json` contains valid sample data
@@ -103,5 +108,5 @@ See the main repository for license information.
 - Ensure training data follows company policy constraints
 
 **Quota Exceeded**
-- Request additional quota in Azure Portal → Azure OpenAI → Quotas
+- Request additional quota for the Foundry resource in Azure Portal
 - Try a different Azure region with available capacity

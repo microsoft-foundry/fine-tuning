@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "demo_id": "replace-with-demo-slug",
+  "hypothesis": "State the measurable expected improvement.",
+  "base_model": "runtime-configured",
+  "dataset_hashes": {
+    "training": "<sha256>",
+    "validation": "<sha256>",
+    "test": "<sha256>"
+  },
+  "code_version": "<commit-or-release>",
+  "hyperparameters": {},
+  "metrics": {},
+  "created_at_utc": "<ISO-8601 UTC timestamp>"
+}

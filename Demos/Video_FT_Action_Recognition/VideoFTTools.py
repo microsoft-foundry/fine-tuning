@@ -90,7 +90,7 @@ class VideoExtractor:
     A class to extract and process video frames.
     """
 
-    def __init__(self, uri: str):
+    def __init__(self, uri: str, privacy_preserving: bool = False):
         """
         Initialize the VideoExtractor with a video URI.
 
@@ -98,14 +98,25 @@ class VideoExtractor:
             uri (str): The URI of the video file.
         """
         self.uri = uri
+        self.privacy_preserving = privacy_preserving
         self.cap = cv2.VideoCapture(uri)
         if not self.cap.isOpened():
             raise ValueError("Error opening video file")
         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
         self.duration = self.frame_count / self.fps
+
+    def _prepare_frame(self, frame):
+        if not self.privacy_preserving:
+            return frame
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gray = cv2.GaussianBlur(gray, (5, 5), 0)
+        edges = cv2.Canny(gray, 50, 150)
+        edges = cv2.dilate(edges, np.ones((2, 2), np.uint8), iterations=1)
+        return cv2.cvtColor(255 - edges, cv2.COLOR_GRAY2BGR)
     
-    def transcribe_video(self, uri: str, openai_client, model) -> str:
+    def transcribe_video(self, uri: str, model_client, model) -> str:
         # Extract audio from video
         clip = VideoFileClip(uri)
 
@@ -114,7 +125,7 @@ class VideoExtractor:
             clip.audio.write_audiofile(audio_path, bitrate="32k")
             clip.audio.close()
             print(f"Extracted audio to {audio_path}. Transcription in progress ...")
-            transcription = openai_client.audio.transcriptions.create(
+            transcription = model_client.audio.transcriptions.create(
                 model=model,
                 file=open(audio_path, "rb"),
                 response_format="text")
@@ -145,6 +156,7 @@ class VideoExtractor:
             ret, frame = self.cap.read()
             if not ret:
                 continue
+            frame = self._prepare_frame(frame)
             timestamp_sec = frame_index / self.fps
             minutes = int(timestamp_sec // 60)
             seconds = int(timestamp_sec % 60)
@@ -152,10 +164,18 @@ class VideoExtractor:
             timestamp = f"{minutes:02}:{seconds:02}:{milliseconds:03}"
             timestamp_text = f"video_time: {timestamp}"
             
-            font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"  # Update this path if necessary
             font_size = 16  # Font size in pixels
-            font = ImageFont.truetype(font_path, font_size)
+            try:
+                font = ImageFont.truetype("DejaVuSans.ttf", font_size)
+            except OSError:
+                font = ImageFont.load_default(size=font_size)
             
+            if self.privacy_preserving:
+                _, buffer = cv2.imencode('.jpg', frame)
+                frame_base64 = base64.b64encode(buffer).decode('utf-8')
+                frames.append({"timestamp": timestamp, "frame_base64": frame_base64})
+                continue
+
             # Create a new image with extra height for the text
             stripe_height = font_size + 4  # Height of the black stripe
             new_frame_height = frame.shape[0] + stripe_height
@@ -212,6 +232,7 @@ class VideoExtractor:
             ret, frame = self.cap.read()
             if not ret:
                 continue
+            frame = self._prepare_frame(frame)
             timestamp_sec = frame_index / self.fps
             minutes = int(timestamp_sec // 60)
             seconds = int(timestamp_sec % 60)
@@ -219,10 +240,18 @@ class VideoExtractor:
             timestamp = f"{minutes:02}:{seconds:02}:{milliseconds:03}"
             timestamp_text = f"video_time: {timestamp}"
             
-            font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"  # Update this path if necessary
             font_size = 16  # Font size in pixels
-            font = ImageFont.truetype(font_path, font_size)
+            try:
+                font = ImageFont.truetype("DejaVuSans.ttf", font_size)
+            except OSError:
+                font = ImageFont.load_default(size=font_size)
             
+            if self.privacy_preserving:
+                _, buffer = cv2.imencode('.jpg', frame)
+                frame_base64 = base64.b64encode(buffer).decode('utf-8')
+                frames.append({"timestamp": timestamp, "frame_base64": frame_base64})
+                continue
+
             # Create a new image with extra height for the text
             stripe_height = font_size + 4  # Height of the black stripe
             new_frame_height = frame.shape[0] + stripe_height
@@ -278,8 +307,8 @@ class VideoExtractor:
         display(HTML(html_content))
 
 class VideoAnalyzer:
-    def __init__(self, openai_client, model):
-        self.openai_client = openai_client
+    def __init__(self, model_client, model):
+        self.model_client = model_client
         self.model = model
 
     def video_chat(self, base64frames, transcription=None, system_message=None, max_retries=3, retry_delay=2):
@@ -330,7 +359,7 @@ class VideoAnalyzer:
         for attempt in range(max_retries):
             if attempt > 0:
                 print(f"VideoAnalyzer.video_chat() Retry attempt {attempt}")
-            response = self.openai_client.chat.completions.create(
+            response = self.model_client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_message},

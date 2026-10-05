@@ -17,8 +17,15 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 import argparse
+import sys
+from pathlib import Path
 from typing import List, Dict, Any, Tuple
 from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from foundry_clients import create_openai_client, create_project_client
 
 # Load environment variables
 load_dotenv()
@@ -48,10 +55,7 @@ class SyntheticDataAnalyzer:
         self.valid_data = []
         self.all_data = []
         
-        # Azure OpenAI configuration for AI classification
-        self.azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-        self.azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-        self.azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+        self.model_deployment = os.getenv("FOUNDRY_MODEL_NAME")
         
         self.load_data()
     
@@ -345,25 +349,19 @@ class SyntheticDataAnalyzer:
         }
     
     def classify_conversations_with_ai(self):
-        """Use Azure OpenAI to classify conversations into categories."""
+        """Use the Foundry project model to classify conversations."""
         print(f"{Fore.CYAN}{'='*80}")
         print("🤖 AI-POWERED CONVERSATION CLASSIFICATION")
         print(f"{'='*80}{Style.RESET_ALL}\n")
         
-        if not all([self.azure_endpoint, self.azure_api_key, self.azure_deployment]):
-            print(f"{Fore.YELLOW}⚠ Azure OpenAI credentials not configured. Skipping AI classification.{Style.RESET_ALL}\n")
+        if not self.model_deployment or not os.getenv("FOUNDRY_PROJECT_ENDPOINT"):
+            print(f"{Fore.YELLOW}⚠ Foundry project configuration is missing. Skipping AI classification.{Style.RESET_ALL}\n")
             return {}
         
         try:
-            from openai import AzureOpenAI
-            
-            client = AzureOpenAI(
-                azure_endpoint=self.azure_endpoint,
-                api_key=self.azure_api_key,
-                api_version="2024-08-01-preview"
-            )
-            
-            print(f"Using Azure OpenAI deployment: {self.azure_deployment}\n")
+            project_client = create_project_client()
+            client = create_openai_client(project_client)
+            print(f"Using Foundry model deployment: {self.model_deployment}\n")
             
             # Sample a subset for classification (to avoid rate limits)
             sample_size = min(20, len(self.all_data))
@@ -383,19 +381,17 @@ class SyntheticDataAnalyzer:
                         if isinstance(content, str) and content:
                             conversation_text += f"{msg['role']}: {content[:200]}\n"
                 
-                # Classify using Azure OpenAI
+                # Classify through the project-compatible model operations client
                 try:
-                    response = client.chat.completions.create(
-                        model=self.azure_deployment,
-                        messages=[
-                            {"role": "system", "content": "You are a conversation classifier for e-commerce customer service. Classify the conversation into ONE of these categories: order_modification, order_cancellation, order_return, order_exchange, account_update, product_inquiry, shipping_change, payment_change, general_inquiry. Respond with ONLY the category name."},
-                            {"role": "user", "content": f"Classify this conversation:\n\n{conversation_text[:1000]}"}
-                        ],
+                    response = client.responses.create(
+                        model=self.model_deployment,
+                        instructions="Classify the conversation into exactly one retail support category.",
+                        input=f"Categories: order_modification, order_cancellation, order_return, order_exchange, account_update, product_inquiry, shipping_change, payment_change, general_inquiry.\n\n{conversation_text[:1000]}",
                         temperature=0.3,
-                        max_tokens=50
+                        max_output_tokens=50,
                     )
                     
-                    category = response.choices[0].message.content.strip().lower()
+                    category = response.output_text.strip().lower()
                     classifications.append(category)
                     
                 except Exception as e:
@@ -415,12 +411,14 @@ class SyntheticDataAnalyzer:
                 'sample_size': sample_size
             }
             
-        except ImportError:
-            print(f"{Fore.YELLOW}⚠ openai library not installed. Run: pip install openai{Style.RESET_ALL}\n")
-            return {}
         except Exception as e:
             print(f"{Fore.RED}✗ Error during AI classification: {str(e)}{Style.RESET_ALL}\n")
             return {}
+        finally:
+            if "client" in locals():
+                client.close()
+            if "project_client" in locals():
+                project_client.close()
     
     def perform_clustering_analysis(self):
         """Perform clustering analysis on conversations."""

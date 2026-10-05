@@ -45,16 +45,22 @@ Using ~85 curated training examples (filtered from 100 generated), 1 epoch of fi
 
 ## Setup
 
-1. Create and populate environment variables (or a `.env` file):
+1. Sign in with Azure CLI or another credential supported by
+   `DefaultAzureCredential`, then set the Foundry project endpoint and project
+   deployment names:
 
 ```properties
-AZURE_API_KEY=<YOUR AZURE OPENAI KEY>
-AZURE_OPENAI_BASE_URL=https://<YOUR_RESOURCE>.openai.azure.com/openai/v1
 AZURE_PROJECT_ENDPOINT=https://<YOUR_RESOURCE>.services.ai.azure.com/api/projects/<YOUR_PROJECT>
-AZURE_SUBSCRIPTION_ID=<YOUR SUBSCRIPTION ID>
-AZURE_RESOURCE_GROUP=<YOUR RESOURCE GROUP>
-AZURE_ACCOUNT_NAME=<YOUR RESOURCE NAME>
+AZURE_TEACHER_DEPLOYMENT=<YOUR GPT-5.4 DEPLOYMENT>
+AZURE_STUDENT_DEPLOYMENT=<YOUR GPT-4.1-MINI DEPLOYMENT>
+AZURE_STUDENT_MODEL=gpt-4.1-mini-2025-04-14
+# Optional: an existing project deployment of the completed fine-tuned model
+AZURE_FINE_TUNED_DEPLOYMENT=<YOUR FINE-TUNED DEPLOYMENT>
 ```
+
+The notebook creates `AIProjectClient` with `DefaultAzureCredential` and obtains
+the model/fine-tuning client from that project. It does not accept API keys or
+account-level endpoints.
 
 2. Set up a virtual environment and install dependencies:
 
@@ -73,6 +79,9 @@ code Text_to_Python_Fine_Tuning.ipynb
 ## Key configuration
 
 - **`NUM_RECORDS`**: Number of synthetic examples to generate (default: 2000, set lower for testing)
+- **`USE_PREBUILT_DATA`**: `1` by default for a fast reproducible run; set to
+  `0` to generate a new dataset with Data Designer through the authenticated
+  Foundry project
 - **Quality threshold**: Average judge score ≥ 3.0/4.0 to include in training data
 - **Hyperparameters**: 1 epoch, learning rate multiplier 1.3, batch size 1
 
@@ -91,8 +100,8 @@ Data Designer uses a pipeline architecture to generate training data:
 | File | Description |
 |------|-------------|
 | `Text_to_Python_Fine_Tuning.ipynb` | Complete end-to-end notebook |
-| `training_data.jsonl` | Pre-built training set (85 examples, chat messages format) |
-| `validation_data.jsonl` | Pre-built validation set (4 examples, chat messages format) |
+| `training_data.jsonl` | Pre-built training set (1,576 examples, chat messages format) |
+| `validation_data.jsonl` | Pre-built validation set (83 examples, chat messages format) |
 | `requirements.txt` | Python dependencies |
 
 > **Don't want to run data generation?** The included `training_data.jsonl` and `validation_data.jsonl` let you skip straight to Step 4 (upload & evaluate). Just comment out the Data Designer cells and load the JSONL files directly.

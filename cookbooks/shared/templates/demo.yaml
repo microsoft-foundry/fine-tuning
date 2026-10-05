@@ -1,0 +1,24 @@
+id: replace-with-demo-slug
+title: Replace with customer-facing title
+stage: 00-foundations
+status: draft
+path: 00-foundations/replace-with-demo-slug
+techniques: [sft]
+modalities: [text]
+notebooks:
+  - path: notebooks/demo.ipynb
+    role: end-to-end
+    performs_fine_tuning: true
+    sections: [prepare, train, monitor, metrics]
+training:
+  base_models: [runtime-configured]
+  teacher_models: []
+  evaluator_models: []
+  result_model: runtime-recorded
+capabilities: [file-upload, fine-tuning, training-metrics]
+prerequisites: [foundry-project, entra-id, model-access]
+cost_tier: low
+runtime_tier: short
+validation:
+  status: not-run
+  notes: Replace after executing the canonical notebook from a clean environment.
