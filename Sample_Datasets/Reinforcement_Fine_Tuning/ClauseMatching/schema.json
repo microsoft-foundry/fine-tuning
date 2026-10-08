@@ -1,0 +1,20 @@
+{
+  "name": "contract_clause",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "clause_type": {
+        "type": "string",
+        "description": "The type of contract clause",
+        "enum": [ "Exclusivity", "Non-Compete" ]
+      },
+      "extracted_text": {
+        "type": "string",
+        "description": "The extracted text of the contract clause"
+      }
+    },
+    "required": [ "clause_type", "extracted_text" ],
+    "additionalProperties": false
+  }
+}
