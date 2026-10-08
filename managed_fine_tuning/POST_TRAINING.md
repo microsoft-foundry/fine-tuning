@@ -47,6 +47,9 @@ for model-specific deployment and inference support.
 
 Closing a notebook, timing out a polling loop, or closing local SDK clients
 does not cancel a remote job. Cancellation is a separate mutating operation.
+For the two-job Countdown state, follow its
+[cancellation and cleanup guide](03-core-rft/01-rft-countdown/CANCELLATION_AND_CLEANUP.md)
+instead of the first-SFT example below.
 Run the following from the first-SFT cookbook directory after reviewing the
 ignored `outputs/submission-state.json`. It reconstructs a live client, verifies
 that the saved job belongs to the configured project, and requires you to paste
