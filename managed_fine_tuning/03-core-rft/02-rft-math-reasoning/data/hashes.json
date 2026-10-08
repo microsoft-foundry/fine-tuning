@@ -4,17 +4,24 @@
     {
       "path": "data/preserved/openr1-math-training-rft-100.jsonl",
       "source": "Demos/RFT_Math_Reasoning/training_rft.jsonl",
-      "bytes": 54807,
+      "bytes": 55253,
       "rows": 100,
-      "sha256": "c6b7b4c86b21c796780b8d2fedcfe58433fbeacef77546522c19b8635f6a4184"
+      "sha256": "37e5573f18ea12e4be1d423deabfd4036c282fb935c28e61a29e9f4351f60b02"
     },
     {
       "path": "data/preserved/openr1-math-validation-rft-10.jsonl",
       "source": "Demos/RFT_Math_Reasoning/validation_rft.jsonl",
-      "bytes": 4868,
+      "bytes": 4921,
       "rows": 10,
-      "sha256": "fa953157b93d657506a2c3f6d02ff7abeb752c0488b8677ba2167d534e182f28"
+      "sha256": "beabdabc9ec3bf5509f03cb9a7e93cef6f068b9c0fbc970a105910b3de97b4dd"
     }
   ],
-  "normalization": "CRLF-to-LF"
+  "normalization": "CRLF-to-LF",
+  "source_dataset": "open-r1/OpenR1-Math-220k",
+  "source_revision": "e4e141ec9dea9f8326f4d347be56105859b2bd68",
+  "license": "Apache-2.0",
+  "corrected_rows": {
+    "training": [2, 3, 8, 17, 23, 25, 27, 32, 33, 35, 58, 60, 64, 69, 71, 77, 78, 80, 81, 83, 90, 92, 99],
+    "validation": [1, 5, 6, 7, 8, 9]
+  }
 }
