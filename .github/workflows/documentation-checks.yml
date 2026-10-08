@@ -48,6 +48,7 @@ jobs:
           python -m pytest -q --tb=short
           shared/tests/test_catalog.py
           shared/tests/test_cookbook_contract.py
+          shared/tests/test_countdown_cancellation.py
           shared/tests/test_dataset_validation.py
           shared/tests/test_config.py
           shared/tests/test_logging_naming.py

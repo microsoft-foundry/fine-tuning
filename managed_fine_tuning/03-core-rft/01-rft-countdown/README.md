@@ -34,4 +34,8 @@ Executing the deployment, upload, and submission cells can incur charges and sub
 
 Runtime state and downloaded results are written under ignored `outputs/`. The submission fingerprint includes the project, model, recipe, graders, response schema, and data hashes. A mismatch requires deliberate archival of the previous state. Job-creation POSTs use disabled SDK retries; reconcile an ambiguous submission in Foundry before rerunning.
 
+For stopping either remote job and reconciling shared files and grader deployment
+capacity, follow the [Countdown cancellation and cleanup guide](CANCELLATION_AND_CLEANUP.md).
+Closing the notebook or stopping monitoring does not cancel a job.
+
 Training reward is service telemetry, not held-out task-quality evidence. Actual results may vary by model version, data, configuration, region availability, and service conditions.
