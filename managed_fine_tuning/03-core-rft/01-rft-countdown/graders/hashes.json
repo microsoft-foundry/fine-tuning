@@ -1,0 +1,36 @@
+{
+  "algorithm": "sha256",
+  "artifacts": [
+    {
+      "path": "countdown_python_grader.py",
+      "origin": "Consolidated from the source Python grader and exact validator",
+      "bytes": 1780,
+      "sha256": "780729d3e92de8fb531bf159dafcfc4dc7f9ff0e617447fe7210d3ebfa0cc5ad"
+    },
+    {
+      "path": "preserved/countdown-model-score-grader.json",
+      "source": "Demos/RFT_Countdown/data/grader_config_aoai.json",
+      "bytes": 1726,
+      "sha256": "3fa8537941817977c6d0d4a2087e83332ad2d34169b983f800aab892d3e2e5e0"
+    },
+    {
+      "path": "preserved/countdown-model-score-grader-prompt.txt",
+      "source": "Demos/RFT_Countdown/data/grader_prompt.txt",
+      "bytes": 1423,
+      "sha256": "8c167e8633f184e39a79923824d942a103ededf71c4555e9846d903f33700b32"
+    },
+    {
+      "path": "preserved/countdown-response-schema.json",
+      "source": "Demos/RFT_Countdown/data/response_schema.json",
+      "bytes": 557,
+      "sha256": "59e4bb330e577a7a720f5f9ce3a6fa6a9b58af7b2b8d6a673e5c67e33960d320"
+    },
+    {
+      "path": "preserved/countdown-solver-prompt.txt",
+      "source": "Demos/RFT_Countdown/data/system_prompt.txt",
+      "bytes": 1110,
+      "sha256": "2df55d4273f5d17c248e20d3d7d3188478336d2c475740fa8681ebfb46dc7bde"
+    }
+  ],
+  "normalization": "CRLF-to-LF"
+}

@@ -1,7 +1,0 @@
-{
-    "name": "medmcqa_ans_grader",
-    "type": "string_check",
-    "input": "{{item.reference_answer}}",
-    "reference": "{{sample.output_text}}",
-    "operation": "eq"
-}

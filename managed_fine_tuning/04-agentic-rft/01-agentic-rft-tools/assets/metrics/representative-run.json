@@ -1,0 +1,19 @@
+{
+  "status": "prior_success_reference_only",
+  "model": "qwen3.6-35b-a3b",
+  "model_version": "1",
+  "training_type": "GlobalStandard",
+  "training_rows": 10,
+  "validation_rows": 10,
+  "training_reward": {
+    "start": 1.0,
+    "end": 1.0,
+    "best": 1.0
+  },
+  "validation_reward": {
+    "start": 1.0,
+    "end": 1.0,
+    "best": 1.0
+  },
+  "note": "Reference from a prior successful run. The canonical workflow submits a fresh job and uses its downloaded service metrics."
+}

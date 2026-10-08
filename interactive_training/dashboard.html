@@ -1,0 +1,1475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Run Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #161b22;
+    --panel2: #1c232c;
+    --border: #2d333b;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --good: #3fb950;
+    --warn: #d29922;
+    --bad: #f85149;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+  }
+  header {
+    padding: 12px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    position: sticky; top: 0; z-index: 10;
+  }
+  header h1 { margin: 0; font-size: 15px; font-weight: 600; }
+  header .run-name { color: var(--muted); font-family: ui-monospace, "SF Mono", monospace; font-size: 12px; }
+  header .spacer { flex: 1; }
+  header .ctrl { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+  header select, header button {
+    background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); padding: 4px 8px; border-radius: 4px;
+    font-size: 12px; cursor: pointer;
+  }
+  header button:hover { border-color: var(--accent); }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted); display: inline-block;
+  }
+  .status-dot.ok { background: var(--good); animation: pulse 2s infinite; }
+  .status-dot.err { background: var(--bad); }
+  @keyframes pulse { 0%,100% {opacity:1;} 50% {opacity:0.4;} }
+
+  main { padding: 16px 20px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(12, 1fr); }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    overflow: hidden;
+  }
+  .card h2 {
+    margin: 0 0 10px 0;
+    font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+  .col-3  { grid-column: span 3; }
+  .col-4  { grid-column: span 4; }
+  .col-6  { grid-column: span 6; }
+  .col-8  { grid-column: span 8; }
+  .col-12 { grid-column: span 12; }
+  @media (max-width: 1100px) { .col-3,.col-4 { grid-column: span 6; } .col-6,.col-8 { grid-column: span 12; } }
+
+  .kpi { display: flex; flex-direction: column; gap: 4px; }
+  .kpi .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .kpi .d { font-size: 11px; color: var(--muted); }
+  .kpi.good .v { color: var(--good); }
+  .kpi.warn .v { color: var(--warn); }
+  .kpi.bad  .v { color: var(--bad); }
+
+  .progress {
+    height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden;
+    margin-top: 8px;
+  }
+  .progress > div { height: 100%; background: linear-gradient(90deg, var(--accent), var(--good)); transition: width 0.3s; }
+
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  table th, table td { padding: 4px 6px; text-align: left; border-bottom: 1px solid var(--border); }
+  table th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; }
+  table td.num { text-align: right; font-family: ui-monospace, monospace; }
+  table tr:hover td { background: var(--panel2); }
+
+  .plot { width: 100%; height: 240px; }
+  .plot-tall { height: 320px; }
+
+  pre.log {
+    background: #0a0e13; color: #c9d1d9; border: 1px solid var(--border);
+    border-radius: 4px; padding: 10px; max-height: 360px; overflow: auto;
+    font-family: ui-monospace, "SF Mono", monospace; font-size: 11.5px;
+    line-height: 1.45; white-space: pre-wrap; word-break: break-word;
+  }
+  pre.log .info { color: #79c0ff; }
+  pre.log .warn { color: var(--warn); }
+  pre.log .err  { color: var(--bad); }
+  pre.log .traj { color: var(--good); }
+
+  .links a {
+    display: inline-block;
+    background: var(--panel2); color: var(--accent);
+    padding: 4px 10px; margin: 2px;
+    border: 1px solid var(--border); border-radius: 4px;
+    text-decoration: none; font-family: ui-monospace, monospace; font-size: 12px;
+  }
+  .links a:hover { border-color: var(--accent); }
+
+  .config-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px;
+    font-family: ui-monospace, monospace; font-size: 12px;
+  }
+  .config-grid .k { color: var(--muted); }
+  .config-grid .v { color: var(--text); word-break: break-word; }
+
+  .err-banner {
+    background: rgba(248,81,73,0.1); border: 1px solid var(--bad); color: var(--bad);
+    padding: 10px; border-radius: 6px; margin-bottom: 16px; font-size: 12px;
+    display: none;
+  }
+  .err-banner.show { display: block; }
+
+  .legend-pill {
+    display: inline-block; padding: 1px 8px; border-radius: 10px;
+    font-size: 11px; background: var(--panel2); color: var(--muted); margin-right: 6px;
+  }
+
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px 18px;
+  }
+  .overview-grid .item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .overview-grid .item .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .overview-grid .item .v { font-family: ui-monospace, monospace; font-size: 12.5px; word-break: break-word; }
+  .overview-grid .item .v.mono-strong { color: var(--accent); }
+
+  /* Card heading row with info tooltip */
+  .card h2.with-info {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .info-tip {
+    position: relative;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--panel2); color: var(--muted);
+    border: 1px solid var(--border);
+    font-size: 10px; font-weight: 700; font-family: serif;
+    cursor: help; user-select: none;
+    text-transform: none; letter-spacing: 0;
+  }
+  .info-tip:hover { color: var(--accent); border-color: var(--accent); }
+  .info-tip .info-bubble {
+    visibility: hidden; opacity: 0;
+    position: absolute; top: calc(100% + 6px); left: 0;
+    z-index: 50;
+    width: 360px; max-width: 80vw;
+    background: #0a0e13; color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 11.5px; font-weight: 400; line-height: 1.5;
+    text-transform: none; letter-spacing: normal;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+    white-space: normal;
+  }
+  .info-tip:hover .info-bubble { visibility: visible; opacity: 1; }
+  .info-bubble strong { color: var(--accent); font-weight: 600; }
+  .info-bubble code {
+    font-family: ui-monospace, monospace; font-size: 10.5px;
+    background: var(--panel2); padding: 0 4px; border-radius: 3px;
+    color: #c9d1d9;
+  }
+  .info-bubble ul { margin: 4px 0; padding-left: 16px; }
+  .info-bubble li { margin: 2px 0; }
+  .info-bubble .hint { color: var(--muted); margin-top: 6px; display: block; }
+
+  /* Per-iteration artifacts */
+  .iter-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 8px; font-size: 11.5px; color: var(--muted);
+  }
+  .iter-toolbar input[type="search"] {
+    background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 8px; font-size: 11.5px; width: 130px;
+    font-family: inherit;
+  }
+  .iter-toolbar input[type="search"]:focus { outline: none; border-color: var(--accent); }
+  .iter-toolbar button {
+    background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 8px; font-size: 11.5px; cursor: pointer;
+    font-family: inherit;
+  }
+  .iter-toolbar button:hover { border-color: var(--accent); }
+  .iter-count { font-variant-numeric: tabular-nums; }
+
+  .iter-table {
+    width: 100%; border-collapse: collapse;
+    font-variant-numeric: tabular-nums; font-size: 12px;
+  }
+  .iter-table th, .iter-table td {
+    padding: 5px 8px; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .iter-table th {
+    color: var(--muted); font-weight: 500; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    background: var(--panel2); position: sticky; top: 0;
+  }
+  .iter-table th.iter-num, .iter-table td.iter-num {
+    text-align: right; width: 64px;
+    font-family: ui-monospace, monospace; color: var(--muted);
+  }
+  .iter-table tr:hover td { background: var(--panel2); }
+  .iter-table a {
+    display: inline-flex; align-items: center; gap: 4px;
+    color: var(--accent); text-decoration: none;
+    font-family: ui-monospace, monospace; font-size: 11.5px;
+    padding: 2px 6px; border-radius: 3px;
+  }
+  .iter-table a:hover { background: var(--panel2); text-decoration: underline; }
+  .iter-table .iter-tag {
+    display: inline-block; padding: 1px 5px; border-radius: 3px;
+    font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+    margin-right: 6px;
+  }
+  .iter-table .iter-tag.train { background: rgba(63,185,80,0.15); color: var(--good); }
+  .iter-table .iter-tag.eval  { background: rgba(188,140,255,0.15); color: #bc8cff; }
+  .iter-table td.empty { color: var(--muted); font-style: italic; font-size: 11px; }
+  .iter-empty {
+    color: var(--muted); font-size: 12px; padding: 6px 0;
+  }
+  .iter-scroll { max-height: 360px; overflow: auto; border: 1px solid var(--border); border-radius: 4px; }
+
+  /* Mode-aware visibility. body picks up `mode-rl` or `mode-sft` once a run
+     is loaded; cards/KPIs tagged with `.rl-only` / `.sft-only` show/hide
+     accordingly. Default (no class set yet) shows RL layout so the first
+     paint isn't blank for the common case. */
+  body:not(.mode-sft) .sft-only { display: none !important; }
+  body.mode-sft     .rl-only    { display: none !important; }
+  .mode-pill {
+    display: inline-block; padding: 1px 8px; border-radius: 10px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; margin-left: 6px;
+    background: var(--panel2); color: var(--muted); border: 1px solid var(--border);
+  }
+  .mode-pill.rl  { color: var(--good);   border-color: rgba(63,185,80,0.4); }
+  .mode-pill.sft { color: #bc8cff;       border-color: rgba(188,140,255,0.4); }
+  body.mode-sft #configCard { grid-column: span 12; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Run Dashboard</h1>
+  <span class="run-name" id="runName"></span>
+  <span class="mode-pill" id="modePill" style="display:none"></span>
+  <span class="spacer"></span>
+  <span class="ctrl">
+    Run
+    <select id="runSel" style="min-width:280px;max-width:520px"><option value="">(loading…)</option></select>
+  </span>
+  <span class="ctrl">
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusText">idle</span>
+  </span>
+  <span class="ctrl">
+    Refresh
+    <select id="refreshSel">
+      <option value="0">off</option>
+      <option value="5">5s</option>
+      <option value="15" selected>15s</option>
+      <option value="30">30s</option>
+      <option value="60">60s</option>
+    </select>
+  </span>
+  <button id="refreshBtn">Reload now</button>
+</header>
+
+<main>
+  <div id="errBanner" class="err-banner"></div>
+
+  <!-- Run overview (from run_meta.json) -->
+  <div class="card" id="overviewCard" style="margin-bottom:16px;display:none">
+    <h2>Run overview</h2>
+    <div class="overview-grid" id="overviewGrid"></div>
+    <div id="overviewCmd" style="margin-top:10px;font-family:ui-monospace,monospace;font-size:11.5px;color:var(--muted);word-break:break-all;background:var(--panel2);border:1px solid var(--border);border-radius:4px;padding:6px 8px;display:none"></div>
+  </div>
+
+  <!-- KPI row. Uses flex (not the 12-col grid) so we can fit 5 equal-width
+       cards without breaking the rest of the page's grid math. -->
+  <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+    <div class="card kpi" id="kpiStep" style="flex:1;min-width:160px;"><span class="d">Latest step</span><span class="v">–</span><div class="progress"><div id="kpiProg" style="width:0%"></div></div><span class="d" id="kpiProgText"></span></div>
+    <div class="card kpi good rl-only" id="kpiTrainAcc" style="flex:1;min-width:160px;"><span class="d">Train correct</span><span class="v">–</span><span class="d" id="kpiTrainDelta"></span></div>
+    <div class="card kpi good rl-only" id="kpiTestAcc" style="flex:1;min-width:160px;"><span class="d">Eval correct</span><span class="v">–</span><span class="d" id="kpiTestDelta"></span></div>
+    <div class="card kpi sft-only" id="kpiTrainNLL" style="flex:1;min-width:160px;"><span class="d">Train NLL</span><span class="v">–</span><span class="d" id="kpiTrainNllDelta"></span></div>
+    <div class="card kpi sft-only" id="kpiTestNLL" style="flex:1;min-width:160px;"><span class="d">Test NLL</span><span class="v">–</span><span class="d" id="kpiTestNllDelta"></span></div>
+    <div class="card kpi" id="kpiTime" style="flex:1;min-width:160px;"><span class="d">Elapsed (sum of steps)</span><span class="v">–</span><span class="d" id="kpiTimeDetail"></span></div>
+    <div class="card kpi" id="kpiSession" style="flex:1;min-width:200px;"><span class="d">Session ID</span><span class="v" style="font-size:13px;font-family:ui-monospace,monospace;word-break:break-all;line-height:1.3">–</span><span class="d" id="kpiSessionExtra"></span></div>
+  </div>
+
+  <!-- Charts -->
+  <div class="grid">
+    <!-- SFT-only: NLL plot replaces the Reward & accuracy card. -->
+    <div class="card col-6 sft-only"><h2 class="with-info">NLL (train &amp; test)<span class="info-tip">i<span class="info-bubble">
+      Negative log-likelihood per weighted token.
+      <ul>
+        <li><strong>train NLL</strong> (<code>train_mean_nll</code>) — weighted mean NLL on each training batch.</li>
+        <li><strong>test NLL</strong> (<code>test/nll</code>, dotted) — NLL on held-out test split, computed via forward pass on eval steps.</li>
+      </ul>
+      <span class="hint">Train NLL should decrease monotonically. If test NLL bottoms out and starts rising while train NLL keeps falling, you're overfitting; the gap between the two curves is your generalization error.</span>
+    </span></span></h2><div id="plotNLL" class="plot plot-tall"></div></div>
+
+    <div class="card col-6 rl-only"><h2 class="with-info">Reward &amp; accuracy<span class="info-tip">i<span class="info-bubble">
+      Six lines vs. training step. Train (solid) and eval (no marker style change here, but eval keys are <code>test/...</code>) for three signals:
+      <ul>
+        <li><strong>reward</strong> (<code>env/all/reward/total</code>) — mean total reward per rollout (correctness + format).</li>
+        <li><strong>correct</strong> (<code>env/all/correct</code>) — fraction of rollouts with the right final answer.</li>
+        <li><strong>format</strong> (<code>env/all/format</code>, dotted) — fraction obeying the answer schema.</li>
+      </ul>
+      <span class="hint">Train correct should rise. If it climbs while eval correct stalls or drops → overfitting / reward hacking. Format should pin near 1.0; sudden dips signal schema breakage.</span>
+    </span></span></h2><div id="plotReward" class="plot plot-tall"></div></div>
+
+    <div class="card col-6"><h2 class="with-info">Optim: grad norm · entropy · LR<span class="info-tip">i<span class="info-bubble">
+      Three independent y-axes (left, right, far-right):
+      <ul>
+        <li><strong>grad_norm</strong> (<code>skyrl.ai/grad_norm</code>) — pre-clip policy gradient L2. Stable is good; spikes = unstable update (often co-occur with KL spikes).</li>
+        <li><strong>entropy</strong> (<code>optim/entropy</code>, <em>RL only</em>) — mean per-token policy entropy on sampled tokens. Falls as the model commits; falling too fast → mode collapse and loss of rollout diversity.</li>
+        <li><strong>lr</strong> (<code>optim/lr</code> for RL, <code>skyrl.ai/learning_rate</code> for SFT, dotted) — actual LR after warmup/decay. Confirms the schedule.</li>
+      </ul>
+    </span></span></h2><div id="plotOptim" class="plot plot-tall"></div></div>
+
+    <div class="card col-6 rl-only"><h2 class="with-info">KL (sample vs train)<span class="info-tip">i<span class="info-bubble">
+      KL divergence between the policy that <em>sampled</em> the rollouts and the policy <em>after</em> the gradient step — the "how big a step did we take" gauge.
+      <ul>
+        <li><strong>kl v1</strong> (<code>optim/kl_sample_train_v1</code>) — log-ratio estimator.</li>
+        <li><strong>kl v2</strong> (<code>optim/kl_sample_train_v2</code>) — <code>(r-1) − log r</code>, lower variance, always ≥ 0.</li>
+      </ul>
+      <span class="hint">Should be small and roughly flat. Spikes typically precede a reward/correctness dip on the next step. Large gap between v1 and v2 ⇒ heavy outlier importance ratios in the batch.</span>
+    </span></span></h2><div id="plotKL" class="plot"></div></div>
+
+    <div class="card col-6 rl-only"><h2 class="with-info">Group composition (train)<span class="info-tip">i<span class="info-bubble">
+      Stacked %. For each prompt, GRPO samples <code>group_size</code> completions and labels the group:
+      <ul>
+        <li><strong>all-good</strong> — every completion correct.</li>
+        <li><strong>mixed</strong> — some right, some wrong; <em>only these produce useful advantages</em>.</li>
+        <li><strong>all-bad</strong> — every completion wrong.</li>
+      </ul>
+      <span class="hint">Early on, all-bad dominates. The mixed band growing is the signal that learning is happening. When all-good takes over, the curriculum is too easy — advantages collapse to zero and reward stops moving.</span>
+    </span></span></h2><div id="plotGroup" class="plot"></div></div>
+
+    <div class="card col-6 rl-only"><h2 class="with-info">Token counts per turn<span class="info-tip">i<span class="info-bubble">
+      Mean tokens per turn, train (solid) and eval (dotted):
+      <ul>
+        <li><strong>action tok</strong> (<code>env/all/ac_tokens_per_turn</code>) — tokens the model generated (completion length).</li>
+        <li><strong>obs tok</strong> (<code>env/all/ob_tokens_per_turn</code>) — observation tokens fed back per turn (prompt / tool output). Roughly constant for single-turn tasks like GSM8K.</li>
+      </ul>
+      <span class="hint">Rising action-tok often means longer chains-of-thought. Hitting the <code>max_tokens</code> ceiling silently caps reward — bump <code>max_tokens</code> or shorten prompts. Train vs eval divergence hints at distribution mismatch.</span>
+    </span></span></h2><div id="plotTokens" class="plot"></div></div>
+
+    <div class="card col-6 rl-only"><h2 class="with-info">Completion truncation<span class="info-tip">i<span class="info-bubble">
+      Fraction of turns whose completion hit (or nearly hit) the <code>max_tokens</code> cap, train (solid) and eval (dotted):
+      <ul>
+        <li><strong>at max</strong> (<code>env/all/ac_tokens_frac_at_max</code>) — completions within 4 tokens of the cap, i.e. almost certainly truncated mid-generation.</li>
+        <li><strong>near max</strong> (<code>env/all/ac_tokens_frac_near_max</code>) — completions using ≥ 95% of the cap; the population at risk of truncation.</li>
+      </ul>
+      <span class="hint">A non-trivial <em>at-max</em> fraction means rewards are being silently capped by truncation, not by the policy. Raise <code>max_tokens</code> (or shorten prompts) until this falls back toward zero. Only emitted when <code>max_tokens</code> is known.</span>
+    </span></span></h2><div id="plotTrunc" class="plot"></div></div>
+
+    <div class="card col-6"><h2 class="with-info">Step timing breakdown<span class="info-tip">i<span class="info-bubble">
+      Stacked seconds per step:
+      <ul>
+        <li><code>run_evals</code> — eval rollouts (only on eval steps; the periodic tall bars).</li>
+        <li><code>assemble_training_data</code> — sampling + grading the train rollouts.</li>
+        <li><code>train</code> — forward / backward / optimizer step.</li>
+        <li><code>compute_kl_sample_train</code> — extra forward pass to measure post-update KL.</li>
+        <li><code>save_checkpoint</code> — checkpoint write (only on save steps).</li>
+      </ul>
+      <span class="hint">For hosted RL, <em>assemble</em> usually dominates (rollouts). If <em>train</em> balloons you're optimizer-bound; if <em>assemble</em> balloons it's sampling throughput. Tune <code>eval_every</code> / <code>save_every</code> based on their bar heights.</span>
+    </span></span></h2><div id="plotTime" class="plot"></div></div>
+
+    <!-- Forward/backward chunking (parsed from logs.log) -->
+    <div class="card col-12"><h2 class="with-info">Forward/backward chunking<span class="info-tip">i<span class="info-bubble">
+      Parsed from <code>logs.log</code> lines emitted by the Azure finetuning SDK:
+      <code>[forward_backward_post] batch of N datums split into K chunks: [...]</code>.
+      <ul>
+        <li><strong>chunks/call</strong> — how many micro-batches the SDK split each <code>forward_backward</code> request into.</li>
+        <li><strong>max / min chunk size</strong> — largest and smallest chunk in each call (in datums).</li>
+        <li><strong>last split</strong> — the exact split sizes for the most recent step.</li>
+      </ul>
+      <span class="hint">Each step normally produces 1–2 chunks. A sudden jump to many chunks (or a tiny tail chunk like <code>[98, 96, 6]</code>) means the SDK hit a token budget and had to fragment the batch — expect that step's <code>time/train</code> to spike. Persistent multi-chunking ⇒ your effective batch is too large for the server's per-request budget.</span>
+    </span></span></h2>
+      <div id="chunkSummary" class="overview-grid" style="margin-bottom:8px"></div>
+      <div class="grid" style="gap:12px">
+        <div class="card col-8" style="padding:8px;background:var(--panel2)">
+          <div id="plotChunks" class="plot"></div>
+        </div>
+        <div class="card col-4" style="padding:8px;background:var(--panel2)">
+          <div id="plotChunkLast" class="plot"></div>
+        </div>
+      </div>
+      <div style="max-height:200px;overflow:auto;margin-top:10px">
+        <table id="chunkTable">
+          <thead><tr><th>Step</th><th># chunks</th><th>Batch</th><th>Split sizes</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="chunkEmpty" class="iter-empty" style="display:none">no chunking events seen in logs yet</div>
+    </div>
+
+    <!-- Iteration artifacts + config -->
+    <div class="card col-6 rl-only">
+      <h2 class="with-info">Per-iteration artifacts<span class="info-tip">i<span class="info-bubble">
+        Self-contained HTML logs written by the trainer for each iteration:
+        <ul>
+          <li><strong>train</strong> — sampled trajectory groups for the training rollouts (prompt, completions, rewards, group composition).</li>
+          <li><strong>eval</strong> — same view for the held-out eval rollouts (only on iterations where eval ran).</li>
+        </ul>
+        <span class="hint">Open one to inspect actual model outputs at that step — the fastest way to see <em>what</em> the model is doing when a metric moves.</span>
+      </span></span></h2>
+      <div class="iter-toolbar" id="iterToolbar" style="display:none">
+        <span class="iter-count" id="iterCount"></span>
+        <span style="flex:1"></span>
+        <input type="search" id="iterFilter" placeholder="filter by iter # …" />
+        <button id="iterSortBtn" title="Toggle sort order">↓ latest</button>
+      </div>
+      <div id="iterLinks">scanning…</div>
+    </div>
+    <div class="card col-6" id="configCard">
+      <h2>Config</h2>
+      <div class="config-grid" id="configGrid">loading…</div>
+    </div>
+
+    <!-- Metrics table -->
+    <div class="card col-12">
+      <h2>All metrics (latest step)</h2>
+      <div style="max-height:360px;overflow:auto"><table id="metricsTable"><thead><tr><th>Metric</th><th style="text-align:right">Value</th></tr></thead><tbody></tbody></table></div>
+    </div>
+
+    <!-- Logs -->
+    <div class="card col-12">
+      <h2>Logs (tail of logs.log)</h2>
+      <pre class="log" id="logTail">loading…</pre>
+    </div>
+  </div>
+
+  <p style="color:var(--muted);font-size:11px;margin-top:18px;text-align:center">
+    Dashboard is served by <code>dashboard_server.py</code> and reads runs from the configured logs root
+    (default <code>~/interactive-post-training-runs</code>, or <code>$INTERACTIVE_POST_TRAINING_LOGS_ROOT</code>). Recipe type (RL vs SFT) is auto-detected
+    from <code>metrics.jsonl</code>.
+  </p>
+</main>
+
+<script>
+const PLOT_CFG = { displayModeBar: false, responsive: true };
+const LAYOUT_BASE = {
+  paper_bgcolor: 'rgba(0,0,0,0)',
+  plot_bgcolor: 'rgba(0,0,0,0)',
+  font: { color: '#e6edf3', size: 11 },
+  // Bottom margin must clear both the x-axis title and the horizontal legend
+  // below it; legend.y is anchored relative to the plot area, so we leave
+  // room for a 2-line legend wrap as well.
+  margin: { l: 48, r: 16, t: 10, b: 60 },
+  xaxis: { gridcolor: '#2d333b', zerolinecolor: '#2d333b', title: { text: 'step' } },
+  yaxis: { gridcolor: '#2d333b', zerolinecolor: '#2d333b' },
+  legend: { orientation: 'h', y: -0.32, x: 0 },
+  hovermode: 'x unified',
+  // Plotly's default unified-hover background is near-white; force a dark
+  // tooltip so the light text remains legible on our dark theme.
+  hoverlabel: { bgcolor: '#161b22', bordercolor: '#2d333b', font: { color: '#e6edf3', size: 11 } },
+};
+const COLORS = {
+  reward: '#58a6ff', correct: '#3fb950', format: '#d29922',
+  testReward: '#bc8cff', testCorrect: '#56d364', testFormat: '#e3b341',
+  grad: '#f85149', entropy: '#3fb950', lr: '#58a6ff',
+  kl1: '#58a6ff', kl2: '#bc8cff',
+  good: '#3fb950', mixed: '#d29922', bad: '#f85149',
+  acTok: '#58a6ff', obTok: '#bc8cff',
+  truncAtMax: '#f85149', truncNearMax: '#d29922',
+  trainNLL: '#58a6ff', testNLL: '#3fb950',
+};
+
+function fmt(v, d=3) {
+  if (v === null || v === undefined || Number.isNaN(v)) return '–';
+  if (typeof v !== 'number') return String(v);
+  if (!Number.isFinite(v)) return String(v);
+  if (Math.abs(v) >= 1000) return v.toFixed(0);
+  if (Math.abs(v) >= 1) return v.toFixed(d);
+  if (v === 0) return '0';
+  if (Math.abs(v) < 1e-3) return v.toExponential(2);
+  return v.toFixed(d);
+}
+function fmtSec(s) {
+  if (s == null || isNaN(s)) return '–';
+  if (s < 60) return s.toFixed(1) + 's';
+  if (s < 3600) return (s/60).toFixed(1) + 'm';
+  return (s/3600).toFixed(2) + 'h';
+}
+function setStatus(state, msg) {
+  const dot = document.getElementById('statusDot');
+  dot.className = 'status-dot ' + (state === 'ok' ? 'ok' : state === 'err' ? 'err' : '');
+  document.getElementById('statusText').textContent = msg;
+}
+function showError(msg) {
+  const b = document.getElementById('errBanner');
+  if (!msg) { b.classList.remove('show'); return; }
+  b.classList.add('show'); b.textContent = msg;
+}
+
+let CURRENT_RUN = '';
+const TASK_ID = new URLSearchParams(location.search).get('task_id');
+const TASK_RUN = TASK_ID
+  ? decodeURIComponent((location.hash || '').replace(/^#/, ''))
+  : '';
+let RUN_META = null;   // parsed run_meta.json for the current run (or null)
+let RUN_GEN = 0;            // bumped on every run switch; refresh ticks tagged with their gen
+let MODE = null;            // 'rl' | 'sft' | null (unknown). Detected from metrics.jsonl.
+
+// Recipe detection. RL recipes emit env/* and test/env/* keys; SFT emits
+// train_mean_nll / test/nll. We probe a handful of rows because the very
+// first step may only have setup metrics.
+function detectMode(rows) {
+  for (const r of rows) {
+    for (const k of Object.keys(r)) {
+      if (k === 'train_mean_nll' || k === 'test/nll' || k === 'num_loss_tokens') return 'sft';
+      if (k.startsWith('env/') || k.startsWith('test/env/') || k.startsWith('optim/kl_sample_train')) return 'rl';
+    }
+  }
+  return null;
+}
+
+function applyMode(mode) {
+  if (mode === MODE) return;
+  MODE = mode;
+  document.body.classList.toggle('mode-rl',  mode === 'rl');
+  document.body.classList.toggle('mode-sft', mode === 'sft');
+  const pill = document.getElementById('modePill');
+  if (pill) {
+    if (mode) {
+      pill.textContent = mode.toUpperCase();
+      pill.className = 'mode-pill ' + mode;
+      pill.style.display = '';
+    } else {
+      pill.style.display = 'none';
+      pill.textContent = '';
+    }
+  }
+}
+
+function runFileURL(name) {
+  if (!CURRENT_RUN) throw new Error('no run selected');
+  const path = '/api/run/' + CURRENT_RUN.split('/').map(encodeURIComponent).join('/') + '/file/' + encodeURIComponent(name);
+  return TASK_ID && CURRENT_RUN === TASK_RUN
+    ? `${path}?task_id=${encodeURIComponent(TASK_ID)}`
+    : path;
+}
+async function fetchText(name) {
+  const url = runFileURL(name);
+  const r = await fetch(url + (url.includes('?') ? '&' : '?') + '_=' + Date.now(), { cache: 'no-store' });
+  if (r.status === 404) {
+    const err = new Error(name + ' not found');
+    err.notFound = true;
+    throw err;
+  }
+  if (!r.ok) throw new Error(name + ' -> ' + r.status);
+  return r.text();
+}
+
+async function loadMetrics() {
+  let txt;
+  try {
+    txt = await fetchText('metrics.jsonl');
+  } catch (e) {
+    if (e.notFound) return [];   // run hasn't written metrics yet
+    throw e;
+  }
+  const rows = txt.split('\n').filter(Boolean).map(l => {
+    try { return JSON.parse(l); } catch { return null; }
+  }).filter(Boolean);
+  return rows;
+}
+
+function pick(rows, key) {
+  return rows.map(r => r[key] !== undefined ? r[key] : null);
+}
+function steps(rows) { return rows.map(r => r.step ?? 0); }
+
+function renderKPIs(rows) {
+  if (rows.length === 0) return;
+  const last = rows[rows.length-1];
+  const prev = rows.length > 1 ? rows[rows.length-2] : null;
+  const setKpi = (id, v, d) => {
+    const el = document.getElementById(id);
+    el.querySelector('.v').textContent = v;
+    if (d !== undefined) {
+      const dEls = el.querySelectorAll('.d');
+      if (dEls.length > 1) dEls[1].textContent = d;
+    }
+  };
+  setKpi('kpiStep', String(last.step ?? '–'));
+  // Progress: RL writes `progress/done_frac`; SFT writes `progress` (0–1).
+  const progFrac = last['progress/done_frac'] ?? last['progress'] ?? 0;
+  const prog = progFrac * 100;
+  document.getElementById('kpiProg').style.width = prog.toFixed(1) + '%';
+  // Try to surface "X / Y steps" when we know the planned total: from
+  // run_meta.training.max_steps or by inverting the fractional progress field.
+  const curStep = last.step ?? 0;
+  const cfgMaxSteps = (RUN_META && RUN_META.training && RUN_META.training.max_steps) || 0;
+  let totalSteps = 0;
+  if (cfgMaxSteps && cfgMaxSteps > 0) totalSteps = cfgMaxSteps;
+  else if (progFrac > 0) totalSteps = Math.round(curStep / progFrac);
+  const batchInfo = last['progress/batch'] != null ? ' · batch ' + last['progress/batch']
+                  : last['epoch']           != null ? ' · epoch ' + last['epoch']
+                  : '';
+  const stepsStr = totalSteps > 0 ? (curStep + ' / ' + totalSteps + ' steps · ') : '';
+  document.getElementById('kpiProgText').textContent = stepsStr + prog.toFixed(1) + '% of run' + batchInfo;
+
+  if (MODE === 'sft') {
+    // Train NLL: latest row that has train_mean_nll vs. the first such row.
+    let lastTrainRow = null;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (rows[i]['train_mean_nll'] != null) { lastTrainRow = rows[i]; break; }
+    }
+    let firstTrainRow = null;
+    for (const r of rows) {
+      if (r['train_mean_nll'] != null) { firstTrainRow = r; break; }
+    }
+    const tnll = lastTrainRow ? lastTrainRow['train_mean_nll'] : null;
+    const tnll0 = firstTrainRow ? firstTrainRow['train_mean_nll'] : null;
+    let trainDelta = '';
+    if (tnll != null && tnll0 != null && lastTrainRow !== firstTrainRow) {
+      const d = tnll - tnll0;
+      trainDelta = (d >= 0 ? '+' : '') + fmt(d, 4) + ' from start';
+    } else if (tnll != null && lastTrainRow) {
+      trainDelta = 'at step ' + lastTrainRow.step;
+    }
+    setKpi('kpiTrainNLL', tnll != null ? fmt(tnll, 4) : '–', trainDelta);
+
+    // Test NLL: latest and previous eval row.
+    let lastTestRow = null, prevTestRow = null;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (rows[i]['test/nll'] != null) {
+        if (!lastTestRow) lastTestRow = rows[i];
+        else { prevTestRow = rows[i]; break; }
+      }
+    }
+    const enll = lastTestRow ? lastTestRow['test/nll'] : null;
+    const enllPrev = prevTestRow ? prevTestRow['test/nll'] : null;
+    let testDelta = '';
+    if (enll != null && enllPrev != null) {
+      const d = enll - enllPrev;
+      testDelta = (d >= 0 ? '+' : '') + fmt(d, 4) + ' vs prev eval';
+    } else if (enll != null && lastTestRow) {
+      testDelta = 'at step ' + lastTestRow.step;
+    }
+    setKpi('kpiTestNLL', enll != null ? fmt(enll, 4) : '–', testDelta);
+  } else {
+    const tc = last['env/all/correct'];
+    const tcPrev = prev ? prev['env/all/correct'] : null;
+    setKpi('kpiTrainAcc', tc != null ? (tc*100).toFixed(1) + '%' : '–',
+      (tcPrev != null && tc != null) ? ((tc-tcPrev>=0?'+':'') + ((tc-tcPrev)*100).toFixed(2) + ' pp vs prev') : 'reward ' + fmt(last['env/all/reward/total']));
+
+    const ec = last['test/env/all/correct'];
+    const ecPrev = prev ? prev['test/env/all/correct'] : null;
+    setKpi('kpiTestAcc', ec != null ? (ec*100).toFixed(1) + '%' : '–',
+      (ecPrev != null && ec != null) ? ((ec-ecPrev>=0?'+':'') + ((ec-ecPrev)*100).toFixed(2) + ' pp vs prev') : 'reward ' + fmt(last['test/env/all/reward/total']));
+  }
+
+  const totalTime = rows.reduce((s,r)=>s+(r['time/total']||0),0);
+  const lastStepTime = last['time/total'];
+  // RL has time/train, SFT has time/step. Show whichever is present.
+  const trainKey = last['time/train'] != null ? 'time/train' : 'time/step';
+  const trainDetail = last[trainKey] != null ? ' · ' + (trainKey === 'time/train' ? 'train ' : 'step ') + fmtSec(last[trainKey]) : '';
+  setKpi('kpiTime', fmtSec(totalTime),
+    'last step ' + fmtSec(lastStepTime) + trainDetail);
+
+  // Session ID — from run_meta.json (azure.session_id). Older runs that
+  // predate run_meta.json will simply show "–".
+  let sessId = null, sessExtra = '';
+  if (RUN_META && RUN_META.azure && RUN_META.azure.session_id) {
+    sessId = RUN_META.azure.session_id;
+    sessExtra = RUN_META.azure.endpoint_host || RUN_META.azure.project_name || '';
+  }
+  setKpi('kpiSession', sessId || '–', sessExtra);
+}
+
+function renderRewardPlot(rows) {
+  const x = steps(rows);
+  const traces = [
+    { x, y: pick(rows,'env/all/reward/total'), name: 'train reward', mode:'lines+markers', line:{color:COLORS.reward,width:2} },
+    { x, y: pick(rows,'env/all/correct'),      name: 'train correct', mode:'lines+markers', line:{color:COLORS.correct,width:2} },
+    { x, y: pick(rows,'env/all/format'),       name: 'train format',  mode:'lines+markers', line:{color:COLORS.format,width:2,dash:'dot'} },
+    { x, y: pick(rows,'test/env/all/reward/total'), name: 'eval reward',  mode:'lines+markers', line:{color:COLORS.testReward,width:2} },
+    { x, y: pick(rows,'test/env/all/correct'),      name: 'eval correct', mode:'lines+markers', line:{color:COLORS.testCorrect,width:2} },
+    { x, y: pick(rows,'test/env/all/format'),       name: 'eval format',  mode:'lines+markers', line:{color:COLORS.testFormat,width:2,dash:'dot'} },
+  ];
+  Plotly.react('plotReward', traces, {...LAYOUT_BASE, yaxis:{...LAYOUT_BASE.yaxis, range:[0,1.02]}}, PLOT_CFG);
+}
+
+function renderNLLPlot(rows) {
+  const x = steps(rows);
+  const traces = [
+    { x, y: pick(rows, 'train_mean_nll'), name: 'train NLL', mode: 'lines+markers',
+      line: { color: COLORS.trainNLL, width: 2 }, marker: { size: 3 } },
+    { x, y: pick(rows, 'test/nll'),       name: 'test NLL',  mode: 'lines+markers',
+      line: { color: COLORS.testNLL, width: 2, dash: 'dot' }, marker: { size: 4 },
+      connectgaps: true },
+  ];
+  Plotly.react('plotNLL', traces, {
+    ...LAYOUT_BASE,
+    yaxis: { ...LAYOUT_BASE.yaxis, title: { text: 'NLL' } },
+  }, PLOT_CFG);
+}
+
+function renderOptimPlot(rows) {
+  const x = steps(rows);
+  // LR key differs by recipe: RL writes `optim/lr`, SFT writes
+  // `skyrl.ai/learning_rate` (or plain `learning_rate`).
+  const last = rows[rows.length - 1] || {};
+  const lrKey = last['optim/lr'] != null ? 'optim/lr'
+              : last['skyrl.ai/learning_rate'] != null ? 'skyrl.ai/learning_rate'
+              : 'learning_rate';
+  const traces = [
+    { x, y: pick(rows,'skyrl.ai/grad_norm'), name:'grad_norm', mode:'lines+markers', line:{color:COLORS.grad,width:2}, yaxis:'y' },
+  ];
+  // entropy is RL-only; only include the trace if any row has it.
+  const hasEntropy = rows.some(r => r['optim/entropy'] != null);
+  if (hasEntropy) {
+    traces.push({ x, y: pick(rows,'optim/entropy'), name:'entropy', mode:'lines+markers', line:{color:COLORS.entropy,width:2}, yaxis:'y2' });
+  }
+  traces.push({ x, y: pick(rows, lrKey), name:'lr', mode:'lines+markers', line:{color:COLORS.lr,width:2,dash:'dot'}, yaxis: hasEntropy ? 'y3' : 'y2' });
+
+  const layout = {
+    ...LAYOUT_BASE,
+    margin: { l: 48, r: hasEntropy ? 80 : 60, t: 10, b: 36 },
+    yaxis:  { ...LAYOUT_BASE.yaxis, title:{text:'grad_norm'}, titlefont:{color:COLORS.grad}, tickfont:{color:COLORS.grad} },
+    yaxis2: { overlaying:'y', side:'right', gridcolor:'transparent',
+              title:{text: hasEntropy ? 'entropy' : 'lr'},
+              titlefont:{color: hasEntropy ? COLORS.entropy : COLORS.lr},
+              tickfont:{color: hasEntropy ? COLORS.entropy : COLORS.lr} },
+  };
+  if (hasEntropy) {
+    layout.yaxis3 = { overlaying:'y', side:'right', position:0.96, gridcolor:'transparent', title:{text:'lr'}, titlefont:{color:COLORS.lr}, tickfont:{color:COLORS.lr}, anchor:'free' };
+  }
+  Plotly.react('plotOptim', traces, layout, PLOT_CFG);
+}
+
+function renderKLPlot(rows) {
+  const x = steps(rows);
+  const traces = [
+    { x, y: pick(rows,'optim/kl_sample_train_v1'), name:'kl v1', mode:'lines+markers', line:{color:COLORS.kl1,width:2} },
+    { x, y: pick(rows,'optim/kl_sample_train_v2'), name:'kl v2', mode:'lines+markers', line:{color:COLORS.kl2,width:2} },
+  ];
+  Plotly.react('plotKL', traces, LAYOUT_BASE, PLOT_CFG);
+}
+
+function renderGroupPlot(rows) {
+  const x = steps(rows);
+  const traces = [
+    { x, y: pick(rows,'env/all/by_group/frac_all_good'), name:'all-good', stackgroup:'g', line:{width:0}, fillcolor:COLORS.good },
+    { x, y: pick(rows,'env/all/by_group/frac_mixed'),    name:'mixed',    stackgroup:'g', line:{width:0}, fillcolor:COLORS.mixed },
+    { x, y: pick(rows,'env/all/by_group/frac_all_bad'),  name:'all-bad',  stackgroup:'g', line:{width:0}, fillcolor:COLORS.bad },
+  ];
+  Plotly.react('plotGroup', traces, {...LAYOUT_BASE, yaxis:{...LAYOUT_BASE.yaxis, range:[0,1], tickformat:'.0%'}}, PLOT_CFG);
+}
+
+function renderTokensPlot(rows) {
+  const x = steps(rows);
+  const traces = [
+    { x, y: pick(rows,'env/all/ac_tokens_per_turn'),      name:'train action tok',   mode:'lines+markers', line:{color:COLORS.acTok,width:2} },
+    { x, y: pick(rows,'env/all/ob_tokens_per_turn'),      name:'train obs tok',      mode:'lines+markers', line:{color:COLORS.obTok,width:2} },
+    { x, y: pick(rows,'test/env/all/ac_tokens_per_turn'), name:'eval action tok',    mode:'lines+markers', line:{color:COLORS.acTok,width:2,dash:'dot'} },
+    { x, y: pick(rows,'test/env/all/ob_tokens_per_turn'), name:'eval obs tok',       mode:'lines+markers', line:{color:COLORS.obTok,width:2,dash:'dot'} },
+  ];
+  Plotly.react('plotTokens', traces, LAYOUT_BASE, PLOT_CFG);
+}
+
+function renderTruncPlot(rows) {
+  const x = steps(rows);
+  const traces = [
+    { x, y: pick(rows,'env/all/ac_tokens_frac_at_max'),        name:'train at max',   mode:'lines+markers', line:{color:COLORS.truncAtMax,width:2} },
+    { x, y: pick(rows,'env/all/ac_tokens_frac_near_max'),      name:'train near max', mode:'lines+markers', line:{color:COLORS.truncNearMax,width:2} },
+    { x, y: pick(rows,'test/env/all/ac_tokens_frac_at_max'),   name:'eval at max',    mode:'lines+markers', line:{color:COLORS.truncAtMax,width:2,dash:'dot'} },
+    { x, y: pick(rows,'test/env/all/ac_tokens_frac_near_max'), name:'eval near max',  mode:'lines+markers', line:{color:COLORS.truncNearMax,width:2,dash:'dot'} },
+  ];
+  Plotly.react('plotTrunc', traces, {...LAYOUT_BASE, yaxis:{...LAYOUT_BASE.yaxis, rangemode:'tozero', tickformat:'.0%'}}, PLOT_CFG);
+}
+
+function renderTimePlot(rows) {
+  const x = steps(rows);
+  // RL and SFT emit different time/* keys.
+  //   RL components:  assemble_training_data, train, compute_kl_sample_train,
+  //                   run_evals, infrequent_evals, save_checkpoint  (all disjoint)
+  //   SFT components: get_batch, evals, save_checkpoint            (disjoint subset of time/step)
+  // SFT also emits `time/step` and `time/total`, which are aggregates that
+  // already include the components above. Stacking them alongside their
+  // components double-counts the bar height, so we treat them as aggregates
+  // and instead synthesize an `other` residual = max(0, time/step − Σ components).
+  const components = [
+    ['time/run_evals',              'run_evals',        '#bc8cff'],
+    ['time/evals',                  'evals',            '#bc8cff'],
+    ['time/infrequent_evals',       'infrequent_evals', '#9d7bd8'],
+    ['time/assemble_training_data', 'assemble',         '#58a6ff'],
+    ['time/get_batch',              'get_batch',        '#58a6ff'],
+    ['time/train',                  'train',            '#3fb950'],
+    ['time/compute_kl_sample_train','compute_kl',       '#d29922'],
+    ['time/save_checkpoint',        'save_ckpt',        '#f85149'],
+  ];
+  const present = components.filter(([k]) => rows.some(r => r[k] != null));
+  const traces = present.map(([k,n,c]) => ({
+    x, y: pick(rows,k), name:n, type:'bar', marker:{color:c},
+  }));
+  // If the recipe reports a per-step total (`time/step`), surface anything not
+  // explained by the components as an `other` residual so the stack still sums
+  // to the true step duration. RL has no `time/step` so this is a no-op there.
+  const hasStepTotal = rows.some(r => r['time/step'] != null);
+  if (hasStepTotal) {
+    const presentKeys = present.map(([k]) => k);
+    const other = rows.map(r => {
+      const total = r['time/step'];
+      if (total == null) return null;
+      let sum = 0;
+      for (const k of presentKeys) if (r[k] != null) sum += r[k];
+      return Math.max(0, total - sum);
+    });
+    if (other.some(v => v != null && v > 0)) {
+      traces.push({ x, y: other, name: 'other', type: 'bar', marker: { color: '#6e7681' } });
+    }
+  }
+  // Force integer step ticks: Plotly auto-picks 0.5-step ticks when the
+  // visible range is small, which is wrong for an integer-valued step axis.
+  // Use the visible span (max − min) rather than the absolute max so resumed
+  // runs (steps starting far from 0) still get well-placed ticks; anchor
+  // tick0 near the first visible step instead of always at 0.
+  const minStep = x.length ? Math.min(...x) : 0;
+  const maxStep = x.length ? Math.max(...x) : 1;
+  const stepDtick = Math.max(1, Math.ceil(Math.max(1, maxStep - minStep) / 10));
+  const tick0 = Math.floor(minStep / stepDtick) * stepDtick;
+  Plotly.react('plotTime', traces, {
+    ...LAYOUT_BASE,
+    barmode:'stack',
+    xaxis: { ...LAYOUT_BASE.xaxis, tick0, dtick: stepDtick, tickformat: ',d' },
+    yaxis:{...LAYOUT_BASE.yaxis, title:{text:'seconds'}},
+  }, PLOT_CFG);
+}
+
+function renderMetricsTable(rows) {
+  if (rows.length === 0) return;
+  const last = rows[rows.length-1];
+  const tbody = document.querySelector('#metricsTable tbody');
+  tbody.innerHTML = '';
+  Object.keys(last).sort().forEach(k => {
+    const v = last[k];
+    const tr = document.createElement('tr');
+    // All metrics keyed under `time/` are wall-clock seconds (see
+    // utils.misc_utils.timed and rl/{train,metrics}.py). Render them with
+    // fmtSec (e.g. "12.3s", "4.5m") and tag the metric name with "(s)" so
+    // the unit is unambiguous in the raw-value table too.
+    const isTime = typeof k === 'string' && k.startsWith('time/');
+    const label = isTime ? `${k} (s)` : k;
+    const value = isTime ? fmtSec(v) : fmt(v, 4);
+    // Build cells with textContent rather than innerHTML interpolation:
+    // metrics keys/values come from user-controlled metrics.jsonl on disk,
+    // so a key containing markup would otherwise be executed by the browser.
+    const tdLabel = document.createElement('td');
+    tdLabel.textContent = label;
+    const tdValue = document.createElement('td');
+    tdValue.className = 'num';
+    tdValue.textContent = value;
+    tr.appendChild(tdLabel);
+    tr.appendChild(tdValue);
+    tbody.appendChild(tr);
+  });
+}
+
+function deriveProjectFromEndpoint(url) {
+  // Returns { url, host, projectName } from a Foundry/AI endpoint URL.
+  if (!url) return { url: null, host: null, projectName: null };
+  let host = '', path = '';
+  try {
+    const u = new URL(url);
+    host = u.host;
+    path = u.pathname || '';
+  } catch {
+    host = String(url).replace(/^https?:\/\//, '').split('/')[0];
+  }
+  const parts = host.split('.');
+  // Project name heuristics:
+  //   <project>.<region>.api.azureml.ms        → parts[0]
+  //   <account>.services.ai.azure.com/api/projects/<project> → from path
+  let projectName = null;
+  const m = path.match(/\/projects\/([^/?#]+)/i);
+  if (m) projectName = decodeURIComponent(m[1]);
+  else if (parts.length > 1 && parts[0] && parts[0] !== 'www') projectName = parts[0];
+  return { url, host, projectName };
+}
+
+function buildOverviewItems(meta, cfg) {
+  const items = [];
+  const push = (k, v, opts={}) => {
+    if (v === null || v === undefined || v === '') return;
+    items.push({ k, v, strong: !!opts.strong, href: opts.href || null });
+  };
+  // Prefer fields from run_meta.json, fall back to config.json.
+  const azure = meta?.azure || {};
+  const projInfo = deriveProjectFromEndpoint(azure.project_endpoint);
+  push('Started', meta?.started_at);
+  push('Recipe', meta?.recipe);
+  push('Environment', meta?.env || meta?.dataset?.name, { strong: true });
+  push('Project', azure.project_name || projInfo.projectName, { strong: true });
+  if (azure.project_endpoint) {
+    push('Project endpoint', azure.project_endpoint, { href: azure.project_endpoint });
+  }
+  push('Endpoint host', azure.endpoint_host || projInfo.host);
+  push('Session ID', azure.session_id);
+  if (azure.from_checkpoint) {
+    const fc = azure.from_checkpoint;
+    push('Resumed from', `${fc.source_session_id} / ${fc.checkpoint_id}`, { strong: true });
+  }
+  push('Auth', azure.auth);
+
+  const model = meta?.model || {};
+  push('Model', model.model_name || cfg?.model_name, { strong: true });
+  push('Tokenizer', model.tokenizer_name || cfg?.tokenizer_name);
+  push('Renderer', model.renderer_name || cfg?.dataset_builder?.renderer_name);
+  push('LoRA rank', model.lora_rank ?? cfg?.lora_rank);
+
+  const ds = meta?.dataset || {};
+  const dsName = ds.name || cfg?.dataset_builder?.dataset_name || cfg?.wandb_name?.split('-')[0];
+  const trainCap = ds.max_train_examples ?? cfg?.dataset_builder?.max_train_examples;
+  const testCap  = ds.max_test_examples  ?? cfg?.dataset_builder?.max_test_examples;
+  if (dsName || trainCap != null || testCap != null) {
+    push('Dataset', `${dsName ?? '–'}  ·  train≤${trainCap ?? '–'}  ·  test≤${testCap ?? '–'}`);
+  }
+  const gs = ds.group_size ?? cfg?.dataset_builder?.group_size;
+  const gpb = ds.groups_per_batch ?? cfg?.dataset_builder?.batch_size;
+  if (gs != null || gpb != null) push('Group / batch', `group_size=${gs ?? '–'}  groups_per_batch=${gpb ?? '–'}`);
+
+  const t = meta?.training || {};
+  const lr   = t.learning_rate ?? cfg?.learning_rate;
+  const temp = t.temperature   ?? cfg?.temperature;
+  const mt   = t.max_tokens    ?? cfg?.max_tokens;
+  // Prefer the user-defined custom_loss_name (when a Python-side custom loss
+  // is in use) over the raw loss_fn enum, which would otherwise show the
+  // "custom" sentinel.  run_meta is reconciled at write time, so checking it
+  // first keeps older runs working.
+  const loss = t.loss_fn
+             ?? cfg?.custom_loss_name
+             ?? cfg?.loss_fn;
+  const seed = t.seed          ?? cfg?.dataset_builder?.seed;
+  push('Loss', loss);
+  if (lr != null || temp != null || mt != null) push('LR / temp / max_tok', `${lr ?? '–'} / ${temp ?? '–'} / ${mt ?? '–'}`);
+  push('Eval / save every', (t.eval_every ?? cfg?.eval_every) != null
+    ? `${t.eval_every ?? cfg?.eval_every} / ${t.save_every ?? cfg?.save_every}` : null);
+  push('Seed', seed);
+  return items;
+}
+
+async function loadOverview() {
+  const card = document.getElementById('overviewCard');
+  const grid = document.getElementById('overviewGrid');
+  const cmdEl = document.getElementById('overviewCmd');
+  grid.innerHTML = '';
+  cmdEl.style.display = 'none';
+  cmdEl.textContent = '';
+
+  let meta = null, cfg = null;
+  try { meta = JSON.parse(await fetchText('run_meta.json')); } catch {}
+  try { cfg  = JSON.parse(await fetchText('config.json')); } catch {}
+  RUN_META = meta;  // promote so renderKPIs / other render fns can read it
+  if (!meta && !cfg) { card.style.display = 'none'; return; }
+
+  const items = buildOverviewItems(meta, cfg);
+  if (items.length === 0) { card.style.display = 'none'; return; }
+
+  items.forEach(({k, v, strong, href}) => {
+    const row = document.createElement('div'); row.className = 'item';
+    const kd = document.createElement('div'); kd.className = 'k'; kd.textContent = k;
+    const vd = document.createElement('div'); vd.className = 'v' + (strong ? ' mono-strong' : '');
+    if (href) {
+      const a = document.createElement('a'); a.href = href; a.target = '_blank';
+      a.textContent = String(v); a.style.color = 'var(--accent)'; a.style.textDecoration = 'none';
+      vd.appendChild(a);
+    } else {
+      vd.textContent = String(v);
+    }
+    row.appendChild(kd); row.appendChild(vd); grid.appendChild(row);
+  });
+
+  if (meta?.command) {
+    cmdEl.textContent = '$ ' + meta.command;
+    cmdEl.style.display = 'block';
+  }
+  // Banner if we only had config (older run, no run_meta.json yet)
+  if (!meta) {
+    const note = document.createElement('div');
+    note.style.cssText = 'grid-column:1/-1;color:var(--muted);font-size:11px;margin-top:4px';
+    note.textContent = 'No run_meta.json found — showing partial info from config.json. Re-run training with the latest train_azure.py to get the full overview (project endpoint, session id).';
+    grid.appendChild(note);
+  }
+  card.style.display = 'block';
+}
+
+async function loadConfig() {
+  try {
+    const txt = await fetchText('config.json');
+    const cfg = JSON.parse(txt);
+    document.getElementById('runName').textContent = cfg.wandb_name || '';
+    const grid = document.getElementById('configGrid');
+    grid.innerHTML = '';
+    const flat = {};
+    const flatten = (o, p='') => Object.entries(o||{}).forEach(([k,v]) => {
+      const key = p ? p+'.'+k : k;
+      if (v !== null && typeof v === 'object' && !Array.isArray(v)) flatten(v, key);
+      else flat[key] = Array.isArray(v) ? JSON.stringify(v) : v;
+    });
+    flatten(cfg);
+    Object.entries(flat).forEach(([k,v]) => {
+      const kd = document.createElement('div'); kd.className='k'; kd.textContent = k;
+      const vd = document.createElement('div'); vd.className='v'; vd.textContent = v === null ? 'null' : String(v);
+      grid.appendChild(kd); grid.appendChild(vd);
+    });
+  } catch (e) {
+    document.getElementById('configGrid').innerHTML = '<div class="k">error</div><div class="v">'+e.message+'</div>';
+  }
+}
+
+let ITER_DATA = [];        // [{ iter:Number, train:filename|null, eval:filename|null }]
+let ITER_SORT_DESC = true; // latest-first by default
+
+function renderIterTable() {
+  const container = document.getElementById('iterLinks');
+  const toolbar = document.getElementById('iterToolbar');
+  const countEl = document.getElementById('iterCount');
+  const filterEl = document.getElementById('iterFilter');
+  const sortBtn = document.getElementById('iterSortBtn');
+  if (!container) return;
+
+  if (!ITER_DATA.length) {
+    if (toolbar) toolbar.style.display = 'none';
+    container.innerHTML = '<div class="iter-empty">no iteration HTMLs yet</div>';
+    return;
+  }
+
+  const filterTxt = (filterEl?.value || '').trim().toLowerCase();
+  let rows = ITER_DATA.slice();
+  if (filterTxt) {
+    rows = rows.filter(r => String(r.iter).includes(filterTxt));
+  }
+  rows.sort((a, b) => ITER_SORT_DESC ? b.iter - a.iter : a.iter - b.iter);
+
+  const trainCount = ITER_DATA.filter(r => r.train).length;
+  const evalCount  = ITER_DATA.filter(r => r.eval).length;
+  if (toolbar) toolbar.style.display = 'flex';
+  if (countEl) countEl.textContent = `${ITER_DATA.length} iter${ITER_DATA.length===1?'':'s'} · ${trainCount} train · ${evalCount} eval`;
+  if (sortBtn) sortBtn.textContent = ITER_SORT_DESC ? '↓ latest' : '↑ earliest';
+
+  const cell = (kind, fname) => {
+    if (!fname) return '<td class="empty">—</td>';
+    const href = runFileURL(fname);
+    return `<td><a href="${href}" target="_blank"><span class="iter-tag ${kind}">${kind}</span>${fname}</a></td>`;
+  };
+  const body = rows.map(r => `<tr><td class="iter-num">#${r.iter}</td>${cell('train', r.train)}${cell('eval', r.eval)}</tr>`).join('');
+  const empty = rows.length === 0
+    ? '<div class="iter-empty" style="padding:10px">no matches</div>'
+    : '';
+  container.innerHTML = `
+    <div class="iter-scroll">
+      <table class="iter-table">
+        <thead><tr>
+          <th class="iter-num">Iter</th>
+          <th>Train rollouts</th>
+          <th>Eval rollouts</th>
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+      ${empty}
+    </div>`;
+}
+
+function bindIterControlsOnce() {
+  const filterEl = document.getElementById('iterFilter');
+  const sortBtn = document.getElementById('iterSortBtn');
+  if (filterEl && !filterEl.dataset.bound) {
+    filterEl.dataset.bound = '1';
+    filterEl.addEventListener('input', renderIterTable);
+  }
+  if (sortBtn && !sortBtn.dataset.bound) {
+    sortBtn.dataset.bound = '1';
+    sortBtn.addEventListener('click', () => { ITER_SORT_DESC = !ITER_SORT_DESC; renderIterTable(); });
+  }
+}
+
+async function loadIterLinks() {
+  const container = document.getElementById('iterLinks');
+  bindIterControlsOnce();
+  if (!CURRENT_RUN) {
+    ITER_DATA = [];
+    document.getElementById('iterToolbar').style.display = 'none';
+    container.innerHTML = '<div class="iter-empty">pick a run</div>';
+    return;
+  }
+  container.innerHTML = '<div class="iter-empty">scanning…</div>';
+  try {
+    const url = '/api/run/' + CURRENT_RUN.split('/').map(encodeURIComponent).join('/') + '/iterations?_=' + Date.now();
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error('iterations -> ' + r.status);
+    const { iterations } = await r.json();
+    // Group by iteration index. Filenames look like:
+    //   train_iteration_<N>.html
+    //   eval_test_iteration_<N>.html  (also accept eval_iteration_<N>.html)
+    const byIter = new Map();
+    (iterations || []).forEach(f => {
+      const m = f.match(/^(train|eval(?:_test)?)_iteration_(\d+)\.html?$/);
+      if (!m) return;
+      const kind = m[1].startsWith('eval') ? 'eval' : 'train';
+      const n = parseInt(m[2], 10);
+      if (!byIter.has(n)) byIter.set(n, { iter: n, train: null, eval: null });
+      byIter.get(n)[kind] = f;
+    });
+    ITER_DATA = Array.from(byIter.values());
+    renderIterTable();
+  } catch (e) {
+    ITER_DATA = [];
+    document.getElementById('iterToolbar').style.display = 'none';
+    container.innerHTML = '<div class="iter-empty">error: ' + e.message + '</div>';
+  }
+}
+
+async function loadLogTail() {
+  try {
+    const txt = await fetchText('logs.log');
+    renderLogTail(txt);
+    renderChunking(txt);
+  } catch (e) {
+    const el = document.getElementById('logTail');
+    el.textContent = e.notFound ? '(no logs.log yet — waiting for run to start)' : ('error: ' + e.message);
+    renderChunking('');
+  }
+}
+
+function renderLogTail(txt) {
+    const lines = txt.split('\n');
+    const tail = lines.slice(Math.max(0, lines.length - 400)).join('\n');
+    const el = document.getElementById('logTail');
+    // Strip ANSI colour escapes (e.g. `\x1b[33m`) emitted by the SDK so they
+    // don't surface as literal `[0m[33m` noise in the rendered tail.
+    const stripped = tail.replace(/\x1b\[[0-9;]*m/g, '');
+    // Very lightweight syntax highlighting
+    const escaped = stripped.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const colored = escaped
+      .replace(/\[INFO\]/g, '<span class="info">[INFO]</span>')
+      .replace(/\[WARN(?:ING)?\]/g, '<span class="warn">[WARN]</span>')
+      .replace(/\[ERROR\]/g, '<span class="err">[ERROR]</span>')
+      .replace(/(={3,} (?:Trajectory Group|End Trajectory Group) ={3,})/g, '<span class="traj">$1</span>')
+      .replace(/(\*+ trajectory idx=\d+, reward=[^*]+\*+)/g, '<span class="traj">$1</span>');
+    el.innerHTML = colored;
+    el.scrollTop = el.scrollHeight;
+}
+
+// Parse `[forward_backward_post] batch of N datums split into K chunks: [a, b, ...]`
+// (and the analogous `[forward_post]` line emitted for forward-only passes such
+// as SFT eval) from logs.log. The SDK emits one such line per forward(_backward)
+// call. Each preceding "Starting train" log line marks the start of a training
+// step, so we use that running count to attach a step number to each event.
+function parseChunkingEvents(logText) {
+  if (!logText) return [];
+  const re = /\[forward(?:_backward)?_post\]\s+batch of (\d+) datums split into (\d+) chunks:\s*\[([^\]]*)\]/;
+  const events = [];
+  let step = 0;
+  for (const rawLine of logText.split('\n')) {
+    // Strip ANSI escape sequences before matching.
+    const line = rawLine.replace(/\x1b\[[0-9;]*m/g, '');
+    if (line.includes('Starting train')) { step += 1; continue; }
+    const m = line.match(re);
+    if (!m) continue;
+    const batch = parseInt(m[1], 10);
+    const numChunks = parseInt(m[2], 10);
+    const sizes = m[3].split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+    events.push({ step: step || events.length + 1, batch, numChunks, sizes });
+  }
+  return events;
+}
+
+function renderChunking(logText) {
+  const events = parseChunkingEvents(logText);
+  const tbody = document.querySelector('#chunkTable tbody');
+  const emptyEl = document.getElementById('chunkEmpty');
+  const summaryEl = document.getElementById('chunkSummary');
+  if (tbody) tbody.innerHTML = '';
+  if (summaryEl) summaryEl.innerHTML = '';
+
+  if (!events.length) {
+    if (emptyEl) emptyEl.style.display = 'block';
+    ['plotChunks','plotChunkLast'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && window.Plotly) { try { Plotly.purge(el); } catch {} }
+    });
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  const last = events[events.length - 1];
+  const totalChunks = events.reduce((s, e) => s + e.numChunks, 0);
+  const multiChunk = events.filter(e => e.numChunks > 1).length;
+  const maxK = Math.max(...events.map(e => e.numChunks));
+  const summary = [
+    ['Calls observed', String(events.length)],
+    ['Multi-chunk calls', `${multiChunk} (${((multiChunk/events.length)*100).toFixed(0)}%)`],
+    ['Max chunks/call', String(maxK)],
+    ['Last batch', `${last.batch} → ${last.numChunks} chunk${last.numChunks===1?'':'s'}`],
+    ['Last split', '[' + last.sizes.join(', ') + ']'],
+    ['Avg chunks/call', (totalChunks / events.length).toFixed(2)],
+  ];
+  summary.forEach(([k, v]) => {
+    const row = document.createElement('div'); row.className = 'item';
+    const kd = document.createElement('div'); kd.className = 'k'; kd.textContent = k;
+    const vd = document.createElement('div'); vd.className = 'v'; vd.textContent = v;
+    row.appendChild(kd); row.appendChild(vd); summaryEl.appendChild(row);
+  });
+
+  // Chunks-per-call over training steps.
+  const x = events.map(e => e.step);
+  const yChunks = events.map(e => e.numChunks);
+  const yMax = events.map(e => Math.max(...e.sizes));
+  const yMin = events.map(e => Math.min(...e.sizes));
+  const tracesA = [
+    { x, y: yChunks, name: '# chunks', type: 'bar', marker: { color: COLORS.mixed }, yaxis: 'y' },
+    { x, y: yMax,    name: 'max chunk size', mode: 'lines+markers', line: { color: COLORS.reward, width: 2 }, yaxis: 'y2' },
+    { x, y: yMin,    name: 'min chunk size', mode: 'lines+markers', line: { color: COLORS.bad,    width: 2, dash: 'dot' }, yaxis: 'y2' },
+  ];
+  // Force integer step ticks on the x-axis (Plotly otherwise picks 0.5-step
+  // ticks for short runs). Use the *visible* step span (max − min) so resumed
+  // runs (steps starting far from 0) don't get sparse/offset ticks; anchor
+  // tick0 near the first visible step.
+  const minStepA = x.length ? Math.min(...x) : 0;
+  const maxStepA = x.length ? Math.max(...x) : 1;
+  const stepDtickA = Math.max(1, Math.ceil(Math.max(1, maxStepA - minStepA) / 10));
+  const tick0A = Math.floor(minStepA / stepDtickA) * stepDtickA;
+  const layoutA = {
+    ...LAYOUT_BASE,
+    margin: { l: 48, r: 56, t: 10, b: 60 },
+    xaxis: { ...LAYOUT_BASE.xaxis, tick0: tick0A, dtick: stepDtickA, tickformat: ',d' },
+    // Cap tick density: with chunk counts that can range 1–20+, an integer
+    // `dtick: 1` produces an illegible wall of grid lines. Pick a step that
+    // yields ~5 ticks across the visible range but never goes below 1.
+    yaxis:  { ...LAYOUT_BASE.yaxis, title: { text: 'chunks/call' }, rangemode: 'tozero', dtick: Math.max(1, Math.ceil(maxK / 5)) },
+    yaxis2: { overlaying: 'y', side: 'right', gridcolor: 'transparent', title: { text: 'chunk size (datums)' } },
+  };
+  if (window.Plotly) Plotly.react('plotChunks', tracesA, layoutA, PLOT_CFG);
+
+  // Bar chart of the most-recent split.
+  const lastTraces = [{
+    x: last.sizes.map((_, i) => 'chunk ' + i),
+    y: last.sizes,
+    type: 'bar',
+    marker: { color: COLORS.acTok },
+    text: last.sizes.map(String),
+    textposition: 'auto',
+  }];
+  const layoutLast = {
+    ...LAYOUT_BASE,
+    margin: { l: 40, r: 12, t: 10, b: 60 },
+    // Force category x-axis: the x values are strings like 'chunk 0'/'chunk 1'.
+    // Without this, Plotly auto-detects them as linear and places the bars at
+    // x=0,1,2,... while the axis range expands to fill the plot width, making
+    // the bars effectively invisible.
+    xaxis: { ...LAYOUT_BASE.xaxis, type: 'category', title: { text: `step ${last.step} · batch ${last.batch}` } },
+    yaxis: { ...LAYOUT_BASE.yaxis, title: { text: 'datums' } },
+    showlegend: false,
+  };
+  if (window.Plotly) Plotly.react('plotChunkLast', lastTraces, layoutLast, PLOT_CFG);
+
+  // Recent events table (latest first, capped).
+  const recent = events.slice(-40).reverse();
+  recent.forEach(ev => {
+    const tr = document.createElement('tr');
+    const cells = [
+      String(ev.step),
+      String(ev.numChunks),
+      String(ev.batch),
+      '[' + ev.sizes.join(', ') + ']',
+    ];
+    cells.forEach((c, i) => {
+      const td = document.createElement('td');
+      if (i === 3) td.style.fontFamily = 'ui-monospace, monospace';
+      if (i !== 3) td.className = 'num';
+      td.textContent = c;
+      tr.appendChild(td);
+    });
+    if (ev.numChunks > 1) tr.style.color = 'var(--warn)';
+    tbody.appendChild(tr);
+  });
+}
+
+function clearRunUI() {
+  // Wipe everything that's run-specific so we never display stale data
+  // from a previous selection while loading a new (possibly empty) run.
+  ['kpiStep','kpiTrainAcc','kpiTestAcc','kpiTrainNLL','kpiTestNLL','kpiTime','kpiSession'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    el.querySelector('.v').textContent = '–';
+    const ds = el.querySelectorAll('.d');
+    if (ds.length > 1) ds[1].textContent = '';
+  });
+  const prog = document.getElementById('kpiProg'); if (prog) prog.style.width = '0%';
+  const progT = document.getElementById('kpiProgText'); if (progT) progT.textContent = '';
+  ['plotReward','plotNLL','plotOptim','plotKL','plotGroup','plotTokens','plotTime','plotChunks','plotChunkLast'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && window.Plotly) { try { Plotly.purge(el); } catch {} }
+    if (el) el.innerHTML = '';
+  });
+  const tbody = document.querySelector('#metricsTable tbody'); if (tbody) tbody.innerHTML = '';
+  const log = document.getElementById('logTail'); if (log) log.textContent = '';
+  const chunkBody = document.querySelector('#chunkTable tbody'); if (chunkBody) chunkBody.innerHTML = '';
+  const chunkSum = document.getElementById('chunkSummary'); if (chunkSum) chunkSum.innerHTML = '';
+  const chunkEmpty = document.getElementById('chunkEmpty'); if (chunkEmpty) chunkEmpty.style.display = 'none';
+  const links = document.getElementById('iterLinks');
+  if (links) links.innerHTML = '<div class="iter-empty">scanning…</div>';
+  const iterToolbar = document.getElementById('iterToolbar');
+  if (iterToolbar) iterToolbar.style.display = 'none';
+  ITER_DATA = [];
+  const overview = document.getElementById('overviewCard'); if (overview) overview.style.display = 'none';
+}
+
+let timer = null;
+async function refresh() {
+  // Refresh the run list too so newly-created runs appear.
+  await loadRuns({ keepSelection: true });
+  if (!CURRENT_RUN) { setStatus('', 'pick a run'); return; }
+  const myGen = RUN_GEN;
+  const stale = () => myGen !== RUN_GEN || !CURRENT_RUN;
+  setStatus('loading','refreshing…');
+  try {
+    const rows = await loadMetrics();
+    if (stale()) return;
+    // Detect recipe type as soon as we have any rows; this drives which
+    // cards/KPIs are visible (via body.mode-{rl,sft}) and which Plotly
+    // renderers run below.
+    if (rows.length > 0) applyMode(detectMode(rows) || MODE || 'rl');
+    if (rows.length === 0) {
+      // In-progress run with no metrics yet — don't leave stale charts up.
+      ['plotReward','plotOptim','plotKL','plotGroup','plotTokens','plotTime'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && window.Plotly) { try { Plotly.purge(el); } catch {} }
+      });
+      // Even before the first metrics step we may already have chunking events.
+      // loadLogTail() below will repopulate them.
+      const tbody = document.querySelector('#metricsTable tbody'); if (tbody) tbody.innerHTML = '';
+      showError('');
+      setStatus('ok','waiting for first metrics step… · ' + new Date().toLocaleTimeString());
+      await loadLogTail();
+      if (stale()) return;
+      return;
+    }
+    renderKPIs(rows);
+    if (MODE === 'sft') {
+      renderNLLPlot(rows);
+    } else {
+      renderRewardPlot(rows);
+      renderKLPlot(rows);
+      renderGroupPlot(rows);
+      renderTokensPlot(rows);
+      renderTruncPlot(rows);
+    }
+    renderOptimPlot(rows);
+    renderTimePlot(rows);
+    renderMetricsTable(rows);
+    await loadLogTail();
+    if (stale()) return;
+    showError('');
+    setStatus('ok','live · ' + rows.length + ' steps · ' + new Date().toLocaleTimeString());
+  } catch (e) {
+    if (stale()) return;
+    setStatus('err','error');
+    showError('Could not load data: ' + e.message);
+  }
+}
+
+function scheduleRefresh() {
+  if (timer) { clearInterval(timer); timer = null; }
+  const sec = parseInt(document.getElementById('refreshSel').value, 10);
+  if (sec > 0) timer = setInterval(refresh, sec * 1000);
+}
+
+async function loadRuns(opts = {}) {
+  const { keepSelection = false } = opts;
+  const sel = document.getElementById('runSel');
+  try {
+    const r = await fetch('/api/runs?_=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('runs -> ' + r.status);
+    const { root, runs } = await r.json();
+    const previous = sel.value;
+    sel.innerHTML = '';
+    if ((!runs || runs.length === 0) && !TASK_RUN) {
+      sel.innerHTML = '<option value="">(no runs found in ' + root + ')</option>';
+      return;
+    }
+    const placeholder = document.createElement('option');
+    placeholder.value = ''; placeholder.textContent = '— select a run —';
+    sel.appendChild(placeholder);
+    const hashRun = decodeURIComponent((location.hash || '').replace(/^#/, ''));
+    const scopedRun = TASK_RUN && (CURRENT_RUN || hashRun);
+    if (scopedRun && !runs.some(r => r.id === scopedRun)) {
+      const option = document.createElement('option');
+      option.value = scopedRun;
+      option.textContent = scopedRun + '   (automated task)';
+      sel.appendChild(option);
+    }
+    runs.forEach(rn => {
+      const o = document.createElement('option');
+      o.value = rn.id;
+      const d = new Date(rn.mtime * 1000);
+      o.textContent = rn.label + '   (' + d.toLocaleString() + ')';
+      sel.appendChild(o);
+    });
+    if (keepSelection) {
+      // Keep what's already selected if it still exists; otherwise leave empty.
+      const target = CURRENT_RUN || previous;
+      if (target && Array.from(sel.options).some(option => option.value === target)) {
+        sel.value = target;
+      }
+      return;
+    }
+    // A task-scoped automated run is intentionally absent from /api/runs, which
+    // lists only legacy unscoped rows. Preserve an explicit task + hash pair.
+    const initial = (hashRun && (TASK_RUN || runs.some(r => r.id === hashRun)))
+      ? hashRun
+      : runs[0].id;
+    sel.value = initial;
+    await selectRun(initial);
+  } catch (e) {
+    if (!keepSelection) sel.innerHTML = '<option value="">(error: ' + e.message + ')</option>';
+  }
+}
+
+async function selectRun(runId) {
+  CURRENT_RUN = runId || '';
+  RUN_GEN++;                                  // invalidate any in-flight responses
+  RUN_META = null;                            // forget the previous run's meta
+  applyMode(null);                            // reset mode so it's re-detected
+  if (CURRENT_RUN) location.hash = encodeURIComponent(CURRENT_RUN);
+  document.getElementById('runName').textContent = CURRENT_RUN;
+  clearRunUI();
+  if (!CURRENT_RUN) return;
+  const myGen = RUN_GEN;
+  await loadOverview();   if (myGen !== RUN_GEN) return;
+  await loadConfig();     if (myGen !== RUN_GEN) return;
+  await loadIterLinks();  if (myGen !== RUN_GEN) return;
+  await refresh();
+}
+
+document.getElementById('refreshBtn').addEventListener('click', refresh);
+document.getElementById('refreshSel').addEventListener('change', scheduleRefresh);
+document.getElementById('runSel').addEventListener('change', (e) => selectRun(e.target.value));
+
+(async () => {
+  await loadRuns();
+  scheduleRefresh();
+})();
+</script>
+</body>
+</html>

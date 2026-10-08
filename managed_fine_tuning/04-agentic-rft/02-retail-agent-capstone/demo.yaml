@@ -1,0 +1,52 @@
+id: agentic-retail-capstone
+title: Agentic Retail Capstone
+stage: 04-agentic-rft
+status: draft
+path: 04-agentic-rft/02-retail-agent-capstone
+techniques:
+- sft
+- rft
+- agentic
+- synthetic-data
+modalities:
+- text
+- tool-calls
+notebooks:
+- path: notebooks/demo.ipynb
+  role: end-to-end
+  performs_fine_tuning: true
+  sections:
+  - prepare
+  - train
+  - monitor
+  - metrics
+  - deploy
+  - compare
+training:
+  base_models:
+  - gpt-4.1-mini-2025-04-14
+  - o4-mini-2025-04-16
+  teacher_models: []
+  evaluator_models:
+  - o3-mini-2025-01-31
+  result_model: runtime-recorded
+capabilities:
+- file-upload
+- sft
+- rft
+- tool-calling
+- training-metrics
+- deployment
+- comparison
+prerequisites:
+- foundry-project
+- entra-id
+- preview-access
+- model-access
+- quota
+cost_tier: variable
+runtime_tier: long
+validation:
+  status: partial
+  notes: Portable notebook and dataset checks; live outcomes depend on customer model access, region,
+    quota, and configuration.

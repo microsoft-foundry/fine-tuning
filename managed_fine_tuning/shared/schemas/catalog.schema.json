@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/fine-tuning-cookbooks/catalog.schema.json",
+  "title": "Fine-tuning cookbook catalog",
+  "type": "object",
+  "required": ["schema_version", "validation", "demos"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "validation": {
+      "type": "object",
+      "required": ["status", "scope"],
+      "properties": {
+        "status": {"enum": ["not-run", "partial", "complete"]},
+        "scope": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true
+    },
+    "demos": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "demo.schema.json"}
+    }
+  }
+}

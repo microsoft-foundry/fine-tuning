@@ -1,3 +1,0 @@
-{"messages": [{"role": "system", "content": "Solve the given math problem. Give your final numeric answer."}, {"role": "user", "content": "What is 15% of 240?"}], "answer": 36.0}
-{"messages": [{"role": "system", "content": "Solve the given math problem. Give your final numeric answer."}, {"role": "user", "content": "A store sells an item for $80 after a 20% discount. What was the original price?"}], "answer": 100.0}
-{"messages": [{"role": "user", "content": "Write a Python function that reverses a string without using slicing."}], "reference_code": "def reverse_string(s):\n    result = ''\n    for char in s:\n        result = char + result\n    return result", "test_input": "hello", "expected_output": "olleh"}

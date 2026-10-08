@@ -1,0 +1,96 @@
+[project]
+name = "interactive-training"
+version = "0.2.0"
+description = "Implementations of interactive training algorithms using the Azure AI Fine-Tuning Sessions SDK"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "azure-ai-finetuningsessions==1.0.0b1",
+    "azure-identity",
+    "aiohttp",
+    "blobfile",
+    "chz",
+    "datasets>=4.0.0,<5",
+    "fsspec",
+    "huggingface_hub[hf_xet]",
+    "numpy",
+    "rich",
+    "termcolor",
+    "tiktoken",
+    "torch",
+    "transformers==5.15.1",
+    "pylatexenc",
+    "sympy",
+    "math-verify",
+    "scipy",
+    "tqdm",
+    "ipywidgets",
+    "pydantic",
+]
+
+[project.optional-dependencies]
+test = [
+    "pillow",
+    "mcp>=1.29.1,<2",
+    "psutil>=5.9; sys_platform == 'win32'",
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+]
+notebook = [
+    "ipykernel>=6.29",
+]
+wandb = [
+    "wandb",
+]
+neptune-scale = [
+    "neptune-scale>=0.27.0",
+]
+trackio = [
+    "trackio<1.0.0",
+]
+image = [
+    "pillow",
+    "torchvision",
+]
+mcp = [
+    "httpx",
+    "mcp>=1.29.1,<2",
+    "pillow",
+    "torchvision",
+]
+vector-search = [
+    "faiss-cpu",
+    "fastapi",
+    "uvicorn",
+    "httpx",
+    "pandas",
+    "pyarrow",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["interactive_training"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+torchvision = [
+    { index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

@@ -1,0 +1,20 @@
+{
+  "algorithm": "sha256",
+  "artifacts": [
+    {
+      "path": "data/preserved/openr1-math-training-rft-100.jsonl",
+      "source": "Demos/RFT_Math_Reasoning/training_rft.jsonl",
+      "bytes": 54807,
+      "rows": 100,
+      "sha256": "c6b7b4c86b21c796780b8d2fedcfe58433fbeacef77546522c19b8635f6a4184"
+    },
+    {
+      "path": "data/preserved/openr1-math-validation-rft-10.jsonl",
+      "source": "Demos/RFT_Math_Reasoning/validation_rft.jsonl",
+      "bytes": 4868,
+      "rows": 10,
+      "sha256": "fa953157b93d657506a2c3f6d02ff7abeb752c0488b8677ba2167d534e182f28"
+    }
+  ],
+  "normalization": "CRLF-to-LF"
+}

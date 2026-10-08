@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [3.0.0] - 2026-10-07
+
+Interactive training and managed fine-tuning refresh ([#42](https://github.com/microsoft-foundry/fine-tuning/pull/42)).
+
+### Added
+- Interactive training cookbook, training recipes, SDK guidance, and supporting documentation.
+- Refresh shared documentation, tests, and repository guidance for both training tracks.
+- Explicit access-approval notices and the preview sign-up link for interactive training.
+
+### Changed
+- Reorganize existing fine-tuning examples, datasets, and notebooks into a `managed_fine_tuning` folder
+
+### Removed
+- Legacy standalone fine-tuning agent skill and its auto-discovery symlinks; maintained repository guides and recipes now define the supported workflows.
+
 ## [2.1.0] - 2026-04-21
 
 ### Added
@@ -50,7 +65,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - Enhanced main README with navigation table, quickstart section, and demo links
 - Getting Started guide (`GETTING_STARTED.md`) with step-by-step setup instructions
-- Schema documentation (`SCHEMA.md`) for all Sample_Datasets (SFT, DPO, RFT)
+- Schema documentation (`SCHEMA.md`) for all managed fine-tuning datasets (SFT, DPO, RFT)
 - Troubleshooting sections to demos that were missing them
 - Missing `.env.template` and `requirements.txt` for RFT_Countdown demo
 - Issue templates for bug reports and feature requests

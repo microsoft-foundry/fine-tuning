@@ -1,0 +1,42 @@
+name: Smoke testing
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke-testing
+  cancel-in-progress: false
+
+jobs:
+  interactive-training:
+    if: vars.ENABLE_DAILY_TRAINING == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    environment: interactive-training-smoke
+    defaults:
+      run:
+        working-directory: interactive_training
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: interactive_training/pyproject.toml
+      - name: Install cookbook
+        run: python -m pip install -e . --index-url https://pypi.org/simple --extra-index-url https://download.pytorch.org/whl/cpu
+      - name: Run recipes sequentially
+        env:
+          AZURE_AI_PROJECT_ENDPOINT: ${{ secrets.AZURE_AI_PROJECT_ENDPOINT }}
+          AZURE_AI_API_KEY: ${{ secrets.AZURE_AI_API_KEY }}
+        run: |
+          if [[ -z "$AZURE_AI_PROJECT_ENDPOINT" || -z "$AZURE_AI_API_KEY" ]]; then
+            echo "Configure AZURE_AI_PROJECT_ENDPOINT and AZURE_AI_API_KEY as environment secrets." >&2
+            exit 1
+          fi
+          python scripts/run_recipe_smokes.py --gap-minutes 10

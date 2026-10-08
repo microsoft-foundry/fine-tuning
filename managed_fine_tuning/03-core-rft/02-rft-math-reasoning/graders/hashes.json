@@ -1,0 +1,12 @@
+{
+  "algorithm": "sha256",
+  "artifacts": [
+    {
+      "path": "boxed_math_grader.py",
+      "origin": "Extracted and hardened from Demos/RFT_Math_Reasoning/rft_math_reasoning.ipynb",
+      "bytes": 1349,
+      "sha256": "f0a14dd903c6d7f2f14ab07d19f8a3d10131b738c30da0f8f5b0fab87da4f445"
+    }
+  ],
+  "normalization": "CRLF-to-LF"
+}

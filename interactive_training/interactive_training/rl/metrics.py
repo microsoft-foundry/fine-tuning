@@ -1,0 +1,184 @@
+"""
+Metrics and KL computation functions for RL training.
+
+Contains functions for computing KL divergences, incorporating KL penalties,
+and computing training metrics.
+"""
+
+import asyncio
+from typing import Any, Dict, List, cast
+
+import numpy as np
+from azure.ai.finetuningsessions import FineTuningSession
+from azure.ai.finetuningsessions.models import Datum, ModelInput, ModelInputChunk, TensorData
+import torch
+from interactive_training.utils.misc_utils import safezip
+from interactive_training.utils.trace import scope
+
+
+def compute_kl_sample_train(
+    data_D: List[Datum], training_logprobs_D: List[torch.Tensor]
+) -> Dict[str, float]:
+    """Compute KL divergence metrics between sampling and training logprobs."""
+    if not data_D:
+        # A fully-dropped batch (e.g. all groups filtered by a dynamic batching
+        # strategy) carries no logprobs to compare -- emit no KL metrics.
+        return {}
+    all_diffs: list[torch.Tensor] = []
+    all_sampling_logprobs: list[torch.Tensor] = []
+
+    for datum, training_logprobs in safezip(data_D, training_logprobs_D):
+        # Get logprobs from sampling
+        sampling_logprobs = torch.tensor(datum.loss_fn_inputs["logprobs"].data)
+        action_mask = torch.tensor(datum.loss_fn_inputs["mask"].data) > 0
+        # Extract only action token logprobs
+        sampling_logprobs_actions = sampling_logprobs[action_mask]
+        training_logprobs_actions = training_logprobs[action_mask]
+
+        if len(sampling_logprobs_actions) > 0:
+            logprob_diff = sampling_logprobs_actions - training_logprobs_actions
+            all_diffs.append(logprob_diff)
+            all_sampling_logprobs.append(sampling_logprobs_actions)
+
+    assert all_diffs
+    flat_diffs = torch.cat(all_diffs)
+    kl_sample_train_v1 = flat_diffs.mean().item()
+    kl_sample_train_v2 = 0.5 * (flat_diffs**2).mean().item()
+
+    flat_sampling_logprobs = torch.cat(all_sampling_logprobs)
+    entropy_sample = -flat_sampling_logprobs.mean().item()
+    return {
+        "optim/kl_sample_train_v1": kl_sample_train_v1,
+        "optim/kl_sample_train_v2": kl_sample_train_v2,
+        "optim/entropy": entropy_sample,
+    }
+
+
+@scope
+async def compute_post_kl(
+    data_D: List[Datum], post_sampling_client: FineTuningSession
+) -> Dict[str, float]:
+    """Compute post-update KL divergence metrics."""
+    if not data_D:
+        # A fully-dropped batch carries no data to compare against.
+        return {}
+    # Compute logprobs at all data items
+    # This is a bit ugly, but we first reconstruct the original sequence from before we did the
+    # shifting to get the inputs and targets.
+    full_sequence_inputs_D = [
+        ModelInput(chunks=datum.model_input.chunks[:-1] + [ModelInputChunk(tokens=datum.model_input.chunks[-1].tokens + [int(datum.loss_fn_inputs["target_tokens"].data[-1])])])
+        for datum in data_D
+    ]
+    new_logprobs_D = await asyncio.gather(
+        *[
+            post_sampling_client.compute_logprobs_async(sequence_input)
+            for sequence_input in full_sequence_inputs_D
+        ]
+    )
+
+    prev_logprobs_D = [torch.tensor(datum.loss_fn_inputs["logprobs"].data) for datum in data_D]
+    action_masks = [torch.tensor(datum.loss_fn_inputs["mask"].data) > 0 for datum in data_D]
+    flat_diffs = [
+        (prev_logprobs - torch.tensor(new_logprobs[1:]))[action_mask]
+        for new_logprobs, prev_logprobs, action_mask in safezip(
+            new_logprobs_D, prev_logprobs_D, action_masks
+        )
+    ]
+    flat_diffs = torch.cat(flat_diffs)
+    kl_post_v1 = flat_diffs.mean().item()
+    kl_post_v2 = 0.5 * (flat_diffs**2).mean().item()
+
+    return {"kl_pre_post_v1": kl_post_v1, "kl_pre_post_v2": kl_post_v2}
+
+
+@scope
+async def incorporate_kl_penalty(
+    data_D: List[Datum],
+    base_sampling_client: FineTuningSession,
+    kl_penalty_coef: float,
+    kl_discount_factor: float,
+) -> Dict[str, float]:
+    """
+    Compute KL against base model. Adjust advantages in-place by logp_base - logp_current - avg_kl,
+    where avg_kl is the average of logp_base - logp_current (which is -KL[current, base])
+    """
+    if not data_D:
+        # A fully-dropped batch (e.g. a train-side strategy selection that keeps
+        # no groups) has no advantages to adjust; avg_logp_diff would be 0/0.
+        return {}
+    # Compute logprobs at all data items
+    full_sequence_inputs_D = [
+        ModelInput(chunks=datum.model_input.chunks[:-1] + [ModelInputChunk(tokens=datum.model_input.chunks[-1].tokens + [int(datum.loss_fn_inputs["target_tokens"].data[-1])])])
+        for datum in data_D
+    ]
+    base_logprobs_D = await asyncio.gather(
+        *[
+            base_sampling_client.compute_logprobs_async(sequence_input)
+            for sequence_input in full_sequence_inputs_D
+        ]
+    )
+    # compute the logprob differences, zeroed out when the mask == 0
+    sampled_logprobs_D = [torch.tensor(datum.loss_fn_inputs["logprobs"].data) for datum in data_D]
+    float_masks = [torch.tensor(datum.loss_fn_inputs["mask"].data).float() for datum in data_D]
+    logprob_diffs = [
+        (sampled_logprobs - torch.tensor(base_logprobs[1:])) * mask
+        for base_logprobs, sampled_logprobs, mask in safezip(
+            base_logprobs_D, sampled_logprobs_D, float_masks
+        )
+    ]
+    avg_logp_diff = sum([diff.sum() for diff in logprob_diffs]) / sum(
+        [mask.sum() for mask in float_masks]
+    )
+    for i, datum in enumerate(data_D):
+        kl_advantages = kl_penalty_coef * float_masks[i] * (avg_logp_diff - logprob_diffs[i])
+        if kl_discount_factor > 0:
+            kl_advantages = torch.tensor(
+                discounted_future_sum_vectorized(kl_advantages.numpy(), kl_discount_factor)
+            )
+        datum.loss_fn_inputs["advantages"] = TensorData(
+            data=(torch.tensor(datum.loss_fn_inputs["advantages"].data) + kl_advantages).detach().cpu().tolist()
+        )
+
+    return {"kl_policy_base": float(avg_logp_diff)}
+
+
+def discounted_future_sum_vectorized(x: np.ndarray, gamma: float) -> np.ndarray:
+    """
+    Compute discounted sum of future values for each position using a vectorized approach.
+
+    Args:
+        x (np.ndarray): 1D array of rewards.
+        gamma (float): Discount factor.
+
+    Returns:
+        np.ndarray: discounted sum of future values.
+    """
+    # Reverse x so lfilter processes from end to start
+    import scipy.signal
+
+    return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1].astype(x.dtype)  # type: ignore
+
+
+def compute_sampling_client_metrics(
+    wrapped_trajectory_groups: List[Any],  # WrappedTrajectoryGroup
+) -> dict[str, Any]:
+    """Compute metrics about sampling clients used to generate trajectory groups."""
+    if not wrapped_trajectory_groups:
+        # No trajectory groups survived the batch -- nothing to aggregate.
+        return {}
+    sampling_client_steps = [
+        wrapped_trajectory_group.sampling_client_step
+        for wrapped_trajectory_group in wrapped_trajectory_groups
+    ]
+    sample_times = [
+        wrapped_trajectory_group.metrics["time/trajectory_group_worker_loop/total"]
+        for wrapped_trajectory_group in wrapped_trajectory_groups
+    ]
+    metrics = {}
+    metrics["sampling_client/step_max"] = max(sampling_client_steps)
+    metrics["sampling_client/step_min"] = min(sampling_client_steps)
+    metrics["sampling_client/step_mean"] = sum(sampling_client_steps) / len(sampling_client_steps)
+    metrics["time/sampling_time_max"] = max(sample_times)
+    metrics["time/sampling_time_min"] = min(sample_times)
+    metrics["time/sampling_time_mean"] = sum(sample_times) / len(sample_times)
+    return metrics

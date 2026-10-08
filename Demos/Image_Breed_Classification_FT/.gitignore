@@ -1,8 +1,0 @@
-.env
-.venv/
-stanford_dogs_dataset/
-jsonl/
-__pycache__/
-.DS_Store
-.kaggle/
-results.csv

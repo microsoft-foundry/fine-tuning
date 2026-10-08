@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.template
+**/artifacts/
+**/outputs/
+**/logs/
+**/.ipynb_checkpoints/
+**/__pycache__/
+**/.ruff_cache/
+**/.pytest_cache/
+**/.venv/
+**/venv/
+*.pyc
+*.log
+*.tmp

@@ -1,0 +1,4 @@
+data/hashes.json text eol=lf
+data/preserved/countdown-training-rft-100.jsonl text eol=lf
+data/preserved/countdown-validation-rft-50.jsonl text eol=lf
+data/preserved/countdown-evaluation-100.jsonl text eol=lf
