@@ -1,0 +1,57 @@
+name: Root and managed documentation checks
+
+on:
+  pull_request:
+    paths:
+      - '*.md'
+      - 'tests/**'
+      - 'managed_fine_tuning/**'
+      - 'interactive_training/docs/supported_models.md'
+      - '.github/requirements-docs.txt'
+      - '.github/workflows/documentation-checks.yml'
+  push:
+    branches: [main]
+    paths:
+      - '*.md'
+      - 'tests/**'
+      - 'managed_fine_tuning/**'
+      - 'interactive_training/docs/supported_models.md'
+      - '.github/requirements-docs.txt'
+      - '.github/workflows/documentation-checks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contracts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.11', '3.13']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: .github/requirements-docs.txt
+      - name: Check root navigation and current model eligibility
+        run: python -m unittest discover -s tests -p "test_*.py"
+      - name: Install offline contract test dependencies
+        run: python -m pip install -r .github/requirements-docs.txt
+      - name: Run managed offline contracts without cloud credentials
+        working-directory: managed_fine_tuning
+        run: >-
+          python -m pytest -q --tb=short
+          shared/tests/test_catalog.py
+          shared/tests/test_cookbook_contract.py
+          shared/tests/test_dataset_validation.py
+          shared/tests/test_config.py
+          shared/tests/test_logging_naming.py
+          shared/tests/test_retry.py
+          shared/tests/test_manifests_operations.py
+          shared/tests/test_notebook_execution.py
+          02-multimodal-sft/tests

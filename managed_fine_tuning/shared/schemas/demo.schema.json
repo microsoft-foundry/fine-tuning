@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/fine-tuning-cookbooks/demo.schema.json",
+  "title": "Fine-tuning cookbook demo metadata",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "stage",
+    "status",
+    "path",
+    "techniques",
+    "modalities",
+    "notebooks",
+    "training",
+    "capabilities",
+    "prerequisites",
+    "cost_tier",
+    "runtime_tier",
+    "validation"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "title": {"type": "string", "minLength": 1},
+    "stage": {
+      "enum": [
+        "00-foundations",
+        "01-core-sft",
+        "02-multimodal-sft",
+        "03-core-rft",
+        "04-agentic-rft",
+        "05-data-and-distillation"
+      ]
+    },
+    "status": {"enum": ["proposed", "draft", "stable", "preview", "retired"]},
+    "path": {"type": "string", "minLength": 1},
+    "techniques": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "modalities": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "notebooks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["path", "role", "performs_fine_tuning", "sections"],
+        "properties": {
+          "path": {"type": "string"},
+          "role": {"enum": ["end-to-end", "supporting", "evaluation-only", "data-generation"]},
+          "performs_fine_tuning": {"type": "boolean"},
+          "sections": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    },
+    "training": {
+      "type": "object",
+      "required": ["base_models", "result_model"],
+      "properties": {
+        "base_models": {"type": "array", "items": {"type": "string"}},
+        "teacher_models": {"type": "array", "items": {"type": "string"}},
+        "evaluator_models": {"type": "array", "items": {"type": "string"}},
+        "result_model": {"enum": ["runtime-recorded", "not-applicable", "metadata-gap"]}
+      },
+      "additionalProperties": false
+    },
+    "capabilities": {"type": "array", "items": {"type": "string"}},
+    "prerequisites": {"type": "array", "items": {"type": "string"}},
+    "cost_tier": {"enum": ["low", "medium", "high", "variable"]},
+    "runtime_tier": {"enum": ["short", "medium", "long", "variable"]},
+    "validation": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {"enum": ["not-run", "partial", "complete"]},
+        "notes": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

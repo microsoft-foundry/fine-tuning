@@ -1,0 +1,6 @@
+# SHA-256 hashes for byte-for-byte preserved source assets.
+# Format: sha256  migrated_path  source_path
+d6ea472167adadb178d5630c289acc9f023e8b8554cf23f23a18b5ab616a427a  baseline.jsonl  Demos/DistillingSarcasm/baseline.jsonl
+832019a91323457540eb36a7ec89273cb59b3af70998a799fa74b8367a75d4e3  qa.jsonl  Demos/DistillingSarcasm/qa.jsonl
+e46b663e284712fb9df574520828bae0e2335694986a87f584a89b24b7bb4b19  sarcasm-training.jsonl  Demos/DistillingSarcasm/sarcasm-training-bf779c52.jsonl
+aa334b2ef7354688bb3e241452192628386d6504d7ab02c29698dc9fe5ba758e  sarcasm-validation.jsonl  Demos/DistillingSarcasm/sarcasm-validation-bf779c52.jsonl

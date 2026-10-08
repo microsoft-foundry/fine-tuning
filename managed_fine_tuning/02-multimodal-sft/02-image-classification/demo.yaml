@@ -1,0 +1,41 @@
+id: vision-image-classification
+title: 'Multimodal SFT: Image Classification'
+stage: 02-multimodal-sft
+status: draft
+path: 02-multimodal-sft/02-image-classification
+techniques:
+- sft
+- distillation
+modalities:
+- text
+- image
+notebooks:
+- path: notebooks/demo.ipynb
+  role: end-to-end
+  performs_fine_tuning: true
+  sections:
+  - prepare
+  - train
+  - monitor
+  - metrics
+training:
+  base_models:
+  - gpt-4o-2024-08-06
+  teacher_models: []
+  evaluator_models: []
+  result_model: runtime-recorded
+capabilities:
+- multimodal-data
+- file-upload
+- sft
+- training-metrics
+prerequisites:
+- foundry-project
+- entra-id
+- model-access
+cost_tier: medium
+runtime_tier: medium
+validation:
+  status: partial
+  notes: Prepares Stanford Dogs images with a deterministic train/validation split and summarizes service
+    training metrics.

@@ -1,8 +1,0 @@
-sarcasm-baseline-*.jsonl
-sarcasm-training-*.jsonl
-sarcasm-validation-*.jsonl
-sarcasm-posttraining-*.jsonl
-.env
-.venv
-**/__pycache__
-__pycache__

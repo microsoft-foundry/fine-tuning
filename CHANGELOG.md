@@ -50,7 +50,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - Enhanced main README with navigation table, quickstart section, and demo links
 - Getting Started guide (`GETTING_STARTED.md`) with step-by-step setup instructions
-- Schema documentation (`SCHEMA.md`) for all Sample_Datasets (SFT, DPO, RFT)
+- Schema documentation (`SCHEMA.md`) for all managed fine-tuning datasets (SFT, DPO, RFT)
 - Troubleshooting sections to demos that were missing them
 - Missing `.env.template` and `requirements.txt` for RFT_Countdown demo
 - Issue templates for bug reports and feature requests

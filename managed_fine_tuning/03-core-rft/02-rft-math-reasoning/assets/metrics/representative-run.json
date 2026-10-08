@@ -1,0 +1,15 @@
+{
+  "source": "Representative service training metrics; runtime identifiers omitted",
+  "training_status": "succeeded",
+  "registered_model": true,
+  "validation_reward_history": [
+    0.05,
+    0.2
+  ],
+  "representative_correct_response_words": 257,
+  "outcome_distinction": {
+    "training": "succeeded",
+    "validation": "at least one final-run output received reward 1.0"
+  },
+  "variability": "Results vary with model availability, quota, service version, grader behavior, dataset composition, and training stochasticity."
+}

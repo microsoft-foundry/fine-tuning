@@ -1,0 +1,6 @@
+pytest>=9,<10
+nbformat>=5.10,<6
+PyYAML>=6,<7
+jsonschema>=4,<5
+python-dotenv>=1.1,<2
+Pillow>=12,<13

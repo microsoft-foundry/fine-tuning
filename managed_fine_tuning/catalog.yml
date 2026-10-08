@@ -1,0 +1,178 @@
+schema_version: "1.0"
+validation:
+  status: partial
+  scope: Static structure, notebook JSON and Python syntax, metadata, preserved dataset hashes, sanitized assets, and offline-safe paths.
+  notes: Notebooks report service-produced loss or reward metrics. Executing training cells performs live operations and can incur charges. The Retail Capstone additionally verifies separately provisioned deployments and supports base-versus-fine-tuned comparisons.
+
+demos:
+  - &sft_bug
+    id: sft-bug-detection
+    title: "First SFT: Code Bug Detection"
+    stage: 00-foundations
+    status: draft
+    path: 00-foundations/02-first-sft-bug-detection
+    techniques: [sft, distillation]
+    modalities: [text, code]
+    notebooks: [{path: notebooks/demo.ipynb, role: end-to-end, performs_fine_tuning: true, sections: [prepare, train, monitor, metrics]}]
+    training: {base_models: [gpt-oss-120b], teacher_models: [], evaluator_models: [], result_model: runtime-recorded}
+    capabilities: [file-upload, sft, training-metrics]
+    prerequisites: [foundry-project, entra-id, model-access]
+    cost_tier: low
+    runtime_tier: short
+    validation: {status: partial, notes: "Portable notebook and dataset checks; live outcomes depend on customer model access, region, quota, and configuration."}
+
+  - <<: *sft_bug
+    id: sft-news-summarization
+    title: "SFT Practice: News Summarization"
+    stage: 01-core-sft
+    path: 01-core-sft/01-news-summarization
+    modalities: [text]
+    training: {base_models: [Muse-Glimmer-30B], teacher_models: [], evaluator_models: [], result_model: runtime-recorded}
+    runtime_tier: medium
+
+  - <<: *sft_bug
+    id: sft-scientific-summarization
+    title: "Domain SFT: Scientific Summarization"
+    stage: 01-core-sft
+    path: 01-core-sft/02-scientific-summarization
+    modalities: [text]
+    training: {base_models: [qwen3.8-27b], teacher_models: [], evaluator_models: [], result_model: runtime-recorded}
+    cost_tier: medium
+    runtime_tier: medium
+
+  - <<: *sft_bug
+    id: vision-chart-reasoning
+    title: "Multimodal SFT: Chart Reasoning"
+    stage: 02-multimodal-sft
+    path: 02-multimodal-sft/01-chart-reasoning
+    modalities: [text, image]
+    training: {base_models: [gpt-4.1-2025-04-14], teacher_models: [], evaluator_models: [], result_model: runtime-recorded}
+    capabilities: [multimodal-data, file-upload, sft, training-metrics]
+    cost_tier: medium
+    runtime_tier: medium
+
+  - <<: *sft_bug
+    id: vision-image-classification
+    title: "Multimodal SFT: Image Classification"
+    stage: 02-multimodal-sft
+    path: 02-multimodal-sft/02-image-classification
+    modalities: [text, image]
+    training: {base_models: [gpt-4o-2024-08-06], teacher_models: [], evaluator_models: [], result_model: runtime-recorded}
+    capabilities: [multimodal-data, file-upload, sft, training-metrics]
+    validation: {status: partial, notes: "Prepares Stanford Dogs images with a deterministic train/validation split and summarizes service training metrics."}
+    cost_tier: medium
+    runtime_tier: medium
+
+  - <<: *sft_bug
+    id: vision-video-action-recognition
+    title: "Multimodal SFT: Video Action Recognition"
+    stage: 02-multimodal-sft
+    path: 02-multimodal-sft/03-video-action-recognition
+    modalities: [text, video, image]
+    training: {base_models: [gpt-4.1-2025-04-14], teacher_models: [], evaluator_models: [], result_model: runtime-recorded}
+    capabilities: [video-preprocessing, multimodal-data, file-upload, sft, training-metrics]
+    cost_tier: high
+    runtime_tier: long
+
+  - <<: *sft_bug
+    id: rft-countdown
+    title: "RFT Deterministic Reasoning: Countdown"
+    stage: 03-core-rft
+    path: 03-core-rft/01-rft-countdown
+    techniques: [rft]
+    modalities: [text]
+    training: {base_models: [qwen3.6-35b-a3b], teacher_models: [], evaluator_models: [gpt-5.4-mini-2026-03-17], result_model: runtime-recorded}
+    capabilities: [file-upload, rft, deterministic-grader, training-metrics]
+    prerequisites: [foundry-project, entra-id, rft-access, model-access, quota]
+    cost_tier: medium
+    runtime_tier: long
+
+  - <<: *sft_bug
+    id: rft-math-reasoning-advanced
+    title: "Advanced RFT: Math Reasoning"
+    stage: 03-core-rft
+    path: 03-core-rft/02-rft-math-reasoning
+    techniques: [rft]
+    modalities: [text]
+    training: {base_models: [qwen3.6-35b-a3b], teacher_models: [], evaluator_models: [], result_model: runtime-recorded}
+    capabilities: [file-upload, rft, grader, training-metrics]
+    prerequisites: [foundry-project, entra-id, rft-access, model-access, quota]
+    cost_tier: high
+    runtime_tier: long
+
+  - <<: *sft_bug
+    id: agentic-rft-tool-calling
+    title: "Agentic RFT: Tool Calling"
+    stage: 04-agentic-rft
+    status: preview
+    path: 04-agentic-rft/01-agentic-rft-tools
+    techniques: [rft, agentic]
+    modalities: [text, tool-calls]
+    training: {base_models: [qwen3.6-35b-a3b], teacher_models: [], evaluator_models: [], result_model: runtime-recorded}
+    capabilities: [file-upload, rft, tool-calling, grader, training-metrics]
+    prerequisites: [foundry-project, entra-id, private-preview-access, model-access]
+    cost_tier: high
+    runtime_tier: long
+
+  - <<: *sft_bug
+    id: agentic-retail-capstone
+    title: "Agentic Retail Capstone"
+    stage: 04-agentic-rft
+    path: 04-agentic-rft/02-retail-agent-capstone
+    techniques: [sft, rft, agentic, synthetic-data]
+    modalities: [text, tool-calls]
+    notebooks: [{path: notebooks/demo.ipynb, role: end-to-end, performs_fine_tuning: true, sections: [prepare, train, monitor, metrics, deploy, compare]}]
+    training: {base_models: [gpt-4.1-mini-2025-04-14, o4-mini-2025-04-16], teacher_models: [], evaluator_models: [o3-mini-2025-01-31], result_model: runtime-recorded}
+    capabilities: [file-upload, sft, rft, tool-calling, training-metrics, deployment, comparison]
+    prerequisites: [foundry-project, entra-id, preview-access, model-access, quota]
+    cost_tier: variable
+    runtime_tier: long
+
+  - <<: *sft_bug
+    id: distillation-teacher-student-basics
+    title: "Teacher-Student Distillation Basics"
+    stage: 05-data-and-distillation
+    path: 05-data-and-distillation/01-teacher-student-basics
+    techniques: [distillation, sft]
+    modalities: [text]
+    training: {base_models: [gpt-oss-120b], teacher_models: [runtime-configured], evaluator_models: [], result_model: runtime-recorded}
+    capabilities: [data-generation, file-upload, sft, training-metrics]
+    cost_tier: medium
+    runtime_tier: medium
+
+  - <<: *sft_bug
+    id: distillation-nl-to-python
+    title: "Code Distillation: Natural Language to Python"
+    stage: 05-data-and-distillation
+    path: 05-data-and-distillation/02-code-distillation
+    techniques: [distillation, sft]
+    modalities: [text, code]
+    training: {base_models: [qwen3.8-27b], teacher_models: [], evaluator_models: [], result_model: runtime-recorded}
+    capabilities: [file-upload, sft, training-metrics]
+    cost_tier: high
+    runtime_tier: long
+
+  - <<: *sft_bug
+    id: synthetic-tool-use-sft
+    title: "SFT with Synthetic Data and Tool-Use"
+    stage: 05-data-and-distillation
+    path: 05-data-and-distillation/03-synthetic-tool-use
+    techniques: [synthetic-data, distillation, sft]
+    modalities: [text, tool-calls]
+    training: {base_models: [gpt-4.1-mini-2025-04-14], teacher_models: [runtime-configured], evaluator_models: [], result_model: runtime-recorded}
+    capabilities: [data-generation, tool-calling, file-upload, sft, training-metrics]
+    cost_tier: high
+    runtime_tier: long
+
+  - <<: *sft_bug
+    id: agent-traces-to-sft
+    title: "Agent Traces to SFT Distillation"
+    stage: 05-data-and-distillation
+    path: 05-data-and-distillation/04-agent-traces-to-sft
+    techniques: [trace-distillation, sft]
+    modalities: [text, tool-calls]
+    training: {base_models: [gpt-4.1-nano-2025-04-14], teacher_models: [runtime-configured], evaluator_models: [], result_model: runtime-recorded}
+    capabilities: [trace-collection, data-generation, file-upload, sft, training-metrics]
+    prerequisites: [foundry-project, entra-id, application-insights, model-access]
+    cost_tier: high
+    runtime_tier: long

@@ -1,0 +1,12 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+*.log
+*.tmp
+*.executed.ipynb
+**/.env
+**/.env.*
+!**/.env.template
+**/.ipynb_checkpoints/
+**/data/downloads/
+**/outputs/

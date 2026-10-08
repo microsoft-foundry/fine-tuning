@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+**/*venv*/
+.env
+.env.*
+.ipynb_checkpoints/
+notebooks/**/data/
+/data/
+/logs/
+/runs/
+
+# Local review notes are not public cookbook content.
+/PUBLIC_REVIEW.md
+
+# Fine-tuning SDK comes from PyPI.
+azure_ai_finetuningsessions-*.whl
+azure_ai_finetuning_sessions-*.whl

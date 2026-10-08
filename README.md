@@ -1,145 +1,80 @@
-# Fine-Tuning in AI Foundry
+# Microsoft Foundry Fine-Tuning
 
-This repository contains **15 end-to-end demos** and **sample datasets** for fine-tuning models on [Azure AI Foundry](http://ai.azure.com/). Use this repo to explore practical fine-tuning workflows and access ready-to-use data for your own projects.
+[Microsoft Foundry](https://ai.azure.com/) fine-tuning adapts pretrained models to your data and tasks, creating domain-specific responses. Compared to prompt or agent optimization, fine-tuning changes the actual model's behavior to improve quality or reduce costs.  This repo provides examples, datasets, and guidance for two complementary experiences offered by Microsoft Foundry: **managed fine-tuning** and **interactive training (preview)**.
 
-## 📋 Table of Contents
+> [!IMPORTANT]
+> Interactive training requires explicit access approval. Request access through the [preview sign-up form](https://aka.ms/foundry-interactive-training-signup) and wait for approval before creating a training session.
 
-- [Quick Start](#-quick-start)
-- [Demos](#-demos)
-- [Sample Datasets](#-sample-datasets)
-- [AI Agent Skills](#-ai-agent-skills)
-- [Prerequisites](#-prerequisites)
-- [Contributing](#contributing)
+**🌱 New to fine-tuning? Start with managed fine-tuning.** Interactive training is for advanced workflows that need custom training-loop behavior.
 
----
+| | Managed Fine-Tuning | Interactive Training (preview) |
+|---|---|---|
+| **How it works** | Submit data and settings; Foundry runs the training job. | Write a Python loop; Foundry executes training and sampling operations. |
+| **Best for** | Beginners and AI engineers who prefer predefined workflows over lower-level training operations. | Experienced ML practitioners building custom training workflows. |
+| **Your control** | Data, supported hyperparameters, and RFT graders. | Losses, rewards, rollouts, gradient accumulation, updates, and checkpoints. |
+| **Training methods** | Model-specific SFT, DPO, and RFT; distillation through teacher-generated SFT data. | Recipes for SFT, reinforcement learning, preference learning, distillation, and custom losses. |
+| **Example use cases** | Distill a larger model, learn from support conversations, or improve responses with a grader. | Collect tool-use rollouts, apply custom rewards, or change training-loop update and evaluation behavior. |
 
-## 🚀 Quick Start
+Both approaches use Foundry-managed training infrastructure; neither requires you to provision the training GPUs.
 
-**New to fine-tuning?** Start here:
+**Need a specific model?** [Model support](#models-and-supported-capabilities) may determine your approach. [Learn when to fine-tune →](https://learn.microsoft.com/en-us/azure/foundry/openai/concepts/fine-tuning-considerations)
 
-1. **[SFT_Bug_Detection](Demos/SFT_Bug_Detection/)** - Best first demo! Fine-tune GPT-4.1-mini to detect code bugs — beat GPT-5.4 quality at 9x lower cost
-2. **[Sample_Datasets](Sample_Datasets/)** - Understand data formats for SFT, DPO, and RFT
+## 🚀 Get started
 
-**Want an AI coding assistant to guide you?**
-- Open this repo in VS Code with Copilot, or use Claude/Codex — the agent skill auto-discovers and walks you through the full workflow
-- Or follow **[Skills/workflows/quickstart.md](Skills/workflows/quickstart.md)** — fine-tune your first model in 6 steps (no demo notebook needed)
+Open the folder for your chosen experience and start with its guide for setup and examples:
 
-**Ready for advanced techniques?**
-- **[DPO_Intel_Orca](Demos/DPO_Intel_Orca/)** - Direct Preference Optimization
-- **[RFT_Countdown](Demos/RFT_Countdown/)** - Reinforcement Fine-Tuning
+- **🌱 Managed fine-tuning guide →** [managed_fine_tuning/README.md](managed_fine_tuning/README.md)
+- **🧪 Interactive training guide →** [interactive_training/README.md](interactive_training/README.md)
 
----
+## Models and supported capabilities
 
-## 🎯 Demos
+Selected models are listed below. Availability also depends on region, access, and quota.
 
-Explore end-to-end fine-tuning experiences in the **[Demos](Demos/)** folder:
+See the [model and region registry](interactive_training/docs/supported_models.md) for interactive model identifiers and regions. Managed methods are model-specific; check [Foundry availability](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/fine-tuning#supported-models) and the [managed model/notebook index](managed_fine_tuning/MODEL_AND_NOTEBOOK_INDEX.md) before starting a job.
 
-| Demo | Technique | Use Case | Difficulty |
-|------|-----------|----------|------------|
-| [SFT_Bug_Detection](Demos/SFT_Bug_Detection/) | SFT | Code bug detection (beats GPT-5.4 teacher) | ⭐ Beginner |
-| [SFT_CNN_DailyMail](Demos/SFT_CNN_DailyMail/) | SFT | News summarization | ⭐ Beginner |
-| [SFT_PubMed_Summarization](Demos/SFT_PubMed_Summarization/) | SFT | Medical paper summarization | ⭐ Beginner |
-| [DPO_Intel_Orca](Demos/DPO_Intel_Orca/) | DPO | Preference optimization | ⭐⭐ Intermediate |
-| [RFT_Countdown](Demos/RFT_Countdown/) | RFT | Math puzzle solving | ⭐⭐ Intermediate |
-| [DistillingSarcasm](Demos/DistillingSarcasm/) | Distillation | Knowledge transfer | ⭐⭐ Intermediate |
-| [Image_Breed_Classification_FT](Demos/Image_Breed_Classification_FT/) | Vision SFT | Dog breed classification | ⭐⭐ Intermediate |
-| [Image_FT_Chart_Analysis](Demos/Image_FT_Chart_Analysis/) | Vision SFT | Chart understanding | ⭐⭐ Intermediate |
-| [Video_FT_Action_Recognition](Demos/Video_FT_Action_Recognition/) | Vision SFT | Video action detection | ⭐⭐⭐ Advanced |
-| [ZavaRetailAgent](Demos/ZavaRetailAgent/) | SFT + RFT | Retail customer service agent | ⭐⭐⭐ Advanced |
-| [Agentic_RFT_PrivatePreview](Demos/Agentic_RFT_PrivatePreview/) | RFT | Agentic workflows with tools | ⭐⭐⭐ Advanced |
-| [Evaluation](Demos/Evaluation/) | Evaluation | Multimodal model evaluation | ⭐⭐ Intermediate |
-| [SyntheticDatagen-ToolUse](Demos/SyntheticDatagen-ToolUse/) | SFT + Synthetic Datagen | Tool-calling assistants from a tool spec | ⭐⭐ Intermediate |
-| [TracesDistillation](Demos/TracesDistillation/) | Distillation + Traces | Distill a deployed agent from real production traces | ⭐⭐⭐ Advanced |
+| Model | Managed Fine-Tuning | Interactive Training (preview) |
+|---|---|:---:|
+| `Qwen3.8-27B` **(preview)** | ✅ (SFT, RFT) | ✅ |
+| `Qwen3.6-35B-A3B` **(preview)** | ✅ (SFT, RFT) | ✅ |
+| `gpt-oss-120b` **(preview)** | ✅ (SFT, RFT) | ✅ |
+| `Muse-Glimmer-30B` **(preview)** | ✅ (SFT, RFT) | ✅ |
+| `gpt-4o-mini` (2024-07-18) | ✅ (SFT) | ❌ |
+| `gpt-4o` (2024-08-06) | ✅ (SFT, DPO) | ❌ |
+| `gpt-4.1` (2025-04-14) | ✅ (SFT, DPO) | ❌ |
+| `gpt-4.1-mini` (2025-04-14) | ✅ (SFT, DPO) | ❌ |
+| `gpt-4.1-nano` (2025-04-14) | ✅ (SFT, DPO) | ❌ |
+| `o4-mini` (2025-04-16) | ✅ (RFT) | ❌ |
+| `gpt-5` (2025-08-07) (invitation-only) | ✅ (RFT) | ❌ |
+| `Ministral-3B` (2411) | ✅ (SFT) | ❌ |
+| `Qwen3-32B` | ✅ (SFT) | ❌ |
+| `Llama-3.3-70B-Instruct` | ✅ (SFT) | ❌ |
+| `gpt-oss-20b` | ✅ (SFT) | ❌ |
 
-👉 See **[Demos/README.md](Demos/README.md)** for detailed descriptions of each demo.
+## 📂 Repository guide
 
----
+| Resource | What you'll find |
+|---|---|
+| [Managed fine-tuning](managed_fine_tuning/README.md) | Managed training guide. |
+| [Managed fine-tuning learning path](managed_fine_tuning/LEARNING_PATH.md) | Six-stage curriculum and 14 canonical notebooks. |
+| [Managed fine-tuning task index](managed_fine_tuning/TASK_INDEX.md) | Find a notebook by task; each demo owns its data and setup template. |
+| [Interactive training](interactive_training/README.md) | Interactive cookbook, recipes, and SDK guidance. |
+| [Interactive training docs](interactive_training/docs/README.md) | Setup, training concepts, checkpoints, and troubleshooting. |
+| [Interactive training recipes](interactive_training/interactive_training/recipes/) | Runnable SFT, reinforcement learning, preference, and distillation recipes. |
+| [Paid smoke operations](PAID_SMOKE_TESTING.md) | Opt-in workflow approval, spending bounds, private evidence, and recovery. |
 
-## 📊 Sample Datasets
+**For coding agents:** start with [AGENTS.md](AGENTS.md) for source precedence, offline preflight, approvals, and secret handling. The two training paths are not interchangeable.
 
-Ready-to-use datasets for testing fine-tuning techniques in the **[Sample_Datasets](Sample_Datasets/)** folder:
+> [!NOTE]
+> **Before production:** evaluate quality and safety on held-out data and review model/data licenses. Samples are for experimentation. Training, tools, and serving may incur separate charges; clean up unused resources.
 
-| Technique | Dataset | Description |
-|-----------|---------|-------------|
-| **SFT** | [Text-GSM8K](Sample_Datasets/Supervised_Fine_Tuning/Text-GSM8K/) | Grade school math problems |
-| **SFT** | [Text-Bug-Detection](Sample_Datasets/Supervised_Fine_Tuning/Text-Bug-Detection/) | Code bug detection and fix suggestions |
-| **SFT** | [Multimodal-chartqa](Sample_Datasets/Supervised_Fine_Tuning/Multimodal-chartqa/) | Chart interpretation |
-| **SFT** | [Tool-Calling](Sample_Datasets/Supervised_Fine_Tuning/Tool-Calling/) | Function calling patterns |
-| **DPO** | [orca_dpo_pairs](Sample_Datasets/Direct_Preference_Optimization/orca_dpo_pairs/) | Preference alignment |
-| **RFT** | [ClauseMatching](Sample_Datasets/Reinforcement_Fine_Tuning/ClauseMatching/) | Legal contract analysis |
-| **RFT** | [MedMCQ](Sample_Datasets/Reinforcement_Fine_Tuning/MedMCQ/) | Medical Q&A |
+Managed notebooks are offline-validated, not evidence of a successful cloud run. Most stop at service training metrics; only Retail adds comparisons using separately provisioned deployments. Training completion alone does not establish application quality or create a serving endpoint.
 
-👉 See **[Sample_Datasets/README.md](Sample_Datasets/README.md)** for data format details and when to use each technique.
+## 🤝 Contributing
 
-> ⚠️ **Note**: These datasets are for **learning and experimentation only**—not for production use. Training jobs may incur costs on your Azure subscription.
+Examples, datasets, and documentation improvements are welcome. Read the [contribution guidelines](CONTRIBUTING.md) and [Code of Conduct](code_of_conduct.md). The CLA bot will guide you if a Contributor License Agreement is required.
 
----
-
-## 🤖 AI Agent Skills
-
-This repo includes a fine-tuning skill that coding agents can auto-discover and use to help you submit, monitor, and evaluate fine-tuning jobs.
-
-| Agent | Skill Path | Auto-discovery |
-|-------|-----------|----------------|
-| **GitHub Copilot** (VS Code / CLI) | [.github/skills/azure-ai-fine-tuning](.github/skills/azure-ai-fine-tuning) | ✅ Automatic |
-| **Claude Code** | [.claude/skills/azure-ai-fine-tuning](.claude/skills/azure-ai-fine-tuning) | ✅ Automatic |
-| **Codex / other agents** | [.agents/skills/azure-ai-fine-tuning](.agents/skills/azure-ai-fine-tuning) | ✅ Automatic |
-
-All three paths are symlinks to the canonical skill at **[Skills/](Skills/)**, which includes:
-- **SKILL.md** — Agent instructions covering SFT, DPO, and RFT workflows
-- **12 scripts** — submit, monitor, calibrate, check, deploy, evaluate, validate, score, convert, generate, cleanup, and shared utilities
-- **14 reference docs** — grader design, hyperparameters, dataset formats, agentic RFT, cost management, and more
-- **6 guided workflows** — quickstart, full pipeline, dataset creation, iterative training, diagnosis, experiment review
-- **Sample data** — SFT, DPO, and RFT example JSONL files
-
-### Using with GitHub Copilot (VS Code)
-
-1. Open this repo in VS Code with Copilot Chat enabled.
-2. Ask a fine-tuning task (e.g., *"help me submit an SFT job with my dataset"*).
-3. Copilot auto-discovers the skill from `.github/skills/` and follows the workflow.
-
-### Using with Copilot CLI
-
-```bash
-cd /path/to/this/repo
-copilot
-# Then ask: "Submit an SFT fine-tuning job with my training data"
-```
-
-### Using with Claude Code
-
-```bash
-cd /path/to/this/repo
-claude
-# Then ask: "Fine-tune gpt-4.1-mini on my dataset"
-```
-
-Scripts support `uv` for zero-setup execution (PEP 723 inline dependencies):
-```bash
-uv run Skills/scripts/submit_training.py --help
-```
-
----
-
-## ✅ Prerequisites
-
-Before running any demo, ensure you have:
-
-- **Azure subscription** with access to [Azure AI Foundry](http://ai.azure.com/)
-- **Python 3.9+** installed
-- **Jupyter Notebook** or VS Code with Jupyter extension
-- Required **Azure role assignments** (see individual demo READMEs)
-
-Each demo includes a `requirements.txt` and `.env.template` for setup.
-
-👉 **New here?** See the **[Getting Started Guide](GETTING_STARTED.md)** for step-by-step setup instructions.
-
----
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on submitting issues and pull requests.
+[MIT License](LICENSE); models, datasets, and dependencies may have separate terms.
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft trademarks or logos is subject to and must follow [Microsoft’s Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general). Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship. Any use of third-party trademarks or logos are subject to those third-party’s policies.
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft trademarks or logos is subject to and must follow [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general). Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship. Any use of third-party trademarks or logos is subject to those third parties' policies.
