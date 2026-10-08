@@ -16,10 +16,6 @@ Before interpreting a completed job as equivalent, also verify training and vali
 
 Job-creation POSTs are submitted once, with SDK retries disabled. Reconcile an ambiguous submission failure in Foundry before retrying. Read and polling operations may retry transient errors. Baseline and endpoint evaluation are optional and separately enabled.
 
-Record job/file IDs locally under ignored `outputs/`; the notebook does not persist them. Before rerunning Section 5, supply the existing job ID in the active environment. A monitoring timeout does not cancel training. Reuse requires matching input file IDs; rewards from a different dataset version are not results for the current inputs.
-
-Section 8 checks deployment availability but creates nothing. Pause there to deploy the exact trained artifact in Foundry, verify model/version and serving prerequisites, then set its deployment **name** and enable endpoint evaluation in the running kernel before Section 9. Training IDs, artifact IDs, and deployment names are different; see the notebook's Section 1 configuration table and [post-training guide](../../POST_TRAINING.md).
-
 The representative source run completed training and produced validation reward
 history `[0.05, 0.2]`.
 
