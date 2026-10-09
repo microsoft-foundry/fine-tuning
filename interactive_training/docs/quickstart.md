@@ -25,7 +25,7 @@ No local GPU or local model-weight download is required for this text recipe. Ke
 For a new checkout:
 
 ```bash
-git clone https://github.com/johnwu0604/fine-tuning.git
+git clone https://github.com/microsoft-foundry/fine-tuning.git
 cd fine-tuning/interactive_training
 ```
 

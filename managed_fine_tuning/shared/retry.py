@@ -97,7 +97,7 @@ def retry_call(
     clock: Callable[[], float] = time.monotonic,
     random_values: Iterable[float] | None = None,
 ) -> T:
-    """Execute an operation with bounded exponential backoff and jitter."""
+    """Bound retry attempts and backoff, without interrupting an in-flight operation."""
     started = clock()
     random_iterator = iter(random_values) if random_values is not None else None
     for attempt in range(1, policy.max_attempts + 1):
@@ -131,4 +131,9 @@ def retry_call(
             if on_retry:
                 on_retry(attempt, delay, error)
             sleep(delay)
+            if clock() - started >= policy.timeout_seconds:
+                raise RetryError(
+                    f"{operation_name} cannot retry within its "
+                    f"{policy.timeout_seconds:g}-second timeout"
+                ) from error
     raise AssertionError("retry loop ended unexpectedly")

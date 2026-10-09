@@ -69,3 +69,40 @@ def test_raises_explicit_error_when_exhausted() -> None:
             ),
             sleep=lambda _: None,
         )
+
+
+@pytest.mark.parametrize("elapsed_after_sleep", [1.0, 1.5])
+def test_does_not_start_another_attempt_after_retry_deadline(
+    elapsed_after_sleep: float,
+) -> None:
+    attempts = 0
+    now = 0.0
+    transient = ServiceError("temporary", 503)
+
+    def operation() -> str:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise transient
+        return "must not run after the deadline"
+
+    def sleep(delay: float) -> None:
+        nonlocal now
+        assert delay == 1.0
+        now = elapsed_after_sleep
+
+    with pytest.raises(RetryError, match="cannot retry within") as error:
+        retry_call(
+            operation,
+            policy=RetryPolicy(
+                max_attempts=2,
+                initial_delay_seconds=1,
+                jitter_ratio=0,
+                timeout_seconds=1,
+            ),
+            sleep=sleep,
+            clock=lambda: now,
+            random_values=[0.5],
+        )
+    assert attempts == 1
+    assert error.value.__cause__ is transient

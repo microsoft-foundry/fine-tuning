@@ -80,6 +80,33 @@ class RootDocumentationTests(unittest.TestCase):
             with self.subTest(document=document.name):
                 check_links(document)
 
+    def test_sample_dataset_navigation_and_anchors(self):
+        documents = list((ROOT / "Sample_Datasets").rglob("*.md"))
+        self.assertTrue(documents)
+        for document in documents:
+            with self.subTest(document=document.relative_to(ROOT).as_posix()):
+                check_links(document)
+
+    def test_repository_links_use_canonical_upstream(self):
+        documents = list(ROOT.glob("*.md"))
+        for directory in (
+            "Sample_Datasets", "managed_fine_tuning", "interactive_training/docs",
+            "interactive_training/envs", "interactive_training/interactive_training/recipes",
+        ):
+            documents.extend((ROOT / directory).rglob("*.md"))
+        documents.append(ROOT / "interactive_training/README.md")
+        references = 0
+        for document in documents:
+            text = document.read_text(encoding="utf-8")
+            for owner in re.findall(
+                r"https://github\.com/([^/\s]+)/fine-tuning(?=\.git\b|[/#\s)`]|$)",
+                text,
+            ):
+                references += 1
+                with self.subTest(document=document.relative_to(ROOT).as_posix()):
+                    self.assertEqual(owner, "microsoft-foundry")
+        self.assertGreater(references, 0, "Repository URL check must not pass vacuously")
+
     def test_checker_rejects_missing_paths_and_fragments(self):
         with TemporaryDirectory() as directory:
             document = Path(directory) / "README.md"

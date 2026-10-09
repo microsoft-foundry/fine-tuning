@@ -13,6 +13,7 @@ accepted example uses `Clippy is a factual chatbot that is also sarcastic.`
 as its system prompt. Labels are neither regenerated nor normalized.
 
 The notebook checks hashes, unique accepted questions, membership in the 40
-candidates and separation from the 10 held-out questions. The original source
-workflow remains in `Demos/DistillingSarcasm/sarcasm.ipynb`; no source-demo runtime
-files are required to execute the cookbook.
+candidates and separation from the 10 held-out questions. The historical
+teacher/judge workflow came from `Demos/DistillingSarcasm/sarcasm.ipynb`;
+that source notebook is not included in this cookbook. Only the preserved data
+and maintained training notebook are required here.
