@@ -23,12 +23,6 @@ Read files and run offline tests, syntax/schema checks, dataset validation, and 
 - Check paths, kernel, working directory, exact model ID, schema, and prerequisites. Managed demos should run from their demo directory unless a tested alternative is documented.
 - Preserve canonical/hash-pinned sample files. Put personal-data adaptations in separate, versioned inputs; never bypass validators to make them run.
 
-Run root navigation and model-eligibility checks without cloud credentials:
-
-```powershell
-python -m unittest discover -s tests -p "test_*.py"
-```
-
 Use the repository workflow's selected managed tests for the managed contracts. Run interactive tests from `interactive_training` using its test environment. Tests validate local contracts, not cloud eligibility.
 
 Dependency installation, network dataset downloads, credential prompts, or resource reads are not implied by an offline preflight. Explain them and obtain approval where needed.
@@ -57,8 +51,8 @@ cancellation, and closing a client is not remote unload.
 Recurring runs require explicit approval of frequency, models/data, evaluation
 scope, budget per run and over the approved period, expiry, owner, and disable/
 reconciliation procedure. Manual-run approval is not recurring-run authority.
-Follow [the paid smoke operator guide](PAID_SMOKE_TESTING.md); do not enable its
-workflow or change environment permissions automatically.
+Do not enable the paid smoke workflow or change environment permissions
+automatically.
 
 ## Secrets and runtime state
 
