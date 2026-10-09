@@ -1,6 +1,6 @@
 # Adapt a recipe to your own data
 
-Use the existing dataset and grading interfaces without changing the shared training algorithms. The data-building and grading checks below are **local** and do not create an Azure session; tokenizer downloads may still require network access. The separately marked [SFT launch](#3-wire-the-builder-into-an-sft-launcher) is an optional paid operation requiring explicit approval.
+Use the existing dataset and grading interfaces without changing the shared training algorithms. The data-building and grading checks below are **local** and do not create an Azure session; tokenizer downloads may still require network access. The separately marked [SFT launch](#3-wire-the-builder-into-an-sft-launcher) is an optional paid operation: warn before running it, without a separate spending-approval prompt.
 
 ## Choose the smallest change
 
@@ -168,9 +168,7 @@ def prepare_custom_sft(
     }
     return config, prepared, manifest
 
-async def run_custom_sft(config, prepared, manifest, *, approved=False):
-    if not approved:
-        raise PermissionError("Obtain explicit project/operation/budget approval first")
+async def run_custom_sft(config, prepared, manifest):
     if not config.max_steps or config.max_steps < 1:
         raise ValueError("Use a positive first-run step cap")
     endpoint = os.environ.get("AZURE_AI_PROJECT_ENDPOINT", "").strip()
@@ -179,6 +177,7 @@ async def run_custom_sft(config, prepared, manifest, *, approved=False):
     tokenizer = get_tokenizer(config.model_name)
     run = Path(config.log_path)
     run.mkdir(parents=True, exist_ok=False)  # Never overwrite or silently resume.
+    logging.warning("This SFT run uses paid cloud resources and may incur charges.")
     async with DefaultAzureCredential() as credential:
         async with FineTuningSessionClient(
             endpoint=endpoint, credential=credential,
@@ -220,22 +219,21 @@ config, prepared, manifest = prepare_custom_sft()
 print("Validated batches:", manifest["training_batches"], manifest["evaluation_batches"])
 ```
 
-**Stop here until approval for the paid operation.** Confirm [project permissions
-and model capacity](./auth.md#confirm-access-before-spending), review the data and
-held-out split, and approve the named operation and budget. This helper uses
+Before the optional remote launch, confirm [project permissions and model
+capacity](./auth.md#confirm-access-before-spending) and review the data and
+held-out split. The helper warns before allocating paid compute; no separate
+budget confirmation is required. This helper uses
 identity authentication intentionally; setting an API-key environment variable
 does not change its credential code. It leaves the service's training tier
 unspecified rather than assuming a universally available or cheaper tier.
 
-**Optional remote launch, only after that approval:**
+**Optional remote launch after validation:**
 
 ```python
-checkpoint_path = asyncio.run(run_custom_sft(config, prepared, manifest, approved=True))
+checkpoint_path = asyncio.run(run_custom_sft(config, prepared, manifest))
 print("Completed training checkpoint:", checkpoint_path)  # Keep this identifier private.
 ```
 
-`approved=True` records a deliberate decision in this example; it is **not**
-a service permission, an automatic spending guard, or a Tulu3 CLI argument.
 Inside an already-running notebook event loop, use `await run_custom_sft(...)`
 instead of nesting `asyncio.run`. **SFT `max_steps=0` disables the cap; it is
 not evaluation-only.** The step cap does not bound loading, sampler warm-up,

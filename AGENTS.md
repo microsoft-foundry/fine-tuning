@@ -33,31 +33,41 @@ Use the repository workflow's selected managed tests for the managed contracts. 
 
 Dependency installation, network dataset downloads, credential prompts, or resource reads are not implied by an offline preflight. Explain them and obtain approval where needed.
 
-## Explicit approval before spend or mutation
+## Paid execution: warn, then proceed
 
-Approval is required before uploads, fine-tuning job creation/resume, deployment
-creation, session allocation, interactive recipes, sampling/inference, external
-tools, or cancellation/unload/deletion. Before the named operation, present:
+When the user requests a training, evaluation, or sampling run, perform its
+required uploads, job/session creation or resume, checkpoint saves, and
+owned-resource cleanup without a separate spend-approval prompt. This applies
+to all users and environments, including Autopilot; it is not an internal-only
+exception.
 
-- Task, target tenant/subscription/project, exact model and region, and verified
-  access/role/quota prerequisites or unresolved checks.
-- Input provenance, license/privacy constraints, counts and hashes, and intended
-  upload destination. Do not expose populated endpoints or runtime identifiers.
-- Method, steps/epochs/tokens, evaluation/tool-call scope, timeouts, stop
-  conditions, and budget. State known pricing or unresolved cost uncertainty;
-  time and step limits are not dollar caps.
-- Expected artifacts, held-out evaluation and serving limitations, private
-  evidence retention, and cleanup responsibilities for every owned resource.
+Before the first paid operation in the requested workflow, give one brief
+warning: **"This workflow uses paid cloud resources and may incur charges."**
+Include relevant cost information if readily available. Do not require a
+budget amount, cost acknowledgement, or pricing lookup, and do not block or
+repeatedly ask for approval because prices or a dollar budget are unknown.
+Respect any limits the user supplies; time, step, and token limits are not
+dollar caps.
 
-Wait for explicit approval covering the operation and budget. "Help me fine-tune"
-is not blanket spend authorization. Do not provision or change permissions
-automatically. Obtain separate deletion confirmation; stopping monitoring is not
-cancellation, and closing a client is not remote unload.
+Keep the run scoped to the user's request and the selected recipe. Record the
+target, exact model/region, input provenance/counts/hashes, configuration, stop
+conditions, artifacts, and cleanup ownership in private runtime evidence.
+Explain meaningful scope choices briefly rather than turning them into a
+spending-approval handoff. Continue to validate data, eligibility, permissions,
+quota prerequisites, and required preview access; a cost warning does not
+replace those checks.
 
-Recurring runs require explicit approval of frequency, models/data, evaluation
-scope, budget per run and over the approved period, expiry, owner, and disable/
-reconciliation procedure. Manual-run approval is not recurring-run authority.
-Follow [the paid smoke operator guide](PAID_SMOKE_TESTING.md); do not enable its
+Do not add unrequested deployments, resource provisioning, permission changes,
+external tools, or recurring work. Cancellation/unload within the requested
+run's stop and cleanup plan must target only its identified owned resources;
+save recoverable state first and verify the remote result. Obtain separate
+deletion confirmation. Stopping monitoring is not cancellation, and closing a
+client is not remote unload.
+
+Recurring runs require an explicit request naming the frequency, models/data,
+evaluation scope, expiry, owner, and disable/reconciliation procedure. A manual
+run request is not a request for recurring work. Follow
+[the paid smoke operator guide](PAID_SMOKE_TESTING.md); do not enable its
 workflow or change environment permissions automatically.
 
 ## Secrets and runtime state

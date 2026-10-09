@@ -143,8 +143,8 @@ For an independent BFCL evaluation, follow the
 in a separate evaluation environment and verify that its model-access interface
 supports your intended setup. A cookbook checkpoint identifier is not a local
 weights export that the BFCL CLI can load directly; this recipe supplies no
-export or serving adapter. Obtain approval and budget before any evaluation
-that invokes paid inference.
+export or serving adapter. Warn before an evaluation that invokes paid
+inference; no separate spending approval or dollar budget is required.
 
 The xLAM holdout `bfcl_strict` metric here is internally consistent for tracking
 training progress but uses the same data distribution as training — it does not

@@ -11,7 +11,12 @@ Install the cookbook, perform local checks, run a bounded GSM8K workflow on Azur
 | Azure AI Foundry **project endpoint** in a supported region | [Resource and project setup](./auth.md#prerequisite--an-azure-ai-foundry-resource) |
 | Credentials authorized for this project | An API key, or an identity with the required project access; successful `az login` alone is not proof of authorization |
 | Eligibility and capacity for the selected model | [Supported models](./supported_models.md); availability depends on project region, capacity, and quota |
-| Authorization to use paid compute | Training, evaluation, sampling, and model loading may incur charges; follow your project's spending controls |
+
+> [!WARNING]
+> Training, evaluation, sampling, and model loading use paid cloud resources.
+> When a user requests this workflow, warn once and proceed without a separate
+> budget or spend-approval prompt. Include cost information if readily available;
+> unknown pricing is not a blocker.
 
 No local GPU or local model-weight download is required for this text recipe. Keep the Python driver and its network connection alive until it finishes. Do not place sensitive data in a public run directory.
 
@@ -121,7 +126,7 @@ If `AZURE_AI_API_KEY` is set, the math recipe uses that key instead. Otherwise i
 ## 6. Run the bounded remote workflow
 
 > [!WARNING]
-> **This step creates a remote training session and may incur charges.** `max_steps=2` bounds training iterations, not model-loading time, evaluation calls, total generated tokens, or price. Run only with authorization to incur charges and follow your project's spending controls; this guide does not prescribe a maximum dollar amount.
+> **This step creates a remote training session and may incur charges.** `max_steps=2` bounds training iterations, not model-loading time, evaluation calls, total generated tokens, or price. Respect any supplied spending limits; this guide does not require a dollar budget or a separate cost acknowledgement.
 
 The general text default is Qwen3.8 with low-effort thinking. Specify `max_tokens=1200`: the math launcher's five-token default is for its toy arithmetic configuration, not GSM8K reasoning. Reasoning and the final answer share the completion budget.
 
@@ -148,8 +153,8 @@ This uses eight prompts with four completions per training iteration; validation
 
 The fixed run directory makes artifacts easy to find. `raise` deliberately refuses an existing directory: choose a new name for another independent run, or follow [recovery](./training.md#resuming-after-an-interruption) with the original config and `behavior_if_log_dir_exists=resume`. Do not use `delete` to resolve a recovery error.
 
-No first-run duration or total price is promised. Before launching, agree on
-an observation/stop plan with the owner and distinguish a session-creation
+No first-run duration or total price is promised. Before launching, establish
+the requested run's observation/stop plan and distinguish a session-creation
 timeout from cancellation. The CLI has a creation timeout and optional
 `max_wall_clock_seconds`, but a loop-boundary time limit is not a hard request,
 save, or billing cap. Inspect the last phase and owned session before retrying

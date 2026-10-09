@@ -107,7 +107,7 @@ successful process exit, to decide what to keep:
 | Prompt/response HTML, logs, `code.diff`, and notebook outputs | Failure analysis and task-error inspection | Review for private text, tokens, local paths, and unrelated code; retain only as policy permits and redact before sharing |
 | Completed remote training checkpoint | Compatible restart/recovery | Confirm save completion, intended owner/project, access, retention, and whether it is still the only recoverable state |
 | Remote sampler checkpoint | Sampling-format state for its supported session context | Keep its source session association; sampler-only state is not optimizer recovery or a deployment |
-| Live session or separate serving resource | Only the approved active workload | Save required state, stop using it, and obtain approval for the specific unload/cancel/delete action; inspect the result |
+| Live session or separate serving resource | Only the requested active workload | Save required state and follow the requested stop/cleanup plan for owned resources; obtain separate deletion confirmation and inspect the result |
 
 Unload and deletion are different operations. Do not delete the source
 session/checkpoints as a shortcut to releasing compute while you still need

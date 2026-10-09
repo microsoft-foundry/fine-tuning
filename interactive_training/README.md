@@ -11,7 +11,7 @@ Examples and reusable training loops for the **Azure AI Fine-Tuning Sessions pub
 
 | Your goal | Start here | What you need |
 |---|---|---|
-| First end-to-end workflow check | [Quickstart](./docs/quickstart.md) | Python 3.11+, project access, model capacity, and a budget for a remote run |
+| First end-to-end workflow check | [Quickstart](./docs/quickstart.md) | Python 3.11+, project access, model capacity, and configured run limits |
 | Teach a model from good example responses (SFT) | [Tulu3 recipe](./interactive_training/recipes/tulu3_sft/README.md), then [your own data](./docs/custom-data.md#supervised-chat-data) | Labeled conversations and a separate evaluation set |
 | Optimize a measurable task reward (RL) | [Recipe chooser](./docs/recipes.md#choose-a-path), then [custom rewards](./docs/custom-data.md#reinforcement-learning-data-and-rewards) | Prompts, a trustworthy grader, and held-out tasks |
 | Learn from preferred/rejected responses | [DPO recipe](./interactive_training/recipes/preference/dpo/README.md) | Preference pairs |
@@ -24,7 +24,7 @@ Examples and reusable training loops for the **Azure AI Fine-Tuning Sessions pub
 > [!WARNING]
 > Training, evaluation, and sampling allocate or use remote compute and may incur charges. Package/tokenizer/dataset downloads also need network access. Code-execution, retrieval, and MCP recipes have additional prerequisites; read their guides before starting sidecars or tools. A successful smoke run is not proof of model-quality improvement or a production deployment.
 
-For coding agents, the repository's [execution contract](https://github.com/johnwu0604/fine-tuning/blob/main/AGENTS.md) identifies the safe verification path and operations that require explicit approval.
+For coding agents, the repository's [execution contract](https://github.com/microsoft-foundry/fine-tuning/blob/main/AGENTS.md) defines the offline verification path, nonblocking paid-run warning, and scope/cleanup safeguards.
 
 Shared text recipes default to **`Qwen/Qwen3.8-27B`**. Unless overridden,
 tokenization follows `model_name` and the renderer is selected for that model.

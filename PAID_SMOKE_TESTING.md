@@ -2,15 +2,17 @@
 
 The [smoke workflow](.github/workflows/smoke-testing.yml) runs real interactive
 training, not offline validation or held-out application-quality evaluation.
-It is opt-in. **Do not enable or dispatch it without named operation and budget
-approval.** Use [AGENTS.md](AGENTS.md) for the shared approval handoff.
+It is opt-in. **Enable or dispatch it only when explicitly requested.** Warn
+that the run uses paid cloud resources, include cost information if readily
+available, and proceed without a separate spending-approval or budget prompt.
+Use [AGENTS.md](AGENTS.md) for the shared execution policy.
 
 ## Configure and authorize
 
 An authorized repository/environment administrator must:
 
 1. Confirm the tenant/subscription/project, exact models and region, authorization,
-   capacity, and current prices. Successful sign-in or a listed region does not
+   and capacity. Successful sign-in or a listed region does not
    establish training eligibility. Follow the [access checklist](interactive_training/docs/auth.md).
 2. Review the [runner](interactive_training/scripts/run_recipe_smokes.py) and the
    [Tulu3 SFT](interactive_training/interactive_training/recipes/tulu3_sft/README.md)
@@ -27,23 +29,24 @@ An authorized repository/environment administrator must:
    secrets. Never print their values or place them in source, public logs, or
    issue/PR comments. This workflow requires both; do not silently switch its
    authentication method.
-5. Approve either a single manual execution or recurring authority naming the
-   cadence, models/data, evaluation/tool scope, budget per run and total period,
-   expiry, responsible operator, alerts, evidence storage, and cleanup plan.
-   The workflow does not enforce a monetary cap or approval expiry; an operator
-   must arrange spending alerts and disable it when authority expires.
+5. Configure the requested single manual execution. For explicitly requested
+   recurring runs, record the cadence, models/data, evaluation/tool scope,
+   expiry, responsible operator, evidence storage, and cleanup plan.
+   Respect any supplied spending limits; missing prices or a dollar budget do
+   not block a requested run. The workflow does not enforce a monetary cap or
+   expiry; disable it when the requested schedule expires.
 
 Keep repository variable `ENABLE_DAILY_TRAINING` unset or `false` until all
 prerequisites, including evidence retention, are satisfied. Setting it to exactly
 `true` enables **both** manual and scheduled jobs. The daily cron is `0 0 * * *`
-(00:00 UTC on the default branch; scheduling can be delayed). An approved manual
+(00:00 UTC on the default branch; scheduling can be delayed). A requested manual
 run uses Actions > Smoke testing > Run workflow on an approved ref and still
 requires the gate and environment approval.
 
-For single-run authority, enable the gate only for the approved dispatch window,
+For a single-run request, enable the gate only for its dispatch window,
 reject any unrelated scheduled/queued run at the environment review, and turn the
 gate off again immediately afterward. The current workflow has no manual-only
-enable switch; do not leave it enabled on the basis of one manual approval.
+enable switch; do not leave it enabled on the basis of one manual run request.
 
 ## What the bounds mean
 
@@ -59,7 +62,7 @@ enable switch; do not leave it enabled on the basis of one manual approval.
 
 The runner stops on child failure, timeout, or failed status verification.
 It uses unique log directories and rejects reuse. Check the current workflow
-and runner before approving changed commands; these limits describe today's code.
+and runner before changing commands; these limits describe today's code.
 
 ## Preserve private evidence before enabling
 
@@ -96,11 +99,13 @@ storage, grant permissions, or provide a finished exporter.
    to inspect primary, reference, and staged sessions from private run metadata.
    If metadata is missing, reconcile approved project state and ownership with
    the operator; never guess IDs or clean up shared resources.
-4. Obtain named approval for remote cancellation/unload and separate confirmation
+4. Cancel/unload only identified owned resources within the requested run's stop
+   and cleanup plan, after saving required state. Obtain separate confirmation
    for checkpoint/resource deletion. Verify terminal state and retained artifacts.
    Local client closure, training completion, unload, and deletion are distinct.
 5. Document remaining sessions/checkpoints/deployments and uncertain cost exposure.
-   Retry only after reconciliation, with fresh approval if scope/budget changed.
+   Retry only after reconciliation, within the requested scope and any supplied
+   limits. Do not expand the workload or schedule automatically.
 
 Neither green Actions status nor a `succeeded` session demonstrates held-out
 quality, serving readiness, or complete resource release.
