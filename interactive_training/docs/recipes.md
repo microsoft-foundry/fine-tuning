@@ -17,7 +17,7 @@ A recipe is a small launcher that wires task-specific data and configuration int
 | Pairwise preferences | [preference/dpo](../interactive_training/recipes/preference/dpo/README.md) | Preference pairs and reference-session capacity | Held-out losses plus an independent task/preference evaluation |
 | Teacher imitation | [distillation](../interactive_training/recipes/distillation/README.md) | Compatible tokenization, teacher checkpoint, two sessions | Teacher/student difference plus independent quality evaluation |
 
-All remote examples need project authorization, capacity, and budget. A CLI cap does not make a launch offline. Start with [installation/auth checks](./quickstart.md), adapt through [custom data](./custom-data.md), then follow [evaluation and inference](./evaluation-and-inference.md).
+All remote examples need project authorization and capacity and may incur charges. Warn before a requested run without a separate spending-approval prompt. A CLI cap does not make a launch offline. Start with [installation/auth checks](./quickstart.md), adapt through [custom data](./custom-data.md), then follow [evaluation and inference](./evaluation-and-inference.md).
 
 ## Available recipes
 

@@ -21,7 +21,12 @@ tenant, subscription, resource, project, model, and region:
 | Authorization | Applicable role permissions and scope for session creation, training, sampling, checkpoint access, and cleanup | A generic Reader grant or successful token acquisition |
 | Model and region | Current interactive eligibility for the exact base model and project region | A renderer existing in the cookbook or a historical benchmark |
 | Capacity and quota | The project's applicable training tier and model capacity/quota | A supported-region table or an assumption that retries will create capacity |
-| Spend and cleanup | Approved operation/budget, stop conditions, and who can unload the owned session | A local step limit or closing the HTTP client |
+| Run scope and cleanup | The requested workflow, stop conditions, and who can unload the owned session | A local step limit or closing the HTTP client |
+
+Spending is not a separate approval gate for a requested run. Warn that it uses
+paid cloud resources, include cost information if readily available, and proceed
+without requiring a dollar budget. This does not grant project permissions or
+replace required preview access.
 
 This preview guide does not specify a universal built-in role, quota amount,
 or read-only capacity check. Those must be confirmed for the actual project;
@@ -53,8 +58,8 @@ Then skip to [Option 1](#option-1--api-key-easiest-for-local-runs) or [Option 2]
 4. Finish the wizard and wait for deployment to complete.
 5. Create or select the project under that resource; copy its project endpoint.
 6. If using a key, retrieve it through the resource's **Keys and Endpoint** page.
-7. Confirm project authorization, selected-model capacity, and
-    budget before creating a training session. Resource creation may incur costs
+7. Confirm project authorization and selected-model capacity before creating
+    a training session. Resource creation may incur costs
     and is separate from the local cookbook installation.
 
 ## Option 1 — API key (easiest for local runs)

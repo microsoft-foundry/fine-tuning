@@ -9,7 +9,7 @@ Follow a complete learning journey, or use the reference pages for an existing r
 | Is this the right approach for my task? | [Concepts](./concepts.md) and [recipe chooser](./recipes.md#choose-a-path) | You can identify SFT, RL, preference learning, or distillation and its prerequisites |
 | How do I get one run working? | [Quickstart](./quickstart.md) | Imports/help pass, a bounded remote run writes metrics/checkpoints, cleanup is checked |
 | Does my project have the right access? | [Authentication](./auth.md), [models and regions](./supported_models.md) | Correct project endpoint, credential, model eligibility, and capacity |
-| How do I use my own data and rewards? | [Custom data](./custom-data.md) | JSONL renders locally with valid masks; the programmatic SFT launch reuses validated data only after approval; RL grader checks pass |
+| How do I use my own data and rewards? | [Custom data](./custom-data.md) | JSONL renders locally with valid masks; the programmatic SFT launch warns before paid execution and reuses validated data; RL grader checks pass |
 | Did training help, and how do I use the result? | [Evaluation and inference](./evaluation-and-inference.md) | Comparable held-out measurements and sampling from a saved checkpoint |
 | Where are my artifacts? | [Storage](./storage.md) and [dashboard](./dashboard.md) | Config, metrics, ledger, and sensitive artifacts can be located and interpreted |
 | How do I recover or free resources? | [Recovery](./training.md#resuming-after-an-interruption), [continual training](./continual-fine-tuning.md), [session management](./session-management.md) | The intended checkpoint/cursor is loaded; owned sessions are inspected and explicitly closed |

@@ -67,7 +67,7 @@ evaluations = [row for row in rows if metric in row]
 if len(evaluations) < 2:
     raise ValueError("Need initial and later held-out evaluation rows; check eval settings/failures")
 before, after = evaluations[0], evaluations[-1]
-expected_episodes = 8  # Requested by the fresh quickstart; change for your approved scope.
+expected_episodes = 8  # Requested by the fresh quickstart; change for your requested scope.
 if any(row.get("test/env/all/total_episodes") != expected_episodes for row in (before, after)):
     raise ValueError("Incomplete or different evaluation coverage; inspect dropped groups")
 print("Initial:", before.get("step"), before[metric], "episodes:", before.get("test/env/all/total_episodes"))
@@ -119,7 +119,7 @@ python -m interactive_training.recipes.tool_ner_rl.eval_azure \
 
 After successful evaluation, each directory contains `manifest.json`, `metrics.json`, `run_meta.json`, `per_document.jsonl`, `error_summary.json`, `error_review_sample.json`, `protocol_errors.json`, and `eval_base.html`. A failed run can leave only some artifacts. The CLI refuses to overwrite a non-empty directory. Compare manifest dataset/revision/split, selected document IDs, sampling settings, and errors before reading `base/eval/micro_f1`. Both runs use `base/` keys; the run metadata identifies the loaded checkpoint.
 
-Eight examples test the evaluation pipeline, not statistically credible improvement. Increase the approved evaluation scope for a real comparison, inspect the reported uncertainty/error breakdown, and reserve an untouched final test set. Cleanup is attempted in `finally`; verify failures as in [session management](./session-management.md).
+Eight examples test the evaluation pipeline, not statistically credible improvement. Request a larger evaluation scope for a real comparison, inspect the reported uncertainty/error breakdown, and reserve an untouched final test set. Cleanup is attempted in `finally`; verify failures as in [session management](./session-management.md).
 
 > [!IMPORTANT]
 > **Do not use `max_steps=0` on a training launcher as a universal evaluation mode.** SFT interprets zero as no step cap. Math creates a remote session and does not provide a general eval-only CLI. For other RL tasks, compose `RLTestSetEvaluator` with the task's held-out builder and sampling client; for SFT, use `NLLEvaluator` on held-out data plus task-specific generation evaluation. These are programmatic APIs, not new documented CLI flags.
@@ -241,8 +241,9 @@ No optimizer update occurs in this helper. It creates a `type="training"` sessio
 
 ### Print a real response from your saved state
 
-After approving the new session and sampling operation, run this **after the
-helper definition** in your private script. Replace the checkpoint placeholder
+This creates a new paid session and samples from it. Warn before execution;
+no separate spending approval is required. Run this **after the helper
+definition** in your private script. Replace the checkpoint placeholder
 with the completed training `state_path`; do not invent a path from a failed
 save or a sampler-only identifier. This example matches the own-text
 walkthrough's model/renderer/rank and uses a new task prompt without supplying
@@ -278,8 +279,8 @@ and inspect the new session's cleanup result separately.
 
 Passing `None` as the helper's checkpoint path creates a fresh baseline
 session without loading saved training state. The other arguments, prompt,
-renderer, rank, and sampling parameters remain identical. After explicit
-approval for **two session allocations and their sampling**, this example
+renderer, rank, and sampling parameters remain identical. This example uses
+**two paid session allocations and their sampling**; warn before running it. It
 checks one unseen synthetic label task; it is a comparison smoke test, not a
 quality benchmark or a statistical claim:
 
@@ -301,7 +302,7 @@ async def compare_one_label(checkpoint_path):
         }
     return results
 
-# Only after approving the new sessions/samples; keep responses private.
+# Creates two paid sessions and samples from both; keep responses private.
 comparison = asyncio.run(compare_one_label("session_<source>/final"))
 print(comparison)
 ```
@@ -326,7 +327,7 @@ The SDK operations above provide **sampling within Fine-Tuning Sessions**. They 
 
 | Intended use | What this cookbook supplies | What must be confirmed separately |
 |---|---|---|
-| Inspect a generated response | Compatible session restore, sampler sync, and SDK sampling above | Training/sampling approval, capacity, prompt privacy, and owned-session cleanup |
+| Inspect a generated response | Compatible session restore, sampler sync, and SDK sampling above | Project access, capacity, prompt privacy, and owned-session cleanup |
 | Evaluate a task | Existing NER evaluation CLI, RL/SFT evaluator APIs, and the comparison contract | Task-specific generation/grading, complete coverage, and sufficient held-out evidence |
 | Run application inference | No documented permanent inference deployment in these helpers | A supported serving provider/path, compatible model/adapter format, serving access, auth/API contract, capacity, price, and deletion plan |
 | Export weights or run locally | No verified export/download/conversion recipe in the pinned public workflow | A supported export route, model/data/license rights, format compatibility, and separately validated conversion/runtime |

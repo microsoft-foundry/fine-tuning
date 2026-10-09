@@ -274,7 +274,7 @@ python -m interactive_training.recipes.math_rl.train_azure \
     max_steps=2
 ```
 
-  This is a fragment to add to an approved, complete math command with endpoint, dataset, token budget, and run path; `...` is not a literal argument. It does not add `oversample_cushion` to the launcher.
+  This is a fragment to add to a complete math command within the requested run's scope, with endpoint, dataset, token budget, and run path; `...` is not a literal argument. It does not add `oversample_cushion` to the launcher.
 
 ### When to use it
 
@@ -422,7 +422,7 @@ The directory must first be accepted with `behavior_if_log_dir_exists=resume` (o
 Keep the original model, tokenizer, renderer, and LoRA settings on resume. A new
 default model does not make older checkpoints compatible with a different base.
 
-Also preserve dataset revision/order, split, seed, and batch/group configuration. The ledger is a cursor, not a complete snapshot of every in-flight async rollout or external tool state; do not promise bit-identical recovery. A run already at its `max_steps` cap will not continue past that cap unless you deliberately raise the approved budget. If there is no completed training checkpoint, unsaved optimizer work cannot be recovered from metrics or HTML.
+Also preserve dataset revision/order, split, seed, and batch/group configuration. The ledger is a cursor, not a complete snapshot of every in-flight async rollout or external tool state; do not promise bit-identical recovery. A run already at its `max_steps` cap will not continue past that cap unless the requested scope includes raising that configured limit. If there is no completed training checkpoint, unsaved optimizer work cannot be recovered from metrics or HTML.
 
 > [!NOTE]
 > Resume creates a **new** Azure session initialized from the checkpoint — the new run reports its own `session_id` in `run_meta.json` and stamps `azure.from_checkpoint` with the source. The original session is not reattached.
