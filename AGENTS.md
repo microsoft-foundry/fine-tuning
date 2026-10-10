@@ -1,6 +1,6 @@
 # Coding-agent execution contract
 
-These instructions apply to the repository. Use the public READMEs and maintained recipes; no separate fine-tuning skill installation is required.
+These instructions apply to the repository. Use the READMEs, code and recipes; no separate fine-tuning skill installation is required.
 
 ## Route and resolve sources
 
@@ -29,30 +29,34 @@ Dependency installation, network dataset downloads, credential prompts, or resou
 
 ## Explicit approval before spend or mutation
 
-Approval is required before uploads, fine-tuning job creation/resume, deployment
-creation, session allocation, interactive recipes, sampling/inference, external
-tools, or cancellation/unload/deletion. Before the named operation, present:
+The following operations incur cost or resource usage, either directly or with followup operations, and thus require explicit approval before execution:
+- Fine-tuning job creation; as a part of Managed fine-tuning
+- Fine-tuning session creation, sampling and training; as a part of Interactive training recipe
+- Deployment creation and inference
+- Evaluations that internally use sampling or deployment inference
 
-- Task, target tenant/subscription/project, exact model and region, and verified
-  access/role/quota prerequisites or unresolved checks.
-- Input provenance, license/privacy constraints, counts and hashes, and intended
-  upload destination. Do not expose populated endpoints or runtime identifiers.
-- Method, steps/epochs/tokens, evaluation/tool-call scope, timeouts, stop
-  conditions, and budget. State known pricing or unresolved cost uncertainty;
-  time and step limits are not dollar caps.
-- Expected artifacts, held-out evaluation and serving limitations, private
-  evidence retention, and cleanup responsibilities for every owned resource.
+Some operations don't incur cost and can be performed without explicit approval:
+- File upload and download
+- Local operations e.g. use of dashboard server
+- Local evaluations or local grading that do not use sampling or deployment inference
 
-Wait for explicit approval covering the operation and budget. "Help me fine-tune"
+Apart from these, deletion or cancellation of resources also require explicit approval. For instance deletion of fine-tuning jobs, sessions and deployments.
+
+### Presentation of Approval Requests
+
+Before executing operation(s) that incur cost or resource usage, present a few key details:
+- Operation, target model, foundry project and region
+- Training Method. Managed fine-tuning: SFT/RFT/DPO. Interactive training: Sampling/Training
+- Training type: Standard/GlobalStandard/DatazoneStandard
+- Deployment type: Standard/GlobalStandard/DatazoneStandard/others
+- Deployment format (Fireworks/others) and SKU capacity
+
+Wait for explicit approval covering the operation. "Help me fine-tune"
 is not blanket spend authorization. Do not provision or change permissions
-automatically. Obtain separate deletion confirmation; stopping monitoring is not
-cancellation, and closing a client is not remote unload.
-
-Recurring runs require explicit approval of frequency, models/data, evaluation
-scope, budget per run and over the approved period, expiry, owner, and disable/
-reconciliation procedure. Manual-run approval is not recurring-run authority.
-Do not enable the paid smoke workflow or change environment permissions
 automatically.
+
+Approval request should also cover recurring operations.
+
 
 ## Secrets and runtime state
 
