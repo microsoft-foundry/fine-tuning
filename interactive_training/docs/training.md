@@ -94,7 +94,7 @@ The defaults below are from **math Azure `CLIConfig`** and **Tulu3 Azure `CLICon
 | `temperature` | `1.0` | Not a training-target parameter | Sampling diversity. Record it for comparisons; a model-specific quality claim requires evaluation. |
 | `group_size` | `4` | Not applicable | Completions per training prompt; increases rollout cost and changes advantage estimates. |
 | `groups_per_batch` | `100` | Not applicable | Prompts per RL iteration; smaller examples are easier to inspect. |
-| `max_length` | Not applicable | `16384` | **Rendered sequence** budget, not output length. Tulu3 truncates to this budget; its current builder does not forward the fail-fast/context fields ([limitation](../interactive_training/recipes/tulu3_sft/README.md#sft-on-tulu3)). |
+| `max_length` | Not applicable | `16384` | **Rendered sequence** budget, not output length. Tulu3 truncates by default; `fail_on_truncation=true` rejects overlength examples and `model_context_length` checks the resulting training input ([preflight](../interactive_training/recipes/tulu3_sft/README.md#sft-on-tulu3)). |
 | `batch_size` | Not applicable | `128` | SFT rows per full batch. Floor batching can omit tail rows or yield no batches; see [custom data](./custom-data.md#2-render-and-inspect-locally). |
 | `num_epochs` | One dataset traversal | `1` | Dataset passes; choose using validation rather than a universal epoch recommendation. |
 | `lr_schedule` | Constant recipe learning rate | `linear` | SFT schedule supports `linear`, `cosine`, or `constant`; a step cap does not redefine its full-dataset schedule denominator. |

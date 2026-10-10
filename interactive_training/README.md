@@ -50,7 +50,7 @@ Python imports use `azure.ai.finetuningsessions`, including the `aio` namespace.
 No local fine-tuning SDK build, sibling source checkout, or bundled SDK wheel is required.
 
 ```bash
-git clone https://github.com/johnwu0604/fine-tuning.git
+git clone https://github.com/microsoft-foundry/fine-tuning.git
 cd fine-tuning/interactive_training
 python -m venv .venv
 source .venv/bin/activate  # Linux / macOS / WSL only

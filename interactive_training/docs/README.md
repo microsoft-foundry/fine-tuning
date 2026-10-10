@@ -13,7 +13,7 @@ Follow a complete learning journey, or use the reference pages for an existing r
 | Did training help, and how do I use the result? | [Evaluation and inference](./evaluation-and-inference.md) | Comparable held-out measurements and sampling from a saved checkpoint |
 | Where are my artifacts? | [Storage](./storage.md) and [dashboard](./dashboard.md) | Config, metrics, ledger, and sensitive artifacts can be located and interpreted |
 | How do I recover or free resources? | [Recovery](./training.md#resuming-after-an-interruption), [continual training](./continual-fine-tuning.md), [session management](./session-management.md) | The intended checkpoint/cursor is loaded; owned sessions are inspected and explicitly closed |
-| What can a coding agent safely run? | [Repository execution contract](https://github.com/johnwu0604/fine-tuning/blob/main/AGENTS.md) and [contributing](./contributing.md) | Offline checks are separated from downloads and paid/destructive operations |
+| What can a coding agent safely run? | [Repository execution contract](https://github.com/microsoft-foundry/fine-tuning/blob/main/AGENTS.md) and [contributing](./contributing.md) | Offline checks are separated from downloads and paid/destructive operations |
 
 ## CLI conventions
 

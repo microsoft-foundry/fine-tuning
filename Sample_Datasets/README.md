@@ -39,7 +39,7 @@ We offer three training techniques to optimize your models:
     - *When to use:* RFT is ideal for objective domains like mathematics, chemistry, and physics where there are clear right and wrong answers and the model already shows some competency. It works best when lucky guessing is difficult and expert evaluators would consistently agree on an unambiguous, correct answer. Requires more ML expertise to implement effectively.
     - *Supported Models:* o4-mini
     - *Sample Datasets*: 
-         - [Clause Matching](./Reinforcement_Fine_Tuning/clause-matching/) - legal contract dataset
+            - [Clause Matching](./Reinforcement_Fine_Tuning/ClauseMatching/) - legal contract dataset
         -  [Med MCQ](./Reinforcement_Fine_Tuning/MedMCQ/) - Multiple Choice Medical Q&A
 
 **Most customers should start with SFT,** as it addresses the broadest number of fine-tuning use cases.

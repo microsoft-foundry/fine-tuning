@@ -31,7 +31,7 @@ python -m unittest discover -s tests -p "test_*.py"
 
 Use the repository workflow's selected managed tests for the managed contracts. Run interactive tests from `interactive_training` using its test environment. Tests validate local contracts, not cloud eligibility.
 
-Dependency installation, network dataset downloads, credential prompts, or resource reads are not implied by an offline preflight. Explain them and obtain approval where needed.
+Dependency installation, network downloads, authentication, and resource reads are not offline checks. When needed for the requested workflow, explain them briefly and proceed within that scope using the selected environment and supported credential providers. Ask for missing information that changes the scope, not repeated approval for routine setup or reads; never request secrets in chat.
 
 ## Paid execution: warn, then proceed
 

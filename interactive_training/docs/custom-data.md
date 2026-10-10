@@ -80,9 +80,9 @@ example below sets `preflight_dataset=True` and prepares them locally. Preflight
 reports the split and failing batch when rendering raises a validation error;
 context and truncation checks only run if the builder forwards
 `model_context_length` and `fail_on_truncation`. Floor-batched tail rows are not
-scanned. Do not assume that accepting these options means a builder enforces
-them: the [Tulu3 builder](../interactive_training/recipes/tulu3_sft/README.md#sft-on-tulu3)
-currently does not forward them, even though its launcher offers preflight.
+scanned. The conversation-file and
+[Tulu3 builders](../interactive_training/recipes/tulu3_sft/README.md#sft-on-tulu3)
+both forward these checks; custom builders must do the same to enforce them.
 
 ### 3. Wire the builder into an SFT launcher
 
