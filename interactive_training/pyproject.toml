@@ -29,6 +29,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+deployment = [
+    "azure-ai-projects>=2.2.0,<3",
+    "openai>=2.8.0",
+]
 test = [
     "pillow",
     "mcp>=1.29.1,<2",
