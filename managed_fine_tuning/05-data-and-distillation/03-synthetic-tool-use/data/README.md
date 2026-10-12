@@ -16,8 +16,9 @@ Python `random.Random(42)` shuffles row indices; training receives
 The service returned 30 unique rows in this exact dataset: 24 training, 3
 validation and 3 test rows. Requested maximum sample counts are not actual
 returned counts. All bytes are retained without generation, semantic filtering
-or renderer normalization. The original generation/split implementation remains
-in `Demos/SyntheticDatagen-ToolUse/notebook.ipynb`.
+or renderer normalization. The historical generation/split implementation came
+from `Demos/SyntheticDatagen-ToolUse/notebook.ipynb`;
+that source notebook is not included in this cookbook.
 
 Only training and validation are uploaded. The supervised training recipe is
 3 epochs and learning-rate multiplier 1.0 with `GlobalStandard`.

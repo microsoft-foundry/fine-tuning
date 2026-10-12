@@ -80,7 +80,7 @@ If this happens, you can pick up from the last checkpoint — see [Resuming afte
 
 For anything beyond a quick smoke test (i.e. anything that runs longer than the time you're willing to babysit a terminal), launch the recipe from a **persistent, always-on machine** instead:
 
-- **An approved always-on VM/container**, or Azure ML compute, with enough CPU/RAM/disk for the selected data and grader. The model GPUs are service-side, but code grading, retrieval, and large datasets can demand substantial driver resources. Provisioning requires separate approval/budget.
+- **An approved always-on VM/container**, or Azure ML compute, with enough CPU/RAM/disk for the selected data and grader. The model GPUs are service-side, but code grading, retrieval, and large datasets can demand substantial driver resources. Provisioning must be explicitly requested; warn about costs without a separate spending-approval prompt.
 - Use Cloud Shell only for short administrative work when its runtime/storage/network constraints fit; it is not a guarantee of an unattended always-on training driver.
 - If you must use your laptop, at minimum keep it plugged in, disable sleep/hibernate (`caffeinate` on macOS, `systemd-inhibit` on Linux, or "never sleep when plugged in" in Windows power settings), and keep the lid open and the network connected.
 
@@ -89,7 +89,7 @@ A typical Azure VM workflow:
 ```bash
 # one-time on the VM
 az login
-git clone https://github.com/johnwu0604/fine-tuning.git
+git clone https://github.com/microsoft-foundry/fine-tuning.git
 cd fine-tuning/interactive_training
 python -m venv .venv && source .venv/bin/activate
 # Offer CPU Torch for driver utilities; inspect the selected build.
@@ -97,7 +97,7 @@ python -m pip install -e . --index-url https://pypi.org/simple --extra-index-url
 
 # launch under tmux/screen so the run survives SSH disconnects
 tmux new -s run
-# Run the approved bounded command from docs/quickstart.md here.
+# Run the requested bounded command from docs/quickstart.md here.
 # Ctrl-b d to detach; `tmux attach -t run` to come back
 ```
 
@@ -195,7 +195,7 @@ The quickstart's tokenizer check has **no Azure call** but can download files. T
 
 ## SFT truncation or empty loss masks
 
-Check which builder actually forwards the context/truncation fields. The current [Tulu3 builder](../interactive_training/recipes/tulu3_sft/README.md#sft-on-tulu3) does not, even though the CLI accepts them. A successful preflight is not proof that labels survived; inspect decoded batches, rendered lengths, and positive `weights` locally before a remote launch.
+The [Tulu3 builder](../interactive_training/recipes/tulu3_sft/README.md#sft-on-tulu3) and conversation-file builder enforce `fail_on_truncation` and `model_context_length` when configured. For custom builders, verify that they forward those fields. A successful preflight is not proof that labels survived; inspect decoded batches, rendered lengths, and positive `weights` locally before a remote launch.
 
 For builders that enforce the checks, shorten or split overlength examples, or raise `max_length` only within the verified model/service context budget. Lowering `max_length` cannot preserve content that already exceeds it. Image inputs also consume context. Separately, a split smaller than `batch_size` can produce zero full batches; changing length alone does not fix that. Keep fail-fast checks enabled when preservation is required and follow the [custom-data inspection](./custom-data.md#2-render-and-inspect-locally).
 
@@ -203,13 +203,13 @@ For builders that enforce the checks, shorten or split overlength examples, or r
 
 Read the last completed phase in the console/`logs.log`, then inspect the service request/error details and owned session. Cold model/sampler loading, checkpoint serialization, queueing, and grading can take time; no universal first-step duration is promised. A submitted request or warning is not completion. Keep the driver alive and do not submit duplicate paid runs just because no metric row appeared yet.
 
-If a request is terminally failed, preserve its error code/request ID and follow the service's retry guidance. For GPU/memory errors, verify the actual model/rank/context/group/batch configuration and checkpoint/sampler operation involved; do not reinterpret a sampler allocation as a cheap disk-only save. Reduce only the relevant approved workload for a subsequent run, or escalate with sanitized evidence. Resume from a completed **training** checkpoint when available; unsaved state cannot be reconstructed from logs.
+If a request is terminally failed, preserve its error code/request ID and follow the service's retry guidance. For GPU/memory errors, verify the actual model/rank/context/group/batch configuration and checkpoint/sampler operation involved; do not reinterpret a sampler allocation as a cheap disk-only save. Reduce only the relevant workload within the requested scope for a subsequent run, or escalate with sanitized evidence. Resume from a completed **training** checkpoint when available; unsaved state cannot be reconstructed from logs.
 
 ## Answers truncate or quality does not improve
 
 Check `*/env/all/ac_tokens_frac_at_max`, completion-length tails, `format`, scored-episode coverage, and actual trajectory HTML. `max_tokens` includes reasoning; the math default of five tokens is for toy arithmetic, not GSM8K. Renderer selection must match the model. Changing reasoning mode or budget can change results independently of training, so keep the comparison contract fixed.
 
-Check labels, loss masks, grader correctness, split leakage, constant-reward filtering, learning rate, and number of real updates before spending a larger budget. Training reward, held-out NLL, and task accuracy are different measurements. Use [evaluation and inference](./evaluation-and-inference.md); a workflow smoke test can succeed with zero quality gain, and missing evaluation is not a zero score.
+If held-out quality stalls or regresses, inspect labels, loss masks, grader correctness, split leakage, constant-reward filtering, learning rate, and the number of real updates rather than increasing compute blindly. Training reward, held-out NLL, and task accuracy are different measurements. Use [evaluation and inference](./evaluation-and-inference.md); a workflow smoke test can succeed with zero quality gain, and missing evaluation is not a zero score.
 
 ## Minimal support evidence
 

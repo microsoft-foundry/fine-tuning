@@ -72,6 +72,11 @@ running its inference comparison cells.
 
 ## Before a paid or long-running operation
 
+Warn that the requested workflow uses paid cloud resources, then proceed without
+a separate spend-approval prompt. Include cost information if readily available;
+unknown pricing or a missing dollar budget is not a blocker. Follow the
+[execution contract](../AGENTS.md#paid-execution-warn-then-proceed).
+
 1. Validate the exact runtime-generated or preserved JSONL files with
    `validate_jsonl(...).require_valid()`.
 2. Verify train/validation/test isolation with `validate_split_isolation(...)`.

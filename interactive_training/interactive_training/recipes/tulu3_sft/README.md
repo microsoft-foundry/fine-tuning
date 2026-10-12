@@ -28,17 +28,15 @@ allocating a session, or `preflight_only=true` to return after that scan without
 training. This can download tokenizers/data and write local metadata; floor
 batching can omit tail source rows ([batching caveat](../../../docs/custom-data.md#2-render-and-inspect-locally)).
 
-> [!WARNING]
-> **Existing Tulu3 limitation:** the CLI accepts `fail_on_truncation` and
-> `model_context_length`, but [Tulu3Builder](./chat_datasets.py) does not pass
-> them to `conversation_to_datum`. Setting those flags does not currently
-> reject truncated/over-context rows here. Preflight can succeed after
-> truncation to `max_length`, even with no remaining assistant loss tokens;
-> it is not a guarantee of complete labels or service-context validity.
-> Inspect rendered lengths and positive loss weights locally. The existing
-> [conversation-file builder example](../../../docs/custom-data.md#2-render-and-inspect-locally)
-> forwards the checks, but requires its own programmatic launcher; it is not
-> a replacement Tulu3 CLI flag. This limitation is documented, not changed.
+The [Tulu3 builder](./chat_datasets.py) enforces `fail_on_truncation=true`
+by rejecting rendered examples longer than `max_length`. Set
+`model_context_length` to the verified model/service limit to reject training
+inputs exceeding that limit. Both checks apply to training and evaluation
+batches; the defaults retain truncation and do not assume a context limit.
+Combine them with preflight to catch invalid full batches before allocating a
+session. Inspect rendered lengths and positive loss weights locally: length
+checks alone do not guarantee assistant loss tokens, and floor-batched tail
+rows are not scanned ([data inspection](../../../docs/custom-data.md#2-render-and-inspect-locally)).
 
 Keep `max_steps` **positive** when budgeting: zero/`None` disables the SFT cap,
 not an evaluation-only mode. Compare held-out `test/nll` and task-specific

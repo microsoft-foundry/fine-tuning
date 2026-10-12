@@ -6,9 +6,10 @@ use a different state format and cannot be used unchanged here.
 ## Before requesting cancellation
 
 Closing the notebook or timing out monitoring does **not** cancel training.
-Cancellation loses progress and does not undo accrued charges. Obtain approval
-for the specific project and job, including remaining cost uncertainty. Check
-Foundry for jobs missing from local state after an ambiguous submission.
+Cancellation loses progress and does not undo accrued charges. Cancel only an
+identified owned job within the requested stop/cleanup plan or an explicit
+cancellation request; no separate spending approval is required. Check Foundry
+for jobs missing from local state after an ambiguous submission.
 
 From the Countdown demo directory, review the ignored
 `outputs/submission-state.json` privately. Its `jobs` map holds `model-grader`
@@ -17,9 +18,9 @@ the project independently in Foundry; an optional `job_endpoints` entry in
 older state is checked but is **not** sufficient proof on its own. Do not
 retroactively fill it from `.env`, or share populated state or credentials.
 
-With the managed environment installed, run this snippet **once** after
-approval. It retrieves and confirms **one** selected job before requesting
-cancellation; it does not cancel both jobs:
+With the managed environment installed, run this snippet **once** for the
+requested cancellation. It retrieves and confirms **one** selected job before
+requesting cancellation; it does not cancel both jobs:
 
 ```python
 import json

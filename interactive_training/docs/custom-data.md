@@ -1,6 +1,6 @@
 # Adapt a recipe to your own data
 
-Use the existing dataset and grading interfaces without changing the shared training algorithms. The data-building and grading checks below are **local** and do not create an Azure session; tokenizer downloads may still require network access. The separately marked [SFT launch](#3-wire-the-builder-into-an-sft-launcher) is an optional paid operation requiring explicit approval.
+Use the existing dataset and grading interfaces without changing the shared training algorithms. The data-building and grading checks below are **local** and do not create an Azure session; tokenizer downloads may still require network access. The separately marked [SFT launch](#3-wire-the-builder-into-an-sft-launcher) is an optional paid operation: warn before running it, without a separate spending-approval prompt.
 
 ## Choose the smallest change
 
@@ -80,9 +80,9 @@ example below sets `preflight_dataset=True` and prepares them locally. Preflight
 reports the split and failing batch when rendering raises a validation error;
 context and truncation checks only run if the builder forwards
 `model_context_length` and `fail_on_truncation`. Floor-batched tail rows are not
-scanned. Do not assume that accepting these options means a builder enforces
-them: the [Tulu3 builder](../interactive_training/recipes/tulu3_sft/README.md#sft-on-tulu3)
-currently does not forward them, even though its launcher offers preflight.
+scanned. The conversation-file and
+[Tulu3 builders](../interactive_training/recipes/tulu3_sft/README.md#sft-on-tulu3)
+both forward these checks; custom builders must do the same to enforce them.
 
 ### 3. Wire the builder into an SFT launcher
 
@@ -177,6 +177,7 @@ async def run_custom_sft(config, prepared, manifest):
     tokenizer = get_tokenizer(config.model_name)
     run = Path(config.log_path)
     run.mkdir(parents=True, exist_ok=False)  # Never overwrite or silently resume.
+    logging.warning("This SFT run uses paid cloud resources and may incur charges.")
     async with DefaultAzureCredential() as credential:
         async with FineTuningSessionClient(
             endpoint=endpoint, credential=credential,
@@ -218,14 +219,21 @@ config, prepared, manifest = prepare_custom_sft()
 print("Validated batches:", manifest["training_batches"], manifest["evaluation_batches"])
 ```
 
+<<<<<<< HEAD
 **Stop here until approval for the paid operation.** Confirm [project permissions
 and model capacity](./auth.md#confirm-project-access), review the data and
 held-out split, and approve the named operation. This helper uses
+=======
+Before the optional remote launch, confirm [project permissions and model
+capacity](./auth.md#confirm-access-before-spending) and review the data and
+held-out split. The helper warns before allocating paid compute; no separate
+budget confirmation is required. This helper uses
+>>>>>>> 741ab538b2a0030c296305634b6bb0b8dfeedff4
 identity authentication intentionally; setting an API-key environment variable
 does not change its credential code. It leaves the service's training tier
 unspecified rather than assuming a universally available or cheaper tier.
 
-**Optional remote launch, only after that approval:**
+**Optional remote launch after validation:**
 
 ```python
 checkpoint_path = asyncio.run(run_custom_sft(config, prepared, manifest))

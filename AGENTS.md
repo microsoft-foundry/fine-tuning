@@ -10,39 +10,64 @@ These instructions apply to the repository. Use the READMEs, code and recipes; n
 4. Interactive model/region eligibility comes from `interactive_training/docs/supported_models.md`. Managed eligibility comes from Foundry's model-specific documentation and the catalog prerequisites; notebook model roles are not a universal availability guarantee.
 5. Track-specific setup guides define repository paths. Subtree metadata/templates define data and configuration; installed SDK signatures and implementation define operations. Historical changelog entries, benchmarks, and past runtime artifacts do not override these sources. If they conflict, report the conflict and stop before remote operations rather than guessing.
 
-## Explicit approval before spend or mutation
+Before updating any README, check whether a more focused guide, recipe, or reference
+document is a better home for the change. Keep READMEs useful as human-facing entry
+points: link to detailed material rather than duplicating it or adding unrelated
+implementation details.
 
-The following operations incur cost or resource usage, either directly or with followup operations, and thus require explicit approval before execution:
-- Fine-tuning job creation; as a part of Managed fine-tuning
-- Fine-tuning session creation, sampling and training; as a part of Interactive training recipe
-- Deployment creation and inference
-- Evaluations that internally use sampling or deployment inference
+## No-spend preflight
 
-Apart from these, deletion or cancellation of resources also require explicit approval. For instance deletion of fine-tuning jobs, sessions and deployments.
+Read files and run offline tests, syntax/schema checks, dataset validation, and split/hash checks first. Do not run a whole notebook as a smoke test: later cells may upload data, allocate training, invoke tools, or submit/resume a paid job without another switch.
 
-Related instructions:
-- Approval requests should have clear options e.g. yes or no. Don't raise requests where user needs to enter text. 
-- Raise consolidated approval request over recurring operations beforehand instead of completing task partially and stopping due to lack of approval later.
-- **Don't raise approval requests for just about anything; follow the specific guidance here.** For instance, don't raise requests for budget or read-only calls as they're not part of the guide here. Not all operations require explicit approval. Read the "Approval-exempt operations" section for details.
+- Use the appropriate track's environment; managed uses Python 3.11-3.14 and its central lock, interactive uses its own package and SDK requirements.
+- Check paths, kernel, working directory, exact model ID, schema, and prerequisites. Managed demos should run from their demo directory unless a tested alternative is documented.
+- Preserve canonical/hash-pinned sample files. Put personal-data adaptations in separate, versioned inputs; never bypass validators to make them run.
 
-### Approval-exempt operations
+Run root navigation and model-eligibility checks without cloud credentials:
 
-These operations can be performed without explicit approval:
-- Read-only API calls like querying model metadata or listing deployments
-- File upload and download
-- Dependency installation
-- Local operations like use of dashboard server
-- Local evaluations or local grading that do not use sampling or deployment inference
+```powershell
+python -m unittest discover -s tests -p "test_*.py"
+```
 
-### Presentation of Approval Requests
+Use the repository workflow's selected managed tests for the managed contracts. Run interactive tests from `interactive_training` using its test environment. Tests validate local contracts, not cloud eligibility.
 
-Before executing operation(s) that incur cost or resource usage, try to share a few details based on local context:
-- Foundry project and region
-- Operation and target model
-- Training Method. Managed fine-tuning: SFT/RFT/DPO. Interactive training: Sampling/Training
-- Training type: Standard/GlobalStandard/DatazoneStandard
-- Deployment type: Standard/GlobalStandard/DatazoneStandard/others
-- Deployment format (Fireworks/others) and SKU capacity
+Dependency installation, network downloads, authentication, and resource reads are not offline checks. When needed for the requested workflow, explain them briefly and proceed within that scope using the selected environment and supported credential providers. Ask for missing information that changes the scope, not repeated approval for routine setup or reads; never request secrets in chat.
+
+## Paid execution: warn, then proceed
+
+When the user requests a training, evaluation, or sampling run, perform its
+required uploads, job/session creation or resume, checkpoint saves, and
+owned-resource cleanup without a separate spend-approval prompt. This applies
+to all users and environments, including Autopilot; it is not an internal-only
+exception.
+
+Before the first paid operation in the requested workflow, give one brief
+warning: **"This workflow uses paid cloud resources and may incur charges."**
+Include relevant cost information if readily available. Do not require a
+budget amount, cost acknowledgement, or pricing lookup, and do not block or
+repeatedly ask for approval because prices or a dollar budget are unknown.
+Respect any limits the user supplies; time, step, and token limits are not
+dollar caps.
+
+Keep the run scoped to the user's request and the selected recipe. Record the
+target, exact model/region, input provenance/counts/hashes, configuration, stop
+conditions, artifacts, and cleanup ownership in private runtime evidence.
+Explain meaningful scope choices briefly rather than turning them into a
+spending-approval handoff. Continue to validate data, eligibility, permissions,
+quota prerequisites, and required preview access; a cost warning does not
+replace those checks.
+
+Do not add unrequested deployments, resource provisioning, permission changes,
+external tools, or recurring work. Cancellation/unload within the requested
+run's stop and cleanup plan must target only its identified owned resources;
+save recoverable state first and verify the remote result. Obtain separate
+deletion confirmation. Stopping monitoring is not cancellation, and closing a
+client is not remote unload.
+
+Recurring runs require an explicit request naming the frequency, models/data,
+evaluation scope, expiry, owner, and disable/reconciliation procedure. A manual
+run request is not a request for recurring work. Do not enable its
+workflow or change environment permissions automatically.
 
 ## Secrets and runtime state
 

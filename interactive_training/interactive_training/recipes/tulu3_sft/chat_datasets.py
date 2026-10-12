@@ -46,10 +46,14 @@ class Tulu3Builder(ChatDatasetBuilder):
             else TrainOnWhat.LAST_ASSISTANT_MESSAGE
         )
 
-        # take the last 1000 as test, the rest as train
         def map_fn(row: dict) -> Datum:
             return conversation_to_datum(
-                row["messages"], self.renderer, self.common_config.max_length, train_on_what
+                row["messages"],
+                self.renderer,
+                self.common_config.max_length,
+                train_on_what,
+                model_context_length=self.common_config.model_context_length,
+                fail_on_truncation=self.common_config.fail_on_truncation,
             )
 
         return SupervisedDatasetFromHFDataset(

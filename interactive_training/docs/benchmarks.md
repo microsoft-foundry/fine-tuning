@@ -135,7 +135,8 @@ accuracy.
 Each Interactive Training row references a recipe with its original
 hyperparameters and context. A recipe command is not a guarantee that current
 capacity, dependencies, model eligibility, and service behavior can reproduce
-the historical run. Check current support and explicit spend approval first.
+the historical run. Check current support and warn that a reproduction uses
+paid compute; no separate spending approval is required.
 For a new comparison, record the code/SDK version, dataset and evaluation
 contract, hardware/tier when known, timing boundary, failures, and actual
 artifacts; do not substitute a historical table for new measurements.

@@ -61,7 +61,7 @@ See the [model and region registry](interactive_training/docs/supported_models.m
 | [Interactive training docs](interactive_training/docs/README.md) | Setup, training concepts, checkpoints, and troubleshooting. |
 | [Interactive training recipes](interactive_training/interactive_training/recipes/) | Runnable SFT, reinforcement learning, preference, and distillation recipes. |
 
-**For coding agents:** start with [AGENTS.md](AGENTS.md) for source precedence, offline preflight, approvals, and secret handling. The two training paths are not interchangeable.
+**For coding agents:** start with [AGENTS.md](AGENTS.md) for source precedence, offline preflight, paid-run warnings, scope safeguards, and secret handling. The two training paths are not interchangeable.
 
 > [!NOTE]
 > **Before production:** evaluate quality and safety on held-out data and review model/data licenses. Samples are for experimentation. Training, tools, and serving may incur separate charges; clean up unused resources.

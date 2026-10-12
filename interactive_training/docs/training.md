@@ -94,7 +94,7 @@ The defaults below are from **math Azure `CLIConfig`** and **Tulu3 Azure `CLICon
 | `temperature` | `1.0` | Not a training-target parameter | Sampling diversity. Record it for comparisons; a model-specific quality claim requires evaluation. |
 | `group_size` | `4` | Not applicable | Completions per training prompt; increases rollout cost and changes advantage estimates. |
 | `groups_per_batch` | `100` | Not applicable | Prompts per RL iteration; smaller examples are easier to inspect. |
-| `max_length` | Not applicable | `16384` | **Rendered sequence** budget, not output length. Tulu3 truncates to this budget; its current builder does not forward the fail-fast/context fields ([limitation](../interactive_training/recipes/tulu3_sft/README.md#sft-on-tulu3)). |
+| `max_length` | Not applicable | `16384` | **Rendered sequence** budget, not output length. Tulu3 truncates by default; `fail_on_truncation=true` rejects overlength examples and `model_context_length` checks the resulting training input ([preflight](../interactive_training/recipes/tulu3_sft/README.md#sft-on-tulu3)). |
 | `batch_size` | Not applicable | `128` | SFT rows per full batch. Floor batching can omit tail rows or yield no batches; see [custom data](./custom-data.md#2-render-and-inspect-locally). |
 | `num_epochs` | One dataset traversal | `1` | Dataset passes; choose using validation rather than a universal epoch recommendation. |
 | `lr_schedule` | Constant recipe learning rate | `linear` | SFT schedule supports `linear`, `cosine`, or `constant`; a step cap does not redefine its full-dataset schedule denominator. |
@@ -274,7 +274,7 @@ python -m interactive_training.recipes.math_rl.train_azure \
     max_steps=2
 ```
 
-  This is a fragment to add to an approved, complete math command with endpoint, dataset, token budget, and run path; `...` is not a literal argument. It does not add `oversample_cushion` to the launcher.
+  This is a fragment to add to a complete math command within the requested run's scope, with endpoint, dataset, token budget, and run path; `...` is not a literal argument. It does not add `oversample_cushion` to the launcher.
 
 ### When to use it
 
@@ -422,7 +422,7 @@ The directory must first be accepted with `behavior_if_log_dir_exists=resume` (o
 Keep the original model, tokenizer, renderer, and LoRA settings on resume. A new
 default model does not make older checkpoints compatible with a different base.
 
-Also preserve dataset revision/order, split, seed, and batch/group configuration. The ledger is a cursor, not a complete snapshot of every in-flight async rollout or external tool state; do not promise bit-identical recovery. A run already at its `max_steps` cap will not continue past that cap unless you deliberately raise the approved budget. If there is no completed training checkpoint, unsaved optimizer work cannot be recovered from metrics or HTML.
+Also preserve dataset revision/order, split, seed, and batch/group configuration. The ledger is a cursor, not a complete snapshot of every in-flight async rollout or external tool state; do not promise bit-identical recovery. A run already at its `max_steps` cap will not continue past that cap unless the requested scope includes raising that configured limit. If there is no completed training checkpoint, unsaved optimizer work cannot be recovered from metrics or HTML.
 
 > [!NOTE]
 > Resume creates a **new** Azure session initialized from the checkpoint — the new run reports its own `session_id` in `run_meta.json` and stamps `azure.from_checkpoint` with the source. The original session is not reattached.

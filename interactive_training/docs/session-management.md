@@ -186,9 +186,9 @@ For each candidate, confirm its owner/job is finished and required training save
 4. Inspect the owned session using list/get and the management-operation result.
     If its release is uncertain, resolve that state with the administrator; do
     not treat a status label or `404` alone as a billing confirmation.
-5. With explicit approval, unload only the identified leftover session after
-    saving needed state. Separate deletion requires separate confirmation
-    because it can remove checkpoints. Never sweep a shared project.
+5. Within the requested run's cleanup plan, unload only the identified leftover
+    session after saving needed state. Separate deletion requires separate
+    confirmation because it can remove checkpoints. Never sweep a shared project.
 6. Close local clients/credentials and approved sidecars. Separately provisioned
     serving deployments, VMs, tool sandboxes, and storage are not removed by
     session cleanup; report the remaining owners/resources and cost uncertainty.
