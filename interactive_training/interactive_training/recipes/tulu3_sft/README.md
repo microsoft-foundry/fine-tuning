@@ -40,7 +40,7 @@ rows are not scanned ([data inspection](../../../docs/custom-data.md#2-render-an
 
 Keep `max_steps` **positive** when budgeting: zero/`None` disables the SFT cap,
 not an evaluation-only mode. Compare held-out `test/nll` and task-specific
-generation quality ([evaluation](../../../docs/evaluation-and-inference.md));
+generation quality ([evaluation](../../../docs/evaluation-and-sampling.md));
 lower training NLL alone is not proof of improvement. Keep the completed ledger
 and original config for [recovery](../../../docs/training.md#resuming-after-an-interruption),
 or use a fresh directory for [continual training](../../../docs/continual-fine-tuning.md).

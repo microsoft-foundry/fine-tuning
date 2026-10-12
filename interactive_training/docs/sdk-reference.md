@@ -2,7 +2,7 @@
 
 A focused reference for the slice of the `azure-ai-finetuningsessions` SDK the cookbook exercises, plus the cookbook wrappers that bridge from raw HTTP-style calls to the train loop in [training.md](./training.md).
 
-This is **not** the full SDK reference. Examples target the pinned public preview, `azure-ai-finetuningsessions==1.0.0b1`; see the [published package and its documentation links](https://pypi.org/project/azure-ai-finetuningsessions/). For rendered custom data, start with [custom-data.md](./custom-data.md); for checkpoint use after training, see [evaluation and inference](./evaluation-and-inference.md).
+This is **not** the full SDK reference. Examples target the pinned public preview, `azure-ai-finetuningsessions==1.0.0b1`; see the [published package and its documentation links](https://pypi.org/project/azure-ai-finetuningsessions/). For rendered custom data, start with [custom-data.md](./custom-data.md); for checkpoint use after training, see [evaluation and sampling](./evaluation-and-sampling.md).
 
 For the **management** half of the SDK (`client.sessions.list / get / begin_unload / heartbeat`, `client.checkpoints.list / get`) — which the recipe does not exercise but you'll want for discovery, inspection, and cleanup — see [session-management.md](./session-management.md) and the companion [`notebooks/manage_sessions.ipynb`](../notebooks/manage_sessions.ipynb).
 
@@ -228,7 +228,7 @@ Save full training state (LoRA weights + optimizer state) under the given checkp
 
 ### `create_sampling_client(model_path) → AzureSDKSamplingClient`
 
-Construct a local wrapper bound to the adapter's **current session** and the supplied sampler checkpoint identifier. This does not create a remote session, load training state, or make a different session's checkpoint available. Keep a sampler ID together with its owning session ID. To restart after closing the source session, use a saved **training** checkpoint to create a new compatible session, then sync its sampler ([worked helper](./evaluation-and-inference.md#use-a-training-checkpoint-after-the-original-session-closes)).
+Construct a local wrapper bound to the adapter's **current session** and the supplied sampler checkpoint identifier. This does not create a remote session, load training state, or make a different session's checkpoint available. Keep a sampler ID together with its owning session ID. To restart after closing the source session, use a saved **training** checkpoint to create a new compatible session, then sync its sampler ([worked helper](./evaluation-and-sampling.md#use-a-training-checkpoint-after-the-original-session-closes)).
 
 ### `get_tokenizer() → Tokenizer`
 
@@ -281,7 +281,7 @@ checkpoint_id = saved.checkpoint_id
 
 At the operation-group boundary, `SaveSamplerWeightsRequest(path=name, seq_id=0)` **without** `sampling_session_seq_id` requests persistence. Providing `sampling_session_seq_id` requests an ephemeral update; the convenience SDK method manages that counter. Operation-group calls also require `foundry_features` and `api_version` ([session management](./session-management.md)).
 
-Await all required saves before cleanup. A durable save does not establish indefinite retention, cross-session sampler-ID portability, or a deployed inference endpoint. The cookbook's compatibility `ttl_seconds` is not enforced by the pinned adapter. See [storage](./storage.md#local-artifacts-versus-remote-state) and [sampling examples](./evaluation-and-inference.md).
+Await all required saves before cleanup. A durable save does not establish indefinite retention, cross-session sampler-ID portability, or a deployed inference endpoint. The cookbook's compatibility `ttl_seconds` is not enforced by the pinned adapter. See [storage](./storage.md#local-artifacts-versus-remote-state) and [sampling examples](./evaluation-and-sampling.md).
 
 ## Putting it together
 

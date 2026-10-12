@@ -1,6 +1,9 @@
-# Evaluate improvement and use a checkpoint
+# Evaluation and sampling
 
 Close the loop from **train → measure → save → sample** using the existing cookbook and published SDK. A passing smoke run proves infrastructure worked; it does not establish model quality, checkpoint portability, or production deployment.
+
+This guide covers evaluation and sampling within Fine-Tuning Sessions.
+For deployment inference, see [deployment and inference](./deployment-and-inference.md).
 
 ## Set the comparison contract first
 
@@ -324,7 +327,7 @@ or evaluation pattern.
 The SDK operations above provide **sampling within Fine-Tuning Sessions**;
 they do not themselves create a serving deployment. For the separately
 access-controlled Fireworks deployment path using a saved checkpoint, see
-[deployment and inference](./deployment_and_inference.md). Neither path
+[deployment and inference](./deployment-and-inference.md). Neither path
 documents an adapter-download route, GGUF/GPTQ conversion, or local
 Transformers/vLLM serving workflow; do not infer those from `state_path` or
 `sampler_path`.
@@ -335,7 +338,7 @@ Transformers/vLLM serving workflow; do not infer those from `state_path` or
 |---|---|---|
 | Inspect a generated response | Compatible session restore, sampler sync, and SDK sampling above | Project access, capacity, prompt privacy, and owned-session cleanup |
 | Evaluate a task | Existing NER evaluation CLI, RL/SFT evaluator APIs, and the comparison contract | Task-specific generation/grading, complete coverage, and sufficient held-out evidence |
-| Run application inference | Separate [Fireworks deployment helper](./deployment_and_inference.md) for saved checkpoints | Preview access, serving auth/API contract, capacity, price, and deletion plan |
+| Run application inference | Separate [Fireworks deployment helper](./deployment-and-inference.md) for saved checkpoints | Preview access, serving auth/API contract, capacity, price, and deletion plan |
 | Export weights or run locally | No verified export/download/conversion recipe in the pinned public workflow | A supported export route, model/data/license rights, format compatibility, and separately validated conversion/runtime |
 
 Interactive training access does not imply serving-preview access. Ask the service or

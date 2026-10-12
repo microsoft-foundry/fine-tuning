@@ -176,7 +176,7 @@ Look in **`./runs/first-math-check/`**, relative to the cookbook directory:
 
 For this fresh synchronous GSM8K run, the initial evaluation occurs before the first update; the final evaluation follows the final save. Check `test/env/all/correct` and `test/env/all/total_episodes`; inspect any dropped-evaluation warnings. A zero score can be a real failure of formatting or token budget even when infrastructure works. Missing metrics are not a zero score.
 
-There is **no required accuracy gain or promised runtime** for this two-step check. To claim improvement, use a fixed held-out set and the [evaluation guide](./evaluation-and-inference.md).
+There is **no required accuracy gain or promised runtime** for this two-step check. To claim improvement, use a fixed held-out set and the [evaluation guide](./evaluation-and-sampling.md).
 
 View the local artifacts:
 
@@ -204,6 +204,6 @@ or establish that ongoing cost is zero.
 
 - [Concepts](./concepts.md): sessions, runs, renderers, data, rewards, and updates.
 - [Custom data](./custom-data.md): use your conversations or implement your own task grader.
-- [Evaluation and inference](./evaluation-and-inference.md): compare before/after and sample saved weights.
+- [Evaluation and sampling](./evaluation-and-sampling.md): compare before/after and sample saved weights.
 - [Training](./training.md): budgets, cadence, and recovery.
 - [Troubleshooting](./troubleshooting.md): find the stage that failed before retrying a paid launch.

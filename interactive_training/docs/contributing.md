@@ -21,7 +21,7 @@ the recipe.
 Conventions:
 
 - **Start from [custom-data.md](./custom-data.md)** for existing SFT/RL data contracts. Wire a task builder/grader into its own launcher; do not fork the shared algorithm or invent CLI fields when a programmatic interface is enough.
-- **Document the complete lifecycle:** prerequisites/security and data downloads, a bounded smoke command using real CLI fields, expected metric/artifact names, a held-out [evaluation plan](./evaluation-and-inference.md), checkpoint use/recovery, and session cleanup. Separate local checks from paid service calls and from execution of generated code or external tools.
+- **Document the complete lifecycle:** prerequisites/security and data downloads, a bounded smoke command using real CLI fields, expected metric/artifact names, a held-out [evaluation plan](./evaluation-and-sampling.md), checkpoint use/recovery, and session cleanup. Separate local checks from paid service calls and from execution of generated code or external tools.
 - **Entry point uses `chz`** for argument parsing. Mirror the style in `recipes/math_rl/train_azure.py`.
 - **Use `model_info.DEFAULT_MODEL_NAME` for general text recipes.** It is currently
   `Qwen/Qwen3.8-27B`. Let tokenizer/renderer selection follow the model; do not

@@ -127,7 +127,7 @@ accuracy.
 3. **Evidence is bounded by the recorded artifacts.** The tables do not supply
    a fresh independent reproduction, repeated-run uncertainty, a bill, or
    proof that an application-serving endpoint was deployed. Use the
-   [evaluation contract](./evaluation-and-inference.md#set-the-comparison-contract-first)
+   [evaluation contract](./evaluation-and-sampling.md#set-the-comparison-contract-first)
    for a new task comparison.
 
 ## Reproducing these numbers

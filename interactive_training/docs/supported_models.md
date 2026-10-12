@@ -21,7 +21,7 @@ Shared text recipes default to `Qwen/Qwen3.8-27B`; omitting `tokenizer_name`
 uses the selected model's tokenizer.
 
 **Fireworks Deployment** requires preview access and serving capacity;
-see [deployment and inference](./deployment_and_inference.md) for the deployment workflow.
+see [deployment and inference](./deployment-and-inference.md) for the deployment workflow.
 
 The client needs only public tokenizer files, not local model weights or a
 private tokenizer path.
@@ -29,7 +29,7 @@ private tokenizer path.
 **Keep identifiers exact.** Model name, tokenizer, renderer, and LoRA settings
 must remain compatible with a saved checkpoint. A new default model does not
 make an older checkpoint portable to another base model. See
-[checkpoint reuse](./evaluation-and-inference.md#use-a-training-checkpoint-after-the-original-session-closes).
+[checkpoint reuse](./evaluation-and-sampling.md#use-a-training-checkpoint-after-the-original-session-closes).
 
 ### Legacy models
 

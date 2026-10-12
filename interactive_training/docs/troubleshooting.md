@@ -209,7 +209,7 @@ If a request is terminally failed, preserve its error code/request ID and follow
 
 Check `*/env/all/ac_tokens_frac_at_max`, completion-length tails, `format`, scored-episode coverage, and actual trajectory HTML. `max_tokens` includes reasoning; the math default of five tokens is for toy arithmetic, not GSM8K. Renderer selection must match the model. Changing reasoning mode or budget can change results independently of training, so keep the comparison contract fixed.
 
-If held-out quality stalls or regresses, inspect labels, loss masks, grader correctness, split leakage, constant-reward filtering, learning rate, and the number of real updates rather than increasing compute blindly. Training reward, held-out NLL, and task accuracy are different measurements. Use [evaluation and inference](./evaluation-and-inference.md); a workflow smoke test can succeed with zero quality gain, and missing evaluation is not a zero score.
+If held-out quality stalls or regresses, inspect labels, loss masks, grader correctness, split leakage, constant-reward filtering, learning rate, and the number of real updates rather than increasing compute blindly. Training reward, held-out NLL, and task accuracy are different measurements. Use [evaluation and sampling](./evaluation-and-sampling.md); a workflow smoke test can succeed with zero quality gain, and missing evaluation is not a zero score.
 
 ## Minimal support evidence
 

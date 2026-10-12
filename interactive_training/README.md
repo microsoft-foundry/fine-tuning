@@ -16,7 +16,7 @@ Examples and reusable training loops for the **Azure AI Fine-Tuning Sessions pub
 | Optimize a measurable task reward (RL) | [Recipe chooser](./docs/recipes.md#choose-a-path), then [custom rewards](./docs/custom-data.md#reinforcement-learning-data-and-rewards) | Prompts, a trustworthy grader, and held-out tasks |
 | Learn from preferred/rejected responses | [DPO recipe](./interactive_training/recipes/preference/dpo/README.md) | Preference pairs |
 | Distill a teacher into a student | [Distillation recipe](./interactive_training/recipes/distillation/README.md) | Compatible tokenization and capacity for two sessions |
-| Measure improvement and use the saved model | [Evaluation and inference](./docs/evaluation-and-inference.md) | A completed run or a saved training checkpoint |
+| Measure improvement and sample the saved model | [Evaluation and sampling](./docs/evaluation-and-sampling.md) | A completed run or a saved training checkpoint |
 | Use SDK primitives or extend a recipe | [SDK reference](./docs/sdk-reference.md) and [contributing](./docs/contributing.md) | Familiarity with async Python and the client/service boundary |
 
 **Directory convention:** run commands from `fine-tuning/interactive_training/`, the directory containing this README, `pyproject.toml`, and `dashboard_server.py`—not from the parent fine-tuning directory. The outer cookbook and inner Python package now both use `interactive_training`; use `python -m interactive_training...` for module commands. The cookbook distribution is `interactive-training`. The separately published SDK is installed as a dependency; no sibling SDK checkout is needed. See [storage rename compatibility](./docs/storage.md#logs-root) for the unchanged legacy logs configuration.
@@ -228,7 +228,8 @@ See [docs/recipes.md](./docs/recipes.md) for prerequisites and specialized workf
 | List / inspect / unload sessions and checkpoints | [docs/session-management.md](./docs/session-management.md) |
 | Continue training from a checkpoint | [docs/continual-fine-tuning.md](./docs/continual-fine-tuning.md) |
 | Adapt a recipe to my own data and rewards | [docs/custom-data.md](./docs/custom-data.md) |
-| Compare before/after and sample a saved checkpoint | [docs/evaluation-and-inference.md](./docs/evaluation-and-inference.md) |
+| Compare before/after and sample a saved checkpoint | [docs/evaluation-and-sampling.md](./docs/evaluation-and-sampling.md) |
+| Deploy a saved checkpoint and run inference | [docs/deployment-and-inference.md](./docs/deployment-and-inference.md) |
 | Resume a crashed / interrupted run | [docs/training.md](./docs/training.md#resuming-after-an-interruption) |
 | Browse recipes | [docs/recipes.md](./docs/recipes.md) |
 | Compare against reference benchmark numbers | [docs/benchmarks.md](./docs/benchmarks.md) |

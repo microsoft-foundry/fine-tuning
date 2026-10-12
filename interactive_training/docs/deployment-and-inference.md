@@ -2,7 +2,7 @@
 
 After training has saved a checkpoint, the Fireworks deployment helper can
 create a Foundry deployment from it. For sampling without a deployment, see
-[evaluation and inference](./evaluation-and-inference.md).
+[evaluation and sampling](./evaluation-and-sampling.md).
 
 ## Before you deploy
 

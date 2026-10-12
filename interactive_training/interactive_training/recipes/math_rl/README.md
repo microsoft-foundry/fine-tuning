@@ -135,7 +135,7 @@ constraint 1 for the full contract.
 ## Adapt, evaluate, and recover
 
 - Replace task data/grading through the existing [RL interfaces](../../../docs/custom-data.md#reinforcement-learning-data-and-rewards), not a fictional custom-file CLI argument.
-- Inspect `test/env/all/correct`, `test/env/all/reward/total`, `format`, completion-budget diagnostics, and the scored-episode count; [compare before/after](../../../docs/evaluation-and-inference.md) on a fixed held-out set.
-- Preserve the actual completed training checkpoint and use the [post-training sampling helper](../../../docs/evaluation-and-inference.md#use-a-training-checkpoint-after-the-original-session-closes); a sampler ID alone is not a portable deployment.
+- Inspect `test/env/all/correct`, `test/env/all/reward/total`, `format`, completion-budget diagnostics, and the scored-episode count; [compare before/after](../../../docs/evaluation-and-sampling.md) on a fixed held-out set.
+- Preserve the actual completed training checkpoint and use the [post-training sampling helper](../../../docs/evaluation-and-sampling.md#use-a-training-checkpoint-after-the-original-session-closes); a sampler ID alone is not a portable deployment.
 - For interruption, keep the original run config/ledger and follow [recovery](../../../docs/training.md#resuming-after-an-interruption). For a fresh continual run, use a new directory.
 - Normal cleanup is attempted by the shared loop. Inspect an owned leftover session with [session management](../../../docs/session-management.md) if cleanup fails; do not bulk-unload a project.
