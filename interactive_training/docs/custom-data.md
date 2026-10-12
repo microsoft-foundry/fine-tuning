@@ -168,9 +168,7 @@ def prepare_custom_sft(
     }
     return config, prepared, manifest
 
-async def run_custom_sft(config, prepared, manifest, *, approved=False):
-    if not approved:
-        raise PermissionError("Obtain explicit project/operation/budget approval first")
+async def run_custom_sft(config, prepared, manifest):
     if not config.max_steps or config.max_steps < 1:
         raise ValueError("Use a positive first-run step cap")
     endpoint = os.environ.get("AZURE_AI_PROJECT_ENDPOINT", "").strip()
@@ -221,8 +219,8 @@ print("Validated batches:", manifest["training_batches"], manifest["evaluation_b
 ```
 
 **Stop here until approval for the paid operation.** Confirm [project permissions
-and model capacity](./auth.md#confirm-access-before-spending), review the data and
-held-out split, and approve the named operation and budget. This helper uses
+and model capacity](./auth.md#confirm-project-access), review the data and
+held-out split, and approve the named operation. This helper uses
 identity authentication intentionally; setting an API-key environment variable
 does not change its credential code. It leaves the service's training tier
 unspecified rather than assuming a universally available or cheaper tier.
@@ -230,12 +228,10 @@ unspecified rather than assuming a universally available or cheaper tier.
 **Optional remote launch, only after that approval:**
 
 ```python
-checkpoint_path = asyncio.run(run_custom_sft(config, prepared, manifest, approved=True))
+checkpoint_path = asyncio.run(run_custom_sft(config, prepared, manifest))
 print("Completed training checkpoint:", checkpoint_path)  # Keep this identifier private.
 ```
 
-`approved=True` records a deliberate decision in this example; it is **not**
-a service permission, an automatic spending guard, or a Tulu3 CLI argument.
 Inside an already-running notebook event loop, use `await run_custom_sft(...)`
 instead of nesting `asyncio.run`. **SFT `max_steps=0` disables the cap; it is
 not evaluation-only.** The step cap does not bound loading, sampler warm-up,

@@ -40,7 +40,7 @@ Recorded benchmarks retain their original model names.
 
 See [Supported models](./docs/supported_models.md) for the authoritative
 interactive model identifiers, current eligibility, and fine-tuning regions.
-Check [authentication and access](./docs/auth.md#confirm-access-before-spending)
+Check [authentication and access](./docs/auth.md#confirm-project-access)
 for project authorization, model capacity, and quota before running a recipe.
 
 ## Install

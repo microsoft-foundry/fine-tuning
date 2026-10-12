@@ -89,7 +89,7 @@ Reuse or create a Foundry resource in a [supported region](./supported_models.md
 https://<account>.services.ai.azure.com/api/projects/<project-name>
 ```
 
-Use the project URL, not an ARM resource ID, a model deployment URL, or only the account hostname. Portal labels vary; see [authentication](./auth.md). Project authorization is still required; a supported model and region do not guarantee capacity. Do not grant yourself broad roles or launch a paid session to test access. See the [access checklist](./auth.md#confirm-access-before-spending) if access is unclear.
+Use the project URL, not an ARM resource ID, a model deployment URL, or only the account hostname. Portal labels vary; see [authentication](./auth.md). Project authorization is still required; a supported model and region do not guarantee capacity. Do not grant yourself broad roles or launch a paid session to test access. See the [access checklist](./auth.md#confirm-project-access) if access is unclear.
 
 Set the non-secret endpoint for this walkthrough:
 
