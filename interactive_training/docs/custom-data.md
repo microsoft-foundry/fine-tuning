@@ -219,16 +219,10 @@ config, prepared, manifest = prepare_custom_sft()
 print("Validated batches:", manifest["training_batches"], manifest["evaluation_batches"])
 ```
 
-<<<<<<< HEAD
-**Stop here until approval for the paid operation.** Confirm [project permissions
-and model capacity](./auth.md#confirm-project-access), review the data and
-held-out split, and approve the named operation. This helper uses
-=======
 Before the optional remote launch, confirm [project permissions and model
-capacity](./auth.md#confirm-access-before-spending) and review the data and
+capacity](./auth.md#confirm-project-access) and review the data and
 held-out split. The helper warns before allocating paid compute; no separate
 budget confirmation is required. This helper uses
->>>>>>> 741ab538b2a0030c296305634b6bb0b8dfeedff4
 identity authentication intentionally; setting an API-key environment variable
 does not change its credential code. It leaves the service's training tier
 unspecified rather than assuming a universally available or cheaper tier.
