@@ -11,6 +11,7 @@ Follow a complete learning journey, or use the reference pages for an existing r
 | Does my project have the right access? | [Authentication](./auth.md), [models and regions](./supported_models.md) | Correct project endpoint, credential, model eligibility, and capacity |
 | How do I use my own data and rewards? | [Custom data](./custom-data.md) | JSONL renders locally with valid masks; the programmatic SFT launch warns before paid execution and reuses validated data; RL grader checks pass |
 | Did training help, and how do I use the result? | [Evaluation and inference](./evaluation-and-inference.md) | Comparable held-out measurements and sampling from a saved checkpoint |
+| How do I deploy a saved checkpoint for serving? | [Deployment and inference](./deployment_and_inference.md) | Fireworks preview access, a provisioned deployment, and an inference and cleanup plan |
 | Where are my artifacts? | [Storage](./storage.md) and [dashboard](./dashboard.md) | Config, metrics, ledger, and sensitive artifacts can be located and interpreted |
 | How do I recover or free resources? | [Recovery](./training.md#resuming-after-an-interruption), [continual training](./continual-fine-tuning.md), [session management](./session-management.md) | The intended checkpoint/cursor is loaded; owned sessions are inspected and explicitly closed |
 | What can a coding agent safely run? | [Repository execution contract](https://github.com/microsoft-foundry/fine-tuning/blob/main/AGENTS.md) and [contributing](./contributing.md) | Offline checks are separated from downloads and paid/destructive operations |
@@ -47,6 +48,7 @@ Help displays the actual CLI contract without creating a session. A field on a p
 ### Evaluation and operations
 
 - [Evaluation and inference](./evaluation-and-inference.md): baseline/final comparisons, saved checkpoint sampling, and deployment boundaries.
+- [Deployment and inference](./deployment_and_inference.md): Fireworks deployment from a saved checkpoint, serving handoff, and cleanup.
 - [Storage](./storage.md): local files versus remote state, artifact timing, and retention caveats.
 - [Dashboard](./dashboard.md): local visualization and private port forwarding.
 - [Session management](./session-management.md): discovery, checkpoint metadata, and explicitly scoped cleanup.
