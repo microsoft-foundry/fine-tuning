@@ -218,18 +218,18 @@ def test_image_extras_include_fast_processor_dependency():
 
 def test_public_model_tables_distinguish_available_and_legacy_models():
     text = (ROOT / "docs/supported_models.md").read_text(encoding="utf-8")
-    for heading, next_heading, expected, availability in (
+    for heading, next_heading, expected, statuses in (
         (
             "Available today", "Legacy models",
             ["Qwen/Qwen3.8-27B", "Qwen/Qwen3.6-35B-A3B",
              "openai/gpt-oss-120b", "meta-models/Muse-Glimmer-30B"],
-            "Available",
+            ["Available", "✅"],
         ),
         (
             "Legacy models", "Vision fine-tuning",
             ["Qwen/Qwen3-32B", "openai/gpt-oss-20b",
              "Qwen/Qwen3.5-4B", "Qwen/Qwen3.5-9B"],
-            "⚠️ Legacy",
+            ["⚠️ Legacy"],
         ),
     ):
         section = text.split(f"### {heading}\n", 1)[1].split(f"### {next_heading}\n", 1)[0]
@@ -240,7 +240,7 @@ def test_public_model_tables_distinguish_available_and_legacy_models():
             and not line.startswith("| Model ")
         ]
         assert [row[1].strip("`") for row in rows] == expected
-        assert all(len(row) == 3 and row[2] == availability for row in rows)
+        assert all(row[2:] == statuses for row in rows)
 
 
 def _notebook_cell(path, marker):
