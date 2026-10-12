@@ -362,7 +362,7 @@ The recipe `strategy=<name>` flag only resolves the built-ins (via `build_strate
 
 **Cadence is loop-specific.** Sync/streaming RL can persist both training and sampler weights on save or step-evaluation boundaries after the starting iteration; intervening refreshes are ephemeral. Async RL has separate sampling/evaluation timing. SFT periodic saves follow `save_every`, not every evaluation boundary, and the current SFT implementation saves `kind="both"` at periodic/final boundaries. Do not infer that every metric row has a durable matching checkpoint.
 
-The fresh synchronous quickstart evaluates starting weights before the first update and final weights after the final save. Baseline/evaluation can share a step label with training metrics; `num_substeps` can issue more than one optimizer update per RL iteration. Use [evaluation and inference](./evaluation-and-inference.md) and the actual ledger to select weights, rather than choosing a checkpoint only from a chart's step number.
+The fresh synchronous quickstart evaluates starting weights before the first update and final weights after the final save. Baseline/evaluation can share a step label with training metrics; `num_substeps` can issue more than one optimizer update per RL iteration. Use [evaluation and sampling](./evaluation-and-sampling.md) and the actual ledger to select weights, rather than choosing a checkpoint only from a chart's step number.
 
 ## Training Type
 
@@ -438,4 +438,4 @@ Also preserve dataset revision/order, split, seed, and batch/group configuration
 - [storage.md](./storage.md) — where the recipe writes everything
 - [dashboard.md](./dashboard.md) — view live metrics in a browser
 - [continual-fine-tuning.md](./continual-fine-tuning.md) — keep training from a previous run
-- [evaluation-and-inference.md](./evaluation-and-inference.md) — measure quality and use saved weights without inventing a deployment API
+- [evaluation-and-sampling.md](./evaluation-and-sampling.md) — measure quality and sample saved weights within Fine-Tuning Sessions

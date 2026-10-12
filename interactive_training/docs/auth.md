@@ -5,19 +5,19 @@ pick a credential mode automatically based on the endpoint and environment.
 
 ## Prerequisite — an Azure AI Foundry resource
 
-Use an Azure AI Foundry resource **and a project under that resource** in your Azure subscription. You can reuse existing ones or create them if authorized. The resource/account key and the **project endpoint** are related but distinct: an account-level endpoint alone is not the recipe's project URL.
+Use an Azure AI Foundry resource **and a project under that resource** in your Azure subscription. You can reuse existing ones or create them. The resource/account key and the **project endpoint** are related but distinct: an account-level endpoint alone is not the recipe's project URL.
 
 > [!IMPORTANT]
 > The Foundry resource **must** be in one of the regions listed in [supported_models.md](./supported_models.md#available-regions).
 
-### Confirm access before spending
+### Confirm project access
 
 Ask the project administrator to verify these separately for the intended
 tenant, subscription, resource, project, model, and region:
 
 | Gate | Evidence to obtain | Not a substitute |
 |---|---|---|
-| Authentication mode | The expected identity or an approved resource-key mechanism | A different identity being signed into the CLI |
+| Authentication mode | The expected identity or a supported resource-key mechanism | A different identity being signed into the CLI |
 | Authorization | Applicable role permissions and scope for session creation, training, sampling, checkpoint access, and cleanup | A generic Reader grant or successful token acquisition |
 | Model and region | Current interactive eligibility for the exact base model and project region | A renderer existing in the cookbook or a historical benchmark |
 | Capacity and quota | The project's applicable training tier and model capacity/quota | A supported-region table or an assumption that retries will create capacity |
@@ -72,7 +72,7 @@ export AZURE_AI_API_KEY="<your-azure-ai-api-key>"
 
 In PowerShell the equivalent is `$env:AZURE_AI_API_KEY = "<your-azure-ai-api-key>"`.
 The placeholders above are not credentials. Prefer injecting the value through
-an approved secret mechanism; literal assignments may remain in shell history.
+a secure secret mechanism; literal assignments may remain in shell history.
 Do not put a real key into recipe arguments or a checked-in file.
 
 When this variable is present, the recipe uses `AzureKeyCredential` and logs:

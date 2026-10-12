@@ -1,6 +1,9 @@
-# Evaluate improvement and use a checkpoint
+# Evaluation and sampling
 
 Close the loop from **train → measure → save → sample** using the existing cookbook and published SDK. A passing smoke run proves infrastructure worked; it does not establish model quality, checkpoint portability, or production deployment.
+
+This guide covers evaluation and sampling within Fine-Tuning Sessions.
+For deployment inference, see [deployment and inference](./deployment-and-inference.md).
 
 ## Set the comparison contract first
 
@@ -313,7 +316,7 @@ pass its original settings to **both** calls. Each call attempts remote
 cleanup before returning. A failed request aborts the comparison instead of
 being counted as an incorrect model answer; inspect its cleanup before retrying.
 Do not generalize one label into a percentage improvement. For a real study,
-use a separately held-out, versioned set and an approved task-specific
+use a separately held-out, versioned set and a task-specific
 evaluator that reuses compatible sessions, reports coverage/errors, and follows
 the [comparison contract](#set-the-comparison-contract-first). The tiny helper
 above creates a session per call and is not a recommended high-volume serving
@@ -321,7 +324,13 @@ or evaluation pattern.
 
 ## What this does not deploy
 
-The SDK operations above provide **sampling within Fine-Tuning Sessions**. They do not document an adapter-download route, a GGUF/GPTQ conversion, a local Transformers/vLLM serving workflow, or publication to an OpenAI-compatible deployment. Those require a separately supported export/deployment path and its permissions; do not infer them from `state_path` or `sampler_path`.
+The SDK operations above provide **sampling within Fine-Tuning Sessions**;
+they do not themselves create a serving deployment. For the separately
+access-controlled Fireworks deployment path using a saved checkpoint, see
+[deployment and inference](./deployment-and-inference.md). Neither path
+documents an adapter-download route, GGUF/GPTQ conversion, or local
+Transformers/vLLM serving workflow; do not infer those from `state_path` or
+`sampler_path`.
 
 ### Application handoff boundary
 
@@ -329,10 +338,10 @@ The SDK operations above provide **sampling within Fine-Tuning Sessions**. They 
 |---|---|---|
 | Inspect a generated response | Compatible session restore, sampler sync, and SDK sampling above | Project access, capacity, prompt privacy, and owned-session cleanup |
 | Evaluate a task | Existing NER evaluation CLI, RL/SFT evaluator APIs, and the comparison contract | Task-specific generation/grading, complete coverage, and sufficient held-out evidence |
-| Run application inference | No documented permanent inference deployment in these helpers | A supported serving provider/path, compatible model/adapter format, serving access, auth/API contract, capacity, price, and deletion plan |
+| Run application inference | Separate [Fireworks deployment helper](./deployment-and-inference.md) for saved checkpoints | Preview access, serving auth/API contract, capacity, price, and deletion plan |
 | Export weights or run locally | No verified export/download/conversion recipe in the pinned public workflow | A supported export route, model/data/license rights, format compatibility, and separately validated conversion/runtime |
 
-Interactive training access is not serving-preview approval. Ask the service or
+Interactive training access does not imply serving-preview access. Ask the service or
 serving owner for the supported handoff **before** promising an application
 endpoint; do not call session sampling an OpenAI-compatible deployment. Keep
 training, sampler, and deployed-resource identifiers distinct in the handoff.

@@ -55,7 +55,7 @@ One JSON object per line, written per logging event. Training and evaluation can
 - `optim/*` and backend-reported stats — the exact set depends on the service/model.
 - `time/*` — wall-clock seconds for each phase of the step (sample, forward_backward, optim_step, …).
 
-SFT instead records `train_mean_nll`, `test/nll`, sequence/loss-token counts, and its learning-rate/timing fields. Standalone NER evaluation writes `metrics.json` and a manifest rather than this training layout. Use the [evaluation guide](./evaluation-and-inference.md#which-metric-means-what) for interpretation; reward is not universally accuracy, and missing results are not zero.
+SFT instead records `train_mean_nll`, `test/nll`, sequence/loss-token counts, and its learning-rate/timing fields. Standalone NER evaluation writes `metrics.json` and a manifest rather than this training layout. Use the [evaluation guide](./evaluation-and-sampling.md#which-metric-means-what) for interpretation; reward is not universally accuracy, and missing results are not zero.
 
 > [!NOTE]
 > All keys under the `time/` prefix are wall-clock **seconds**, not steps.
@@ -90,7 +90,7 @@ Per-iteration interactive HTML pages showing each sampled trajectory group with 
 | Live training/sampling state | Service session / compute | Deleting files or stopping the dashboard does not close it |
 | Saved training/sampler checkpoints | Service-managed storage | Removing a ledger does not delete the remote checkpoint |
 
-Preserve the source session ID and completed training-checkpoint name/path before changing machines. A saved training checkpoint can initialize a new compatible session; restoring the same dataset cursor additionally requires the local ledger/config. See [recovery](./training.md#resuming-after-an-interruption), [continual training](./continual-fine-tuning.md), and [checkpoint sampling](./evaluation-and-inference.md).
+Preserve the source session ID and completed training-checkpoint name/path before changing machines. A saved training checkpoint can initialize a new compatible session; restoring the same dataset cursor additionally requires the local ledger/config. See [recovery](./training.md#resuming-after-an-interruption), [continual training](./continual-fine-tuning.md), and [checkpoint sampling](./evaluation-and-sampling.md).
 
 Persistence is not a retention guarantee. The pinned adapter ignores `ttl_seconds`; confirm service retention/deletion policy before relying on a checkpoint. Closing/unloading an owned session is different from deleting it; do not use a delete operation as routine cleanup because it can remove checkpoints too.
 

@@ -208,4 +208,4 @@ finally:
         credential.close()
 ```
 
-This closes local clients, **not** Azure sessions. For a complete async lifecycle with checkpoint restore and remote cleanup, see [evaluation and inference](./evaluation-and-inference.md#use-a-training-checkpoint-after-the-original-session-closes).
+This closes local clients, **not** Azure sessions. For a complete async lifecycle with checkpoint restore and remote cleanup, see [evaluation and sampling](./evaluation-and-sampling.md#use-a-training-checkpoint-after-the-original-session-closes).

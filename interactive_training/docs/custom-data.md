@@ -220,7 +220,7 @@ print("Validated batches:", manifest["training_batches"], manifest["evaluation_b
 ```
 
 Before the optional remote launch, confirm [project permissions and model
-capacity](./auth.md#confirm-access-before-spending) and review the data and
+capacity](./auth.md#confirm-project-access) and review the data and
 held-out split. The helper warns before allocating paid compute; no separate
 budget confirmation is required. This helper uses
 identity authentication intentionally; setting an API-key environment variable
@@ -251,7 +251,7 @@ Initial and final `test/nll` rows measure the same held-out split. The final
 row may share a step number with a training row; retain file order. A lower
 NLL is not a classification-accuracy or safety guarantee.
 
-Use the returned `state_path` with the [checkpoint response helper](./evaluation-and-inference.md#use-a-training-checkpoint-after-the-original-session-closes)
+Use the returned `state_path` with the [checkpoint response helper](./evaluation-and-sampling.md#use-a-training-checkpoint-after-the-original-session-closes)
 and the original model/renderer/rank. Supply an unseen task prompt, not a
 training label, and compare with a baseline under the same sampling contract.
 Verify [remote cleanup](./session-management.md#free-gpu-memory-begin_unload)
@@ -374,4 +374,4 @@ Use [code/tool examples](./recipes.md#choose-a-path) only after approving their 
 - Keep training, tuning/validation, and final test data disjoint at the appropriate document/customer/time level.
 - Pin dataset revision/split and store an ID/hash manifest; record grader version and sampling settings.
 - Confirm data-use terms, tool permissions, and sensitive artifact handling.
-- Run a bounded workflow first, then [compare before/after](./evaluation-and-inference.md); do not claim improvement from training reward alone.
+- Run a bounded workflow first, then [compare before/after](./evaluation-and-sampling.md); do not claim improvement from training reward alone.

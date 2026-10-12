@@ -15,7 +15,7 @@ SFT does not require sampling for each training batch; RL does. The current
 shared SFT implementation still warms a sampler and saves sampler-format
 weights, so "no per-batch sampling" does not mean no inference allocation.
 A reward curve, lower training loss, or a successful API call is not sufficient
-evidence of general task improvement. See [evaluation and inference](./evaluation-and-inference.md).
+evidence of general task improvement. See [evaluation and sampling](./evaluation-and-sampling.md).
 
 ## Vocabulary
 
@@ -128,4 +128,4 @@ The pattern: a generic loop in `interactive_training/rl/` (RL) or `interactive_t
 4. Closing/unloading the session requests release of in-memory resources; verify the remote result. Unsaved state is not persisted, and local logs alone cannot recreate it.
 5. Recovery creates a new session from saved training state and restores the local cursor. Continual training uses a fresh log directory and starts its dataset cursor over.
 
-See [SDK save primitives](./sdk-reference.md#persistent-versus-ephemeral-checkpoints), [storage](./storage.md), and [sampling after training](./evaluation-and-inference.md#use-a-training-checkpoint-after-the-original-session-closes) for the concrete APIs and boundaries.
+See [SDK save primitives](./sdk-reference.md#persistent-versus-ephemeral-checkpoints), [storage](./storage.md), and [sampling after training](./evaluation-and-sampling.md#use-a-training-checkpoint-after-the-original-session-closes) for the concrete APIs and boundaries.

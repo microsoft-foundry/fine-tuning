@@ -1,12 +1,12 @@
 # Coding-agent execution contract
 
-These instructions apply to the repository. Use the public READMEs and maintained recipes; no separate fine-tuning skill installation is required.
+These instructions apply to the repository. Use the READMEs, code and recipes; no separate fine-tuning skill installation is required.
 
-## Route and resolve sources
+## Resolve sources
 
 1. Start with the root README, then the chosen track's README and setup guide. Use managed jobs for supported predefined methods; use interactive sessions for custom training-loop behavior. A custom managed grader alone does not require interactive training.
 2. For managed work, read `managed_fine_tuning/README.md`, `catalog.yml`, the selected demo's `demo.yaml`, README, `.env.template`, and canonical `notebooks/demo.ipynb`. Use the learning path/task index to select the demo.
-3. For interactive work, read `interactive_training/README.md`, `docs/quickstart.md`, `docs/auth.md`, and the selected recipe's README and configuration.
+3. For interactive work, read `interactive_training/README.md`, `docs/auth.md`, and the selected recipe's README and configuration.
 4. Interactive model/region eligibility comes from `interactive_training/docs/supported_models.md`. Managed eligibility comes from Foundry's model-specific documentation and the catalog prerequisites; notebook model roles are not a universal availability guarantee.
 5. Track-specific setup guides define repository paths. Subtree metadata/templates define data and configuration; installed SDK signatures and implementation define operations. Historical changelog entries, benchmarks, and past runtime artifacts do not override these sources. If they conflict, report the conflict and stop before remote operations rather than guessing.
 
@@ -66,13 +66,12 @@ client is not remote unload.
 
 Recurring runs require an explicit request naming the frequency, models/data,
 evaluation scope, expiry, owner, and disable/reconciliation procedure. A manual
-run request is not a request for recurring work. Follow
-[the paid smoke operator guide](PAID_SMOKE_TESTING.md); do not enable its
+run request is not a request for recurring work. Do not enable its
 workflow or change environment permissions automatically.
 
 ## Secrets and runtime state
 
-Never print or commit populated `.env` files, keys, tokens, endpoint/resource identifiers, or runtime manifests. Use supported credential providers; do not add silent authentication fallbacks. Logs must redact secrets. Keep runtime identifiers in the selected demo's ignored `outputs/` or the interactive run location documented by its storage guide.
+Never print or commit populated `.env` files, keys, or tokens.
 
 ## Monitor, recover, evaluate, and clean up
 
@@ -81,3 +80,10 @@ Record job/session/checkpoint IDs locally and monitor terminal state with the do
 Save durable checkpoints and driver state before interruption. Distinguish training-state checkpoints from sampler checkpoints and deployed endpoints. Most managed demos stop at training metrics; only Retail adds comparisons with externally provisioned deployments. Report that boundary, and never turn lower loss or a past benchmark into a claim of held-out task improvement.
 
 At handoff, report operations performed, artifacts and remaining resources, evaluation limitations, and ongoing cost exposure without exposing secrets. Cancellation, session unload, local-client closure, and deployment deletion are separate actions. Do not clean up shared or unidentified resources.
+
+## Content update instructions
+
+Before updating any README, check whether a more focused guide, recipe, or reference
+document is a better home for the change. Keep READMEs useful as human-facing entry
+points: link to detailed material rather than duplicating it or adding unrelated
+implementation details.

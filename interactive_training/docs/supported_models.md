@@ -4,26 +4,24 @@
 
 ### Available today
 
-| Model | Identifier (`model_name` / `tokenizer_name`) | Availability |
-|---|---|:---:|
-| qwen38-27b | `Qwen/Qwen3.8-27B` | Available |
-| qwen36-35b-a3b | `Qwen/Qwen3.6-35B-A3B` | Available |
-| gpt-oss-120b | `openai/gpt-oss-120b` | Available |
-| muse-glimmer-30b | `meta-models/Muse-Glimmer-30B` | Available |
+| Model | Identifier (`model_name` / `tokenizer_name`) | Availability | Fireworks Deployment |
+|---|---|:---:|:---:|
+| qwen38-27b | `Qwen/Qwen3.8-27B` | Available | ✅ |
+| qwen36-35b-a3b | `Qwen/Qwen3.6-35B-A3B` | Available | ✅ |
+| gpt-oss-120b | `openai/gpt-oss-120b` | Available | ✅ |
+| muse-glimmer-30b | `meta-models/Muse-Glimmer-30B` | Available | ✅ |
 
-Model availability also depends on model and region capacity;
-these status labels do not guarantee quota.
+> [!WARNING]
+> Model availability also depends on account access and serving capacity;
+> these status labels do not guarantee quota.
 
 Pass the **model identifier** as both `model_name` and `tokenizer_name` to the
 recipes (e.g. `model_name="Qwen/Qwen3.8-27B" tokenizer_name="Qwen/Qwen3.8-27B"`).
 Shared text recipes default to `Qwen/Qwen3.8-27B`; omitting `tokenizer_name`
-uses the selected model's tokenizer. The general Qwen3.8 renderer default is
-`qwen3_8_low_reasoning`; explicit renderer overrides and specialized non-thinking
-preferences are preserved. Renderer support in code does not imply service
-availability beyond the models listed below.
+uses the selected model's tokenizer.
 
-Model inferencing is offered through the **Fireworks private preview**. For more information and to request access, see
-[aka.ms/fireworks-consent](https://aka.ms/fireworks-consent).
+**Fireworks Deployment** requires preview access and serving capacity;
+see [deployment and inference](./deployment-and-inference.md) for the deployment workflow.
 
 The client needs only public tokenizer files, not local model weights or a
 private tokenizer path.
@@ -31,7 +29,7 @@ private tokenizer path.
 **Keep identifiers exact.** Model name, tokenizer, renderer, and LoRA settings
 must remain compatible with a saved checkpoint. A new default model does not
 make an older checkpoint portable to another base model. See
-[checkpoint reuse](./evaluation-and-inference.md#use-a-training-checkpoint-after-the-original-session-closes).
+[checkpoint reuse](./evaluation-and-sampling.md#use-a-training-checkpoint-after-the-original-session-closes).
 
 ### Legacy models
 
