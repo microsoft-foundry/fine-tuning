@@ -8,8 +8,8 @@ Train `MAI-Code-1.1-Flash-2026-09-15` to produce minimal, regression-safe Python
 repairs with managed reinforcement fine-tuning. This preview model supports
 **RFT only**; it does not support SFT, DPO, or interactive training.
 
-The tutorial uses the supplied [50 training and 15 validation examples](data/README.md)
-and the unchanged [`code_repair_quality` score-model grader](graders/code_repair_quality.json).
+The tutorial uses [50 training and 15 validation examples](data/README.md)
+and [score-model grader](graders/code_repair_quality.json).
 The grader uses `o3-mini-2025-01-31`, rewards correctness, requirements,
 minimality, and a usable patch, and returns a score from 0 to 1 with a pass
 threshold of 0.7.
@@ -30,13 +30,12 @@ supported by `DefaultAzureCredential`. Before remote execution, confirm:
   Data zone. These types do not guarantee that training stays in the project's
   region; review the [supported models and training types](https://learn.microsoft.com/azure/foundry/fine-tuning/overview#supported-models)
   and confirm the effective service defaults before uploading private data.
-- Support for the supplied `o3-mini-2025-01-31` grader and its sampling settings.
+- Support for the `o3-mini-2025-01-31` grader and its sampling settings.
   [Grader hosting requirements](https://learn.microsoft.com/azure/foundry/openai/how-to/reinforcement-fine-tuning#model-grader-deployments)
   depend on the selected training model. Provision any required grader deployment
   separately; this notebook does not create one or change shared capacity.
-- The right to use the supplied data and model, and an acceptable budget for
-  training and grading. Dataset provenance and licensing are not independently
-  established by this example.
+- Data and model terms appropriate for your use case, privacy requirements for
+  any custom data, and training and grading costs.
 
 Sections 1-4 are offline: they verify exact file hashes, row schemas, duplicate
 and prompt isolation, grader bindings, and the recipe. Sections 5 onward load
@@ -92,8 +91,8 @@ Keep these files private and retain them for recovery and cleanup.
 ## What the results do and do not establish
 
 The grader is an LLM code-review judgment. It does **not** apply the patch,
-compile code, or execute the stated tests. Offline checks prove the supplied
-contract is wired correctly, not that the grader assigns trustworthy scores.
+compile code, or execute the stated tests. Offline checks verify that the data
+and grader contracts are wired correctly, not that the grader assigns trustworthy scores.
 Calibrate separately on correct, incorrect, malformed, and reward-hacking
 responses before relying on the reward.
 

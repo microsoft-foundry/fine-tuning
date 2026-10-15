@@ -113,7 +113,7 @@ demos:
     prerequisites: [foundry-project, entra-id, preview-access, rft-access, model-access, grader-model-access, quota]
     cost_tier: variable
     runtime_tier: variable
-    validation: {status: partial, notes: "Preserved 50/15 code-repair splits and the supplied score-model grader are checked offline; live access, grading calibration, training, and serving are not established by these checks."}
+    validation: {status: partial, notes: "The 50/15 code-repair splits and score-model grader are checked offline; live access, grading calibration, training, and serving are not established by these checks."}
 
   - <<: *sft_bug
     id: agentic-rft-tool-calling

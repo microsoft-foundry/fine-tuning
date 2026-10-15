@@ -10,7 +10,7 @@ All three notebooks are safe to run through their offline preparation and grader
 sections. File upload and RFT submission occur only when their explicit cells
 are executed; there is no hidden enable switch.
 
-The code-repair tutorial checks the supplied grader's structure and field bindings
+The code-repair tutorial checks the grader's structure and field bindings
 offline, not the grading model's accuracy. It stops at service training metrics;
 the model grader does not execute candidate patches or tests.
 

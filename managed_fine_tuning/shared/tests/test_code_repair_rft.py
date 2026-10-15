@@ -124,6 +124,15 @@ def test_byte_pinned_inputs_disable_git_text_conversion():
         assert fields[index + 1:index + 3] == [b"text", b"unset"]
 
 
+def test_dataset_manifest_contains_only_public_integrity_metadata():
+    manifest = json.loads((DEMO / "data" / "hashes.json").read_text(encoding="utf-8"))
+    assert set(manifest) == {"algorithm", "normalization", "artifacts"}
+    assert manifest["algorithm"] == "sha256"
+    assert manifest["normalization"] == "none"
+    for artifact in manifest["artifacts"]:
+        assert set(artifact) == {"path", "bytes", "rows", "sha256"}
+
+
 @pytest.mark.parametrize("change", [
     lambda row: row.pop("requirements"),
     lambda row: row.update(reference_patch=""),

@@ -1,8 +1,7 @@
 # Code-repair quality grader
 
-[`code_repair_quality.json`](code_repair_quality.json) preserves the supplied
-`score_model` grader without changes to its prompts, model, range, threshold,
-or sampling parameters.
+[`code_repair_quality.json`](code_repair_quality.json) defines a `score_model`
+reward function for Python code repairs.
 
 | Dimension | Weight |
 |---|---:|

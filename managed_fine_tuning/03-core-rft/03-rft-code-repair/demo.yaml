@@ -41,5 +41,5 @@ cost_tier: variable
 runtime_tier: variable
 validation:
   status: partial
-  notes: Preserved 50/15 code-repair splits and the supplied score-model grader are checked offline; live
-    access, grading calibration, training, and serving are not established by these checks.
+  notes: The 50/15 code-repair splits and score-model grader are checked offline; live access, grading
+    calibration, training, and serving are not established by these checks.

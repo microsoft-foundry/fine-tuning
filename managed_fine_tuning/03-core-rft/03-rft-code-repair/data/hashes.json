@@ -1,20 +1,15 @@
 {
   "algorithm": "sha256",
-  "normalization": "none; exact supplied bytes",
-  "source_dataset": "User-supplied code-repair RFT examples",
-  "source_revision": null,
-  "license": "Not supplied; verify rights before redistribution or upload",
+  "normalization": "none",
   "artifacts": [
     {
       "path": "data/preserved/code-repair-rft-training.jsonl",
-      "source": "code-repair-rft-training (1).jsonl",
       "bytes": 47678,
       "rows": 50,
       "sha256": "00398c62ebc0bf7ab9b4d4abe6231452a6ca387af56ae6bc9558c483bf7ab28c"
     },
     {
       "path": "data/preserved/code-repair-rft-validation.jsonl",
-      "source": "code-repair-rft-validation (1).jsonl",
       "bytes": 15177,
       "rows": 15,
       "sha256": "2944c6a1e73f3a32a98ea8dc957d4dcdc06f3fdf32c5b219a9592f9a46c437bc"
