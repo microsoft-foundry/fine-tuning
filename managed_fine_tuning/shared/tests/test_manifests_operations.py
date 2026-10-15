@@ -44,7 +44,8 @@ class Jobs:
         return SimpleNamespace(data=self.data)
 
     def create(self, **payload):
-        job = SimpleNamespace(id="ftjob-created", status="queued", **payload)
+        extra_body = payload.pop("extra_body", {})
+        job = SimpleNamespace(id="ftjob-created", status="queued", **payload, **extra_body)
         self.data.append(job)
         return job
 
@@ -111,6 +112,121 @@ def test_pending_job_is_reused() -> None:
     )
     assert result.reused
     assert result.resource_id == "ftjob-pending"
+    assert len(jobs.data) == 1
+
+
+def test_training_type_is_sent_and_matching_job_is_reused() -> None:
+    jobs = Jobs()
+    client = SimpleNamespace(fine_tuning=SimpleNamespace(jobs=jobs))
+    first = create_or_reuse_fine_tuning_job(
+        client, model="base-model", training_file_id="file-train",
+        training_type="globalStandard",
+    )
+    assert jobs.data[0].trainingType == "globalStandard"
+    second = create_or_reuse_fine_tuning_job(
+        client, model="base-model", training_file_id="file-train",
+        training_type="GlobalStandard",
+    )
+    assert second.reused
+    assert first.resource_id == second.resource_id
+    assert len(jobs.data) == 1
+
+
+@pytest.mark.parametrize("actual", [None, "standard", "developer"])
+def test_training_type_mismatch_is_not_reused(actual) -> None:
+    jobs = Jobs()
+    job = SimpleNamespace(
+        id="job-recorded", status="pending", model="base-model",
+        training_file="file-train", validation_file=None, trainingType=actual,
+    )
+    jobs.data.append(job)
+    jobs.retrieve = lambda _job_id: job
+    client = SimpleNamespace(fine_tuning=SimpleNamespace(jobs=jobs))
+    with pytest.raises(RuntimeError, match="trainingType"):
+        create_or_reuse_fine_tuning_job(
+            client, model="base-model", training_file_id="file-train",
+            training_type="globalStandard", existing_job_id=job.id,
+        )
+    result = create_or_reuse_fine_tuning_job(
+        client, model="base-model", training_file_id="file-train",
+        training_type="globalStandard",
+    )
+    assert not result.reused
+    assert len(jobs.data) == 2
+
+
+@pytest.mark.parametrize("status", ["pending", "validating_files", "queued", "running", "succeeded"])
+def test_explicit_job_id_recovers_matching_recipe(status) -> None:
+    jobs = Jobs()
+    method = {
+        "type": "reinforcement",
+        "reinforcement": {
+            "grader": {
+                "type": "score_model",
+                "input": [{"role": "user", "content": "{{sample.output_text}}"}],
+            },
+        },
+    }
+    actual = {
+        "type": "reinforcement",
+        "reinforcement": {
+            "grader": {
+                "type": "score_model",
+                "input": [{"role": "user", "content": "{{sample.output_text}}", "type": "message"}],
+            },
+            "hyperparameters": {"n_epochs": 1},
+        },
+    }
+    job = SimpleNamespace(
+        id="job-recorded", status=status, model="base-model",
+        training_file="file-train", validation_file="file-valid",
+        method=SimpleNamespace(model_dump=lambda: actual),
+        metadata={"cookbook_suffix": "sample-rft"},
+    )
+    jobs.data.append(job)
+    jobs.retrieve = lambda job_id: job if job_id == job.id else None
+    client = SimpleNamespace(fine_tuning=SimpleNamespace(jobs=jobs))
+
+    result = create_or_reuse_fine_tuning_job(
+        client, model="base-model", training_file_id="file-train",
+        validation_file_id="file-valid", method=method, suffix="sample-rft",
+        existing_job_id="job-recorded",
+    )
+
+    assert result.reused
+    assert result.resource_id == job.id
+    assert len(jobs.data) == 1
+
+
+@pytest.mark.parametrize("changed", [
+    {"model": "other-model"},
+    {"training_file": "other-training"},
+    {"validation_file": "other-validation"},
+    {"method": {"type": "supervised"}},
+    {"method": {"type": "reinforcement", "reinforcement": {"grader": {"name": "other"}}}},
+    {"suffix": "other-suffix"},
+    {"status": "failed"},
+    {"status": "cancelled"},
+])
+def test_explicit_job_id_never_replaces_mismatched_or_terminal_job(changed) -> None:
+    jobs = Jobs()
+    method = {"type": "reinforcement", "reinforcement": {"grader": {"name": "supplied"}}}
+    job = SimpleNamespace(
+        id="job-recorded", status="pending", model="base-model",
+        training_file="file-train", validation_file="file-valid",
+        method=method, suffix="sample-rft",
+    )
+    for name, value in changed.items():
+        setattr(job, name, value)
+    jobs.data.append(job)
+    jobs.retrieve = lambda _job_id: job
+    with pytest.raises(RuntimeError, match="does not match|cannot be reused"):
+        create_or_reuse_fine_tuning_job(
+            SimpleNamespace(fine_tuning=SimpleNamespace(jobs=jobs)),
+            model="base-model", training_file_id="file-train",
+            validation_file_id="file-valid", method=method, suffix="sample-rft",
+            existing_job_id=job.id,
+        )
     assert len(jobs.data) == 1
 
 

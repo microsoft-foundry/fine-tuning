@@ -66,10 +66,10 @@ Runtime state, service CSVs, and customer comparison results are created only
 when the corresponding cells execute under ignored `outputs/`. Preserve the state file to resume;
 it is bound to endpoints, input hashes, and methods. An uncertain submission
 stops for explicit reconciliation rather than silently submitting twice.
-Retail submission uses the visible SDK call to preserve the required
-`trainingType=globalStandard` extension, which the shared job helper does not
-accept. SDK write retries are disabled, and the pending marker is saved before
-the POST; no failed creation is automatically resubmitted.
+Retail submission uses a visible SDK call with the required
+`trainingType=globalStandard` extension. SDK write retries are disabled, and
+the pending marker is saved before the POST; no failed creation is automatically
+resubmitted.
 SFT reports single-call original-grader reward alongside exact and
 tool-name accuracy over all 280 held-out rows. RFT reports policy reward,
 pass count, and exact tool sequence over the same nine read-only scenarios

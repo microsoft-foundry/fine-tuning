@@ -59,6 +59,11 @@ def _matches_configuration(actual: Any, requested: Any) -> bool:
             key in actual and _matches_configuration(actual[key], value)
             for key, value in requested.items()
         )
+    if isinstance(requested, list):
+        return isinstance(actual, list) and len(actual) == len(requested) and all(
+            _matches_configuration(value, expected)
+            for value, expected in zip(actual, requested)
+        )
     return actual == requested
 
 
@@ -211,22 +216,70 @@ def _job_suffix(job: Any) -> str | None:
     return suffix
 
 
+def _job_training_type(job: Any) -> str | None:
+    value = getattr(job, "trainingType", None) or getattr(job, "training_type", None)
+    return str(value).casefold() if value is not None else None
+
+
 def create_or_reuse_fine_tuning_job(
     client: Any,
     *,
     model: str,
     training_file_id: str,
     validation_file_id: str | None = None,
+    existing_job_id: str | None = None,
     suffix: str | None = None,
     hyperparameters: dict[str, Any] | None = None,
     method: dict[str, Any] | None = None,
+    training_type: str | None = None,
     reuse: bool = True,
 ) -> OperationResult:
-    """Create a job, or reuse one with the same immutable inputs and suffix."""
+    """Create or reuse a matching job; reject a mismatched explicit job ID."""
     if not model.strip() or not training_file_id.strip():
         raise ValueError("model and training_file_id are required")
+    if training_type is not None and not training_type.strip():
+        raise ValueError("training_type must be non-empty when supplied")
     started = time.monotonic()
     normalized_suffix = slugify(suffix, max_length=40) if suffix else None
+    if existing_job_id:
+        job = retry_call(
+            lambda: client.fine_tuning.jobs.retrieve(existing_job_id),
+            operation_name="retrieve recorded fine-tuning job",
+        )
+        expected = {
+            "model": model,
+            "training_file": training_file_id,
+            "validation_file": validation_file_id,
+        }
+        if hyperparameters is not None:
+            expected["hyperparameters"] = hyperparameters
+        if method is not None:
+            expected["method"] = method
+        mismatches = [
+            key for key, value in expected.items()
+            if not _matches_configuration(getattr(job, key, None), value)
+        ]
+        if training_type is not None and _job_training_type(job) != training_type.casefold():
+            mismatches.append("trainingType")
+        if normalized_suffix is not None and _job_suffix(job) != normalized_suffix:
+            mismatches.append("suffix")
+        if mismatches:
+            raise RuntimeError(
+                "Recorded fine-tuning job does not match the requested recipe: "
+                + ", ".join(mismatches)
+            )
+        if _status(job) not in REUSABLE_JOB_STATUSES:
+            raise RuntimeError(
+                f"Recorded fine-tuning job cannot be reused in state {_status(job)}"
+            )
+        return OperationResult(
+            operation="fine-tuning-job",
+            resource_id=_resource_id(job, "Fine-tuning job"),
+            name=normalized_suffix or model,
+            status=_status(job),
+            reused=True,
+            elapsed_seconds=time.monotonic() - started,
+        )
     if reuse:
         matches = [
             job
@@ -248,6 +301,10 @@ def create_or_reuse_fine_tuning_job(
             and (
                 method is None
                 or _matches_configuration(getattr(job, "method", None), method)
+            )
+            and (
+                training_type is None
+                or _job_training_type(job) == training_type.casefold()
             )
         ]
         if len(matches) > 1:
@@ -279,6 +336,8 @@ def create_or_reuse_fine_tuning_job(
         payload["hyperparameters"] = hyperparameters
     if method is not None:
         payload["method"] = method
+    if training_type is not None:
+        payload["extra_body"] = {"trainingType": training_type}
     # An ambiguous POST failure must be reconciled, not automatically resubmitted.
     job = _submission_client(client).fine_tuning.jobs.create(**payload)
     return OperationResult(

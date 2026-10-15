@@ -49,6 +49,7 @@ jobs:
         run: >-
           python -m pytest -q --tb=short
           shared/tests/test_catalog.py
+          shared/tests/test_code_repair_rft.py
           shared/tests/test_cookbook_contract.py
           shared/tests/test_countdown_cancellation.py
           shared/tests/test_dataset_validation.py

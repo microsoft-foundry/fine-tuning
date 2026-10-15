@@ -58,7 +58,8 @@ def main() -> int:
             print(f"metadata drift: {path}")
         return 1
     action = "updated" if args.write else "validated"
-    print(f"{action} {len(mismatches) if args.write else 14} demo metadata files")
+    count = len(mismatches) if args.write else len(load_catalog(args.root.resolve())["demos"])
+    print(f"{action} {count} demo metadata files")
     return 0
 
 

@@ -1,0 +1,45 @@
+id: rft-mai-code-repair
+title: 'RFT Code Repair: MAI-Code-1.1-Flash'
+stage: 03-core-rft
+status: preview
+path: 03-core-rft/03-rft-code-repair
+techniques:
+- rft
+modalities:
+- text
+- code
+notebooks:
+- path: notebooks/demo.ipynb
+  role: end-to-end
+  performs_fine_tuning: true
+  sections:
+  - prepare
+  - train
+  - monitor
+  - metrics
+training:
+  base_models:
+  - MAI-Code-1.1-Flash-2026-09-15
+  teacher_models: []
+  evaluator_models:
+  - o3-mini-2025-01-31
+  result_model: runtime-recorded
+capabilities:
+- file-upload
+- rft
+- model-grader
+- training-metrics
+prerequisites:
+- foundry-project
+- entra-id
+- preview-access
+- rft-access
+- model-access
+- grader-model-access
+- quota
+cost_tier: variable
+runtime_tier: variable
+validation:
+  status: partial
+  notes: Preserved 50/15 code-repair splits and the supplied score-model grader are checked offline; live
+    access, grading calibration, training, and serving are not established by these checks.

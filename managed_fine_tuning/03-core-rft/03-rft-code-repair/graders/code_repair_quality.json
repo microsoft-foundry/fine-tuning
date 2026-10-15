@@ -1,0 +1,20 @@
+{
+  "type": "score_model",
+  "name": "code_repair_quality",
+  "input": [
+    {
+      "role": "system",
+      "content": "You are a strict senior code-review evaluator. Judge only the candidate response against the supplied reference patch, test expectations, and requirements. Reward functional correctness and minimal, regression-safe changes. Do not infer missing behavior, do not give credit for explanations that are not supported by the patch, and return only a single floating-point score within the configured range."
+    },
+    {
+      "role": "user",
+      "content": "Grade the candidate code repair from 0.0 to 1.0.\n\nScoring:\n- 0.55 functional correctness against every stated test expectation\n- 0.20 satisfaction of all requirements and edge cases\n- 0.15 minimality, maintainability, and absence of regressions\n- 0.10 a usable patch and concise explanation\n\nReference patch:\n{{item.reference_patch}}\n\nTest expectations:\n{{item.test_expectations}}\n\nRequirements:\n{{item.requirements}}\n\nCandidate response:\n{{sample.output_text}}\n\nReturn only one floating-point score from 0.0 to 1.0."
+    }
+  ],
+  "pass_threshold": 0.7,
+  "range": [0, 1],
+  "model": "o3-mini-2025-01-31",
+  "sampling_params": {
+    "seed": 42
+  }
+}

@@ -34,7 +34,7 @@ See the [model and region registry](interactive_training/docs/supported_models.m
 
 | Model | Managed Fine-Tuning | Interactive Training (preview) |
 |---|---|:---:|
-| `MAI-Code-1.1-Flash` **(preview)** | ✅ (RFT) | ❌ |
+| [`MAI-Code-1.1-Flash`](managed_fine_tuning/03-core-rft/03-rft-code-repair/README.md) **(preview)** | ✅ (RFT) | ❌ |
 | `Qwen3.8-27B` **(preview)** | ✅ (SFT, RFT) | ✅ |
 | `Qwen3.6-35B-A3B` **(preview)** | ✅ (SFT, RFT) | ✅ |
 | `gpt-oss-120b` **(preview)** | ✅ (SFT, RFT) | ✅ |
@@ -56,7 +56,7 @@ See the [model and region registry](interactive_training/docs/supported_models.m
 | Resource | What you'll find |
 |---|---|
 | [Managed fine-tuning](managed_fine_tuning/README.md) | Managed training guide. |
-| [Managed fine-tuning learning path](managed_fine_tuning/LEARNING_PATH.md) | Six-stage curriculum and 14 canonical notebooks. |
+| [Managed fine-tuning learning path](managed_fine_tuning/LEARNING_PATH.md) | Six-stage curriculum and 15 canonical notebooks. |
 | [Managed fine-tuning task index](managed_fine_tuning/TASK_INDEX.md) | Find a notebook by task; each demo owns its data and setup template. |
 | [Interactive training](interactive_training/README.md) | Interactive cookbook, recipes, and SDK guidance. |
 | [Interactive training docs](interactive_training/docs/README.md) | Setup, training concepts, checkpoints, and troubleshooting. |

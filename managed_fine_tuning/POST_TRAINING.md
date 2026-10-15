@@ -93,6 +93,25 @@ terminal state; a cancellation request is not proof that cancellation completed.
 This snippet is cancellation-only; deployment, inference, and comparison remain
 separate approved workflows.
 
+The [MAI code-repair tutorial](03-core-rft/03-rft-code-repair/README.md) uses a
+`RuntimeManifest`, not the first-SFT state format. When following these
+cancellation/deletion examples for that tutorial, replace the state-extraction
+lines with the fields below; keep the endpoint comparison, terminal-state
+check, exact-ID confirmation, and shared-resource checks unchanged. Do not run
+the first-SFT state-extraction lines unchanged.
+
+| Value | Code-repair state field |
+|---|---|
+| Project endpoint | `state["resource_context"]["project_endpoint"]` |
+| Job ID | `state["operation_ids"]["job"]` |
+| Training / validation file IDs | `state["operation_ids"]["training"]` / `state["operation_ids"]["validation"]` |
+| Fine-tuned artifact | `state["operation_ids"]["fine_tuned_model"]` after success |
+
+Require `state["demo_id"] == "rft-mai-code-repair"` before adopting these
+fields. The private `<split>_file_reused` flags are ownership evidence, not
+proof that a file is currently unshared; inspect other jobs before deletion.
+An unknown upload/submission outcome must be reconciled before cleanup.
+
 Uploaded-file deletion is also separate. Only after confirming that a saved
 file ID is not shared by another job, reconstruct the context again and require
 an exact per-file confirmation:

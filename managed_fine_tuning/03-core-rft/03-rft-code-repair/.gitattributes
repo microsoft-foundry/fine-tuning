@@ -1,0 +1,2 @@
+data/preserved/*.jsonl -text
+graders/*.json -text whitespace=cr-at-eol

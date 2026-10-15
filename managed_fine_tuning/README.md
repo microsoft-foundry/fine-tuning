@@ -4,7 +4,7 @@ This clean-slate cookbook root provides the shared contracts for a six-stage
 learning journey from a first supervised fine-tuning job through multimodal,
 reinforcement, agentic, synthetic-data, and distillation workflows.
 
-The track folders contain **14 canonical end-to-end notebooks**. `catalog.yml`
+The track folders contain **15 canonical end-to-end notebooks**. `catalog.yml`
 records `validation.status: partial`: structure, notebook syntax, metadata,
 preserved dataset hashes, sanitized assets, and offline-safe paths are
 validated. Running upload and training cells performs live Foundry operations
