@@ -56,7 +56,7 @@ See the [model and region registry](interactive_training/docs/supported_models.m
 | Resource | What you'll find |
 |---|---|
 | [Managed fine-tuning](managed_fine_tuning/README.md) | Managed training guide. |
-| [Managed fine-tuning learning path](managed_fine_tuning/LEARNING_PATH.md) | Six-stage curriculum and 14 canonical notebooks. |
+| [Managed fine-tuning learning path](managed_fine_tuning/LEARNING_PATH.md) | Six-stage curriculum and 15 canonical notebooks. |
 | [Managed fine-tuning task index](managed_fine_tuning/TASK_INDEX.md) | Find a notebook by task; each demo owns its data and setup template. |
 | [Interactive training](interactive_training/README.md) | Interactive cookbook, recipes, and SDK guidance. |
 | [Interactive training docs](interactive_training/docs/README.md) | Setup, training concepts, checkpoints, and troubleshooting. |
@@ -67,7 +67,7 @@ See the [model and region registry](interactive_training/docs/supported_models.m
 > [!NOTE]
 > **Before production:** evaluate quality and safety on held-out data and review model/data licenses. Samples are for experimentation. Training, tools, and serving may incur separate charges; clean up unused resources.
 
-Managed notebooks are offline-validated, not evidence of a successful cloud run. Most stop at service training metrics; only Retail adds comparisons using separately provisioned deployments. Training completion alone does not establish application quality or create a serving endpoint.
+Managed notebooks are offline-validated, not evidence of a successful cloud run. Most stop at service training metrics; MAI Code Repair adds optional SDK deployment creation and inference, while Retail adds comparisons using separately provisioned deployments. Training completion alone does not establish application quality or create a serving endpoint.
 
 ## 🤝 Contributing
 

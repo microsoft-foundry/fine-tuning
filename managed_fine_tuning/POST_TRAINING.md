@@ -1,8 +1,10 @@
 # Post-training evaluation, serving, cancellation, and cleanup
 
 Managed notebooks establish terminal job status and service-produced training
-metrics. Except for the Retail Capstone's optional comparison, they do not
-provision deployments or prove held-out application quality.
+metrics. MAI Code Repair adds optional SDK deployment creation and inference;
+the Retail Capstone adds optional comparisons using existing deployments.
+Training metrics and single-prompt inference do not prove held-out application
+quality.
 
 ## Identify the trained artifact
 
@@ -92,6 +94,35 @@ ambiguous cancellation response. Retrieve the job in Foundry until it reaches a
 terminal state; a cancellation request is not proof that cancellation completed.
 This snippet is cancellation-only; deployment, inference, and comparison remain
 separate approved workflows.
+
+The [MAI code-repair tutorial](03-core-rft/03-rft-code-repair/README.md) saves
+plain ID files and the native completed-job response, not the first-SFT state
+format:
+
+| Value | Code-repair output file |
+|---|---|
+| Project endpoint used for upload | `outputs/project-endpoint.txt` |
+| Job ID | `outputs/job-id.txt` |
+| Training / validation file IDs | `outputs/training-file-id.txt` / `outputs/validation-file-id.txt` |
+| Fine-tuned artifact and result-file IDs | `outputs/completed-job.json` after success |
+| Requested serving deployment name | `outputs/deployment-name.txt` before the optional deployment creation request |
+| Completed serving deployment response | `outputs/completed-deployment.json` after successful SDK provisioning |
+| Native inference response | `outputs/inference-response.json` after the optional inference step |
+
+When following the cancellation example for code repair, replace its
+state-extraction lines with:
+
+```python
+job_id = Path("outputs/job-id.txt").read_text(encoding="utf-8").strip()
+saved_endpoint = Path("outputs/project-endpoint.txt").read_text(encoding="utf-8").strip()
+```
+
+For the uploaded-file deletion example, use the same `saved_endpoint` line
+and read `file_ids` from the two file-ID text files instead of the first-SFT
+state. Keep the endpoint comparison, terminal-state check, exact-ID
+confirmation, and shared-resource checks. Saved IDs are not proof of exclusive
+ownership: inspect other jobs before deleting files. An unknown upload or
+submission outcome must be reconciled before retrying or cleaning up.
 
 Uploaded-file deletion is also separate. Only after confirming that a saved
 file ID is not shared by another job, reconstruct the context again and require

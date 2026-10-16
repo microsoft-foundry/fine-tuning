@@ -2,7 +2,7 @@ schema_version: "1.0"
 validation:
   status: partial
   scope: Static structure, notebook JSON and Python syntax, metadata, preserved dataset hashes, sanitized assets, and offline-safe paths.
-  notes: Notebooks report service-produced loss or reward metrics. Executing training cells performs live operations and can incur charges. The Retail Capstone additionally verifies separately provisioned deployments and supports base-versus-fine-tuned comparisons.
+  notes: Notebooks report service-produced loss or reward metrics. Executing training, deployment, or inference cells performs live operations and can incur charges. MAI Code Repair includes SDK deployment creation and inference. The Retail Capstone verifies separately provisioned deployments and supports base-versus-fine-tuned comparisons.
 
 demos:
   - &sft_bug
@@ -99,6 +99,22 @@ demos:
     prerequisites: [foundry-project, entra-id, rft-access, model-access, quota]
     cost_tier: high
     runtime_tier: long
+
+  - <<: *sft_bug
+    id: rft-mai-code-repair
+    title: "RFT Code Repair: MAI-Code-1.1-Flash"
+    stage: 03-core-rft
+    status: preview
+    path: 03-core-rft/03-rft-code-repair
+    techniques: [rft]
+    modalities: [text, code]
+    notebooks: [{path: notebooks/demo.ipynb, role: end-to-end, performs_fine_tuning: true, sections: [prepare, train, monitor, metrics, deploy, inference]}]
+    training: {base_models: [MAI-Code-1.1-Flash], teacher_models: [], evaluator_models: [o3-mini-2025-01-31], result_model: runtime-recorded}
+    capabilities: [file-upload, rft, model-grader, training-metrics, deployment, inference]
+    prerequisites: [foundry-project, entra-id, preview-access, rft-access, model-access, grader-model-access, quota]
+    cost_tier: variable
+    runtime_tier: variable
+    validation: {status: partial, notes: "The 50/15 code-repair splits and score-model grader are checked offline; live access, grading calibration, training, and serving are not established by these checks."}
 
   - <<: *sft_bug
     id: agentic-rft-tool-calling

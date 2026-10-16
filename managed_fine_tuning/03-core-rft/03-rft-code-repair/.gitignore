@@ -1,0 +1,6 @@
+.env
+outputs/
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/
+*.pyc

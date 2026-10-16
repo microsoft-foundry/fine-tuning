@@ -4,8 +4,9 @@ This track teaches reward design before training:
 
 1. [`01-rft-countdown`](01-rft-countdown/README.md) trains the same Countdown data with a model/score grader and a deterministic Python grader, then summarizes validation reward.
 2. [`02-rft-math-reasoning`](02-rft-math-reasoning/README.md) applies a hardened Python grader to longer advanced-math reasoning and summarizes reward history.
+3. [`03-rft-code-repair`](03-rft-code-repair/README.md) uses **MAI-Code-1.1-Flash (preview)** for managed RFT with a reference-patch score-model grader and the preserved 50/15 code-repair splits. This model does not support interactive training.
 
-Both notebooks are safe to run through their offline preparation and grader-test
+All three notebooks are safe to run through their offline preparation and grader-contract
 sections. File upload and RFT submission occur only when their explicit cells
 are executed; there is no hidden enable switch.
 
