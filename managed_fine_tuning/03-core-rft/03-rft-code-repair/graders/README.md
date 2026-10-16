@@ -17,8 +17,9 @@ binds to the candidate's complete JSON-as-text response. The grader returns
 a float in `[0, 1]`; the pass threshold is `0.7`.
 
 This is a model-based judgment, not an executable correctness oracle.
-The notebook validates the configuration and placeholder bindings offline,
-but does not send calibration requests or execute candidate code. A fixed
+The repository's offline tests verify the definition and placeholder bindings.
+The notebook loads the grader and passes it to the SDK; it does not send
+calibration requests or execute candidate code. A fixed
 sampling seed does not guarantee deterministic scoring.
 
 Before a paid run, separately check that valid alternative patches score well,

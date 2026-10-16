@@ -10,7 +10,7 @@
 | Monitor a job with terminal errors | `monitor_fine_tuning_job` | SFT and RFT demos |
 | Download service result files | Fine-tuning file APIs | Every completed job |
 | Summarize validation loss or reward | Demo-local metric parser | Every completed job |
-| Reward minimal, regression-safe code repairs | [`03-core-rft/03-rft-code-repair`](03-core-rft/03-rft-code-repair/README.md), supplied score-model grader | MAI-Code-1.1-Flash (preview), managed RFT only |
+| Reward minimal, regression-safe code repairs | [`03-core-rft/03-rft-code-repair`](03-core-rft/03-rft-code-repair/README.md), score-model grader | MAI-Code-1.1-Flash (preview), managed RFT only |
 | Use meaningful remote names | `NameFactory` | Files and jobs |
 | Log without leaking customer context | `shared/logging.py` | Every service operation |
 | Retry only transient failures | `RetryPolicy`, `retry_call` | Network and service propagation |

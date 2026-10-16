@@ -93,24 +93,31 @@ terminal state; a cancellation request is not proof that cancellation completed.
 This snippet is cancellation-only; deployment, inference, and comparison remain
 separate approved workflows.
 
-The [MAI code-repair tutorial](03-core-rft/03-rft-code-repair/README.md) uses a
-`RuntimeManifest`, not the first-SFT state format. When following these
-cancellation/deletion examples for that tutorial, replace the state-extraction
-lines with the fields below; keep the endpoint comparison, terminal-state
-check, exact-ID confirmation, and shared-resource checks unchanged. Do not run
-the first-SFT state-extraction lines unchanged.
+The [MAI code-repair tutorial](03-core-rft/03-rft-code-repair/README.md) saves
+plain ID files and the native completed-job response, not the first-SFT state
+format:
 
-| Value | Code-repair state field |
+| Value | Code-repair output file |
 |---|---|
-| Project endpoint | `state["resource_context"]["project_endpoint"]` |
-| Job ID | `state["operation_ids"]["job"]` |
-| Training / validation file IDs | `state["operation_ids"]["training"]` / `state["operation_ids"]["validation"]` |
-| Fine-tuned artifact | `state["operation_ids"]["fine_tuned_model"]` after success |
+| Project endpoint used for upload | `outputs/project-endpoint.txt` |
+| Job ID | `outputs/job-id.txt` |
+| Training / validation file IDs | `outputs/training-file-id.txt` / `outputs/validation-file-id.txt` |
+| Fine-tuned artifact and result-file IDs | `outputs/completed-job.json` after success |
 
-Require `state["demo_id"] == "rft-mai-code-repair"` before adopting these
-fields. The private `<split>_file_reused` flags are ownership evidence, not
-proof that a file is currently unshared; inspect other jobs before deletion.
-An unknown upload/submission outcome must be reconciled before cleanup.
+When following the cancellation example for code repair, replace its
+state-extraction lines with:
+
+```python
+job_id = Path("outputs/job-id.txt").read_text(encoding="utf-8").strip()
+saved_endpoint = Path("outputs/project-endpoint.txt").read_text(encoding="utf-8").strip()
+```
+
+For the uploaded-file deletion example, use the same `saved_endpoint` line
+and read `file_ids` from the two file-ID text files instead of the first-SFT
+state. Keep the endpoint comparison, terminal-state check, exact-ID
+confirmation, and shared-resource checks. Saved IDs are not proof of exclusive
+ownership: inspect other jobs before deleting files. An unknown upload or
+submission outcome must be reconciled before retrying or cleaning up.
 
 Uploaded-file deletion is also separate. Only after confirming that a saved
 file ID is not shared by another job, reconstruct the context again and require

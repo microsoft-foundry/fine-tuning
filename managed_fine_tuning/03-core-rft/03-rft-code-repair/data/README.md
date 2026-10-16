@@ -26,8 +26,9 @@ RFT generates candidate repairs and rewards them rather than imitating the
 reference patch. The grader's `{{sample.output_text}}` receives the complete
 candidate response as text rather than parsed JSON fields.
 
-The notebook checks every record, exact hashes, duplicate records, duplicate
-user prompts, and train/validation isolation. These checks do not prove that
+The repository's offline tests check every record, exact hashes, duplicate
+records, duplicate user prompts, and train/validation isolation. The notebook
+loads the sample files and displays an example. These checks do not prove that
 the reference patches are correct, the prompt states every graded requirement,
 or the model grader recognizes all valid alternative repairs. Review those
 relationships when adapting the task.
