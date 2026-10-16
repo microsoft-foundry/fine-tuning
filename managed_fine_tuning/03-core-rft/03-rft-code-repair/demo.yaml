@@ -21,7 +21,7 @@ notebooks:
   - inference
 training:
   base_models:
-  - MAI-Code-1.1-Flash-2026-09-15
+  - MAI-Code-1.1-Flash
   teacher_models: []
   evaluator_models:
   - o3-mini-2025-01-31

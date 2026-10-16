@@ -5,7 +5,7 @@
 **Canonical notebook:** [`notebooks/demo.ipynb`](notebooks/demo.ipynb)
 
 Use the Microsoft Foundry Project SDK to train
-`MAI-Code-1.1-Flash-2026-09-15` to produce minimal, regression-safe Python code
+`MAI-Code-1.1-Flash` to produce minimal, regression-safe Python code
 repairs. This preview model supports **managed RFT only**, not SFT, DPO, or
 interactive training.
 

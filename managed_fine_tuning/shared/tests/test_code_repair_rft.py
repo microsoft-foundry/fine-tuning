@@ -176,7 +176,7 @@ def test_offline_preparation_uses_exact_inputs_without_cloud_or_outputs(
     project_factory, _, _ = patch_project_sdk(monkeypatch, client)
     namespace = prepare(monkeypatch, demo_copy, notebooks_cwd=notebooks_cwd)
     project_factory.assert_not_called()
-    assert namespace["MODEL"] == "MAI-Code-1.1-Flash-2026-09-15"
+    assert namespace["MODEL"] == "MAI-Code-1.1-Flash"
     assert namespace["DEMO_ROOT"] == demo_copy
     assert not namespace["OUTPUT_DIR"].exists()
     assert "client" not in namespace
@@ -213,7 +213,7 @@ def test_notebook_tables_use_explicit_left_alignment():
 def test_metadata_and_navigation_include_the_new_model():
     catalog = yaml.safe_load((ROOT / "catalog.yml").read_text(encoding="utf-8"))
     demo = next(item for item in catalog["demos"] if item["id"] == "rft-mai-code-repair")
-    assert demo["training"]["base_models"] == ["MAI-Code-1.1-Flash-2026-09-15"]
+    assert demo["training"]["base_models"] == ["MAI-Code-1.1-Flash"]
     assert demo["training"]["evaluator_models"] == ["o3-mini-2025-01-31"]
     assert demo["techniques"] == ["rft"]
     assert demo["status"] == "preview"
@@ -600,7 +600,7 @@ def test_notebook_calls_serialize_with_installed_sdk(monkeypatch, demo_copy, man
             payload = json.loads(request.content)
             submitted.append(payload)
             assert payload == {
-                "model": namespace["MODEL"], "training_file": file_ids[0],
+                "model": "MAI-Code-1.1-Flash", "training_file": file_ids[0],
                 "validation_file": file_ids[1], "suffix": "mai-code-repair",
                 "method": {"type": "reinforcement", "reinforcement": {"grader": namespace["GRADER"]}},
                 "trainingType": "globalStandard",

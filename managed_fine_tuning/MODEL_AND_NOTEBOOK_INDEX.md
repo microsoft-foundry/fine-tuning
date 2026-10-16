@@ -4,7 +4,7 @@
 
 | Role | Meaning | Storage rule |
 |---|---|---|
-| Base/student model | The model submitted to the fine-tuning job. | Exact supported version in demo metadata or an explicit runtime configuration value. |
+| Base/student model | The model submitted to the fine-tuning job. | Supported model ID in demo metadata or an explicit runtime configuration value. |
 | Fine-tuned result model | The service-produced model identifier. | Record only in the user's ignored runtime manifest. |
 | Teacher model | Produces labels, demonstrations, synthetic data, or traces. | Document the role separately from the model being optimized. |
 | Grader | Computes reinforcement-training reward. | Version the definition and keep it attached to the training contract. |
@@ -16,7 +16,7 @@ live outcomes still depend on the reader's model access, region, quota, and data
 ## MAI-Code-1.1-Flash (preview)
 
 The [code-repair RFT tutorial](03-core-rft/03-rft-code-repair/README.md) uses
-`MAI-Code-1.1-Flash-2026-09-15` as the base model and `o3-mini-2025-01-31` as the
+`MAI-Code-1.1-Flash` as the base model and `o3-mini-2025-01-31` as the
 score-model grader. The grader is not a teacher or the model being fine-tuned.
 MAI-Code-1.1-Flash supports managed RFT only, not SFT, DPO, or interactive
 training. Confirm preview access, the exact model identifier, region, grader
