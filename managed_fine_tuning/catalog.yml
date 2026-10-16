@@ -2,7 +2,7 @@ schema_version: "1.0"
 validation:
   status: partial
   scope: Static structure, notebook JSON and Python syntax, metadata, preserved dataset hashes, sanitized assets, and offline-safe paths.
-  notes: Notebooks report service-produced loss or reward metrics. Executing training or inference cells performs live operations and can incur charges. MAI Code Repair includes a portal deployment walkthrough and SDK inference. The Retail Capstone verifies separately provisioned deployments and supports base-versus-fine-tuned comparisons.
+  notes: Notebooks report service-produced loss or reward metrics. Executing training, deployment, or inference cells performs live operations and can incur charges. MAI Code Repair includes SDK deployment creation and inference. The Retail Capstone verifies separately provisioned deployments and supports base-versus-fine-tuned comparisons.
 
 demos:
   - &sft_bug

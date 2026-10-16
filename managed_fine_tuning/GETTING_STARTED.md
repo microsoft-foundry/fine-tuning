@@ -68,7 +68,10 @@ Run preparation and validation cells before upload and training cells.
 Executing the training cells submits or resumes live jobs and can incur
 charges; there is no additional execution switch. For the Retail Capstone,
 provision deployments through your approved management workflow before
-running its inference comparison cells.
+running its inference comparison cells. MAI Code Repair instead creates its
+optional serving deployment in the notebook using the Azure management SDK;
+fill in that demo's deployment-only `.env` settings before running its
+serving sections.
 
 ## Before a paid or long-running operation
 

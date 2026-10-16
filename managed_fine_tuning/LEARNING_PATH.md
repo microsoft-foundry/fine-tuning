@@ -2,7 +2,7 @@
 
 The physical curriculum is ordered by prerequisite depth. The 15 demos below
 have canonical notebooks and preserved data. Static and offline
-validation is complete. Upload, training, inference, and Retail comparison cells perform
+validation is complete. Upload, training, deployment, inference, and Retail comparison cells perform
 live Foundry operations when executed and can incur charges.
 
 | Stage | Goal | Demos |
@@ -21,7 +21,7 @@ metrics, and a scoped training-only conclusion.
 
 The Retail Capstone extends this outline with deployment verification
 and explicitly enabled base-versus-fine-tuned comparisons. MAI Code Repair adds
-an optional Serverless deployment walkthrough and SDK inference request.
+optional Serverless deployment creation and inference through SDK calls.
 Neither serving flow is required to complete the training-metric workflow.
 
 Use [Adapt your own data](ADAPT_YOUR_DATA.md) after completing the first SFT

@@ -13,9 +13,10 @@ The notebook walks through inspecting [50 training and 15 validation
 examples](data/README.md), loading a [score-model grader](graders/README.md),
 connecting with `AIProjectClient`, uploading files, creating an RFT job,
 monitoring it, and downloading training metrics. Optional sections show
-Serverless deployment through the Foundry portal, SDK deployment verification,
-and a code-repair inference request. SDK calls are shown directly; grader
-settings and RFT hyperparameters are explained alongside the workflow.
+Serverless deployment creation with the Azure management SDK and a
+code-repair inference request through the Project SDK. SDK calls are shown
+directly; grader settings and RFT hyperparameters are explained alongside the
+workflow.
 
 ## Setup
 
@@ -39,7 +40,7 @@ Global training does not guarantee residency in the project's region.
 | :--- | :--- |
 | 1-3 | Inspect local data and understand the model grader. |
 | 4-8 | Connect, upload, submit paid training, monitor, and inspect metrics. |
-| 9-10 | Optionally deploy through Foundry, verify the deployment, and run paid inference. |
+| 9-10 | Optionally create a deployment with the SDK, wait for provisioning, and run paid inference. |
 | 11 | Close local clients and review evaluation and cleanup responsibilities. |
 
 **Do not use Run All as an offline smoke test.** Each execution of the upload
@@ -54,12 +55,15 @@ See [post-training guidance](../../POST_TRAINING.md) for the saved-file layout,
 cancellation, and cleanup.
 
 For serving, MAI-Code-1.1-Flash supports **Serverless Global Standard**
-deployments, not Managed Compute or Fireworks. Create a deployment of the
-job's fine-tuned artifact through Foundry, then set
-`FOUNDRY_CODE_REPAIR_DEPLOYMENT` in your local `.env`. The Project SDK verifies
-the selected artifact and invokes the deployment; it does not create the
-deployment. Serving has separate permission, quota, hosting, and inference-cost
-requirements. You can stop after training and skip these optional sections.
+deployments, not Managed Compute or Fireworks. Fill in the deployment-only
+settings in your local `.env` for the same parent Foundry resource used in
+training, a new deployment name, and capacity within your quota. Section 9
+uses `CognitiveServicesManagementClient` to create the deployment and wait for
+provisioning; Section 10 invokes it through the Project SDK client. Serving
+requires project/deployment read and deployment-write permission and has
+separate quota, hosting, and inference costs. The notebook does not update
+existing deployments or create a new Foundry resource. You can stop after
+training and skip these optional sections.
 
 ## Interpret the results
 

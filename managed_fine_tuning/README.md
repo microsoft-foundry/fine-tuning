@@ -11,8 +11,8 @@ validated. Running upload and training cells performs live Foundry operations
 and can incur charges.
 
 Notebooks demonstrate optimization through service-produced loss or reward
-metrics. MAI Code Repair also includes an optional portal deployment walkthrough
-and SDK inference. The Retail Capstone includes deployment verification and
+metrics. MAI Code Repair also includes optional SDK deployment creation
+and inference. The Retail Capstone includes deployment verification and
 base-versus-fine-tuned comparisons when those cells are executed.
 
 ## Start here

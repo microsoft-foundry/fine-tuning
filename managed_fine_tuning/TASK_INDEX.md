@@ -11,7 +11,7 @@
 | Download service result files | Fine-tuning file APIs | Every completed job |
 | Summarize validation loss or reward | Demo-local metric parser | Every completed job |
 | Reward minimal, regression-safe code repairs | [`03-core-rft/03-rft-code-repair`](03-core-rft/03-rft-code-repair/README.md), score-model grader | MAI-Code-1.1-Flash (preview), managed RFT only |
-| Deploy a trained model and send a repair request | [`MAI Code Repair, Sections 9-10`](03-core-rft/03-rft-code-repair/notebooks/demo.ipynb) | Foundry portal deployment, Project SDK lookup, and inference |
+| Deploy a trained model and send a repair request | [`MAI Code Repair, Sections 9-10`](03-core-rft/03-rft-code-repair/notebooks/demo.ipynb) | Azure management SDK deployment creation and Project SDK inference |
 | Use meaningful remote names | `NameFactory` | Files and jobs |
 | Log without leaking customer context | `shared/logging.py` | Every service operation |
 | Retry only transient failures | `RetryPolicy`, `retry_call` | Network and service propagation |

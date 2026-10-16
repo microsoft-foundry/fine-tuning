@@ -1,7 +1,7 @@
 # Post-training evaluation, serving, cancellation, and cleanup
 
 Managed notebooks establish terminal job status and service-produced training
-metrics. MAI Code Repair adds optional portal deployment and SDK inference;
+metrics. MAI Code Repair adds optional SDK deployment creation and inference;
 the Retail Capstone adds optional comparisons using existing deployments.
 Training metrics and single-prompt inference do not prove held-out application
 quality.
@@ -105,7 +105,8 @@ format:
 | Job ID | `outputs/job-id.txt` |
 | Training / validation file IDs | `outputs/training-file-id.txt` / `outputs/validation-file-id.txt` |
 | Fine-tuned artifact and result-file IDs | `outputs/completed-job.json` after success |
-| Verified serving deployment name | `outputs/deployment-name.txt` after the optional deployment step |
+| Requested serving deployment name | `outputs/deployment-name.txt` before the optional deployment creation request |
+| Completed serving deployment response | `outputs/completed-deployment.json` after successful SDK provisioning |
 | Native inference response | `outputs/inference-response.json` after the optional inference step |
 
 When following the cancellation example for code repair, replace its

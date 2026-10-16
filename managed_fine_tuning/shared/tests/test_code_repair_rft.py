@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import sys
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 import yaml
@@ -47,6 +47,14 @@ COMPLETION = {
         "index": 0, "finish_reason": "stop",
         "message": {"role": "assistant", "content": COMPLETION_TEXT},
     }],
+}
+MANAGEMENT_DEPLOYMENT = {
+    "name": "offline-deployment",
+    "properties": {
+        "provisioningState": "Succeeded",
+        "model": {"format": "Microsoft", "name": "artifact-offline-result", "version": "1"},
+    },
+    "sku": {"name": "GlobalStandard", "capacity": 10},
 }
 
 
@@ -95,7 +103,6 @@ def patch_project_sdk(monkeypatch, client):
     credential = Mock()
     project = Mock()
     project.get_openai_client.return_value = client
-    project.deployments.get.return_value = SimpleNamespace(model_name="artifact-offline-result")
     project_factory = Mock(return_value=project)
     monkeypatch.setitem(
         sys.modules, "azure.ai.projects", SimpleNamespace(AIProjectClient=project_factory)
@@ -107,6 +114,36 @@ def patch_project_sdk(monkeypatch, client):
     monkeypatch.setenv("FOUNDRY_PROJECT_ENDPOINT", "https://example.test/api/projects/offline")
     monkeypatch.setenv("FOUNDRY_CODE_REPAIR_DEPLOYMENT", "offline-deployment")
     return project_factory, project, credential
+
+
+def configure_serving(monkeypatch):
+    for name, value in {
+        "FOUNDRY_SUBSCRIPTION_ID": "offline-subscription",
+        "FOUNDRY_RESOURCE_GROUP": "offline-group",
+        "FOUNDRY_ACCOUNT_NAME": "offline-account",
+        "FOUNDRY_CODE_REPAIR_CAPACITY": "10",
+    }.items():
+        monkeypatch.setenv(name, value)
+
+
+@pytest.fixture
+def management(monkeypatch):
+    sdk = pytest.importorskip("azure.mgmt.cognitiveservices")
+    from azure.mgmt.cognitiveservices.models import Deployment
+
+    configure_serving(monkeypatch)
+    client = MagicMock()
+    client.__enter__.return_value = client
+    client.projects.get.return_value = SimpleNamespace(properties=SimpleNamespace(
+        endpoints={"AI Foundry API": "https://example.test/api/projects/offline"}
+    ))
+    client.deployments.list.return_value = []
+    client.deployments.begin_create_or_update.return_value.result.return_value = (
+        Deployment.deserialize(MANAGEMENT_DEPLOYMENT)
+    )
+    factory = Mock(return_value=client)
+    monkeypatch.setattr(sdk, "CognitiveServicesManagementClient", factory)
+    return factory, client
 
 
 def completed_job(status="succeeded"):
@@ -273,7 +310,9 @@ def test_rft_data_checks_reject_invalid_rows(tmp_path, change):
         ).require_valid()
 
 
-def test_direct_sdk_workflow_saves_ids_and_displays_service_metrics(connected, monkeypatch, capsys):
+def test_direct_sdk_workflow_saves_ids_and_displays_service_metrics(
+    connected, management, monkeypatch, capsys
+):
     namespace, client, project_factory, project, credential = connected
     output = namespace["OUTPUT_DIR"]
     uploaded_bytes = []
@@ -333,8 +372,24 @@ def test_direct_sdk_workflow_saves_ids_and_displays_service_metrics(connected, m
     assert receipt["fine_tuned_model"] == "artifact-offline-result"
     assert (output / "training-metrics-1.csv").read_bytes() == METRICS_CSV
     assert tables[0][-1]["full_valid_mean_reward"] == "0.5"
-    project.deployments.get.assert_called_once_with("offline-deployment")
+    management_factory, management_client = management
+    management_factory.assert_called_once_with(
+        credential, "offline-subscription"
+    )
+    management_client.projects.get.assert_called_once_with("offline-group", "offline-account", "offline")
+    create = management_client.deployments.begin_create_or_update
+    assert create.call_args.args[:3] == ("offline-group", "offline-account", "offline-deployment")
+    assert create.call_args.args[3].serialize() == {
+        "sku": {"name": "GlobalStandard", "capacity": 10},
+        "properties": {"model": {"format": "Microsoft", "name": "artifact-offline-result", "version": "1"}},
+    }
+    create.return_value.result.assert_called_once_with()
+    management_client.__exit__.assert_called_once_with(None, None, None)
+    project.deployments.get.assert_not_called()
     assert (output / "deployment-name.txt").read_text(encoding="utf-8") == "offline-deployment"
+    deployment_receipt = json.loads((output / "completed-deployment.json").read_text(encoding="utf-8"))
+    assert deployment_receipt["properties"]["provisioning_state"] == "Succeeded"
+    assert deployment_receipt["properties"]["model"]["name"] == receipt["fine_tuned_model"]
     client.chat.completions.create.assert_called_once_with(
         model="offline-deployment", messages=namespace["inference_messages"], max_completion_tokens=2048
     )
@@ -352,43 +407,114 @@ def test_direct_sdk_workflow_saves_ids_and_displays_service_metrics(connected, m
     assert "artifact-offline-result" not in text
 
 
-def test_deployment_mismatch_stops_before_inference(connected):
-    namespace, client, _, project, _ = connected
+def test_deployment_mismatch_stops_before_inference(connected, management):
+    namespace, client, *_ = connected
     namespace["job"] = completed_job()
-    project.deployments.get.return_value = SimpleNamespace(model_name=namespace["MODEL"])
-    with pytest.raises(ValueError, match="this job's fine-tuned model"):
+    result = management[1].deployments.begin_create_or_update.return_value.result.return_value
+    result.properties.model.name = namespace["MODEL"]
+    with pytest.raises(RuntimeError, match="this job's fine-tuned model"):
         execute("mai-deploy", namespace)
-    assert not (namespace["OUTPUT_DIR"] / "deployment-name.txt").exists()
+    assert (namespace["OUTPUT_DIR"] / "deployment-name.txt").exists()
+    assert not (namespace["OUTPUT_DIR"] / "completed-deployment.json").exists()
     client.chat.completions.create.assert_not_called()
 
 
-def test_missing_deployment_is_not_created_implicitly(connected):
-    namespace, client, _, project, _ = connected
+def test_deployment_failure_preserves_name_and_stops_before_inference(connected, management):
+    from azure.core.exceptions import HttpResponseError
+
+    namespace, client, *_ = connected
     namespace["job"] = completed_job()
-    project.deployments.get.side_effect = RuntimeError("Deployment not found")
-    with pytest.raises(RuntimeError, match="Deployment not found"):
+    poller = management[1].deployments.begin_create_or_update.return_value
+
+    def fail():
+        assert (namespace["OUTPUT_DIR"] / "deployment-name.txt").read_text(encoding="utf-8") == (
+            "offline-deployment"
+        )
+        raise HttpResponseError("Deployment provisioning failed")
+
+    poller.result.side_effect = fail
+    with pytest.raises(HttpResponseError, match="Deployment provisioning failed"):
         execute("mai-deploy", namespace)
-    project.deployments.create.assert_not_called()
+    assert not (namespace["OUTPUT_DIR"] / "completed-deployment.json").exists()
     client.chat.completions.create.assert_not_called()
 
 
-def test_serving_configuration_is_only_required_for_optional_sections(connected, monkeypatch):
-    namespace, _, _, project, _ = connected
-    monkeypatch.delenv("FOUNDRY_CODE_REPAIR_DEPLOYMENT")
-    with pytest.raises(KeyError, match="FOUNDRY_CODE_REPAIR_DEPLOYMENT"):
+@pytest.mark.parametrize("setting", [
+    "FOUNDRY_SUBSCRIPTION_ID", "FOUNDRY_RESOURCE_GROUP", "FOUNDRY_ACCOUNT_NAME",
+    "FOUNDRY_CODE_REPAIR_DEPLOYMENT", "FOUNDRY_CODE_REPAIR_CAPACITY",
+])
+def test_serving_configuration_is_only_required_for_optional_sections(
+    connected, management, monkeypatch, setting
+):
+    namespace, *_ = connected
+    monkeypatch.delenv(setting)
+    with pytest.raises(KeyError, match=setting):
         execute("mai-deploy", namespace)
-    project.deployments.get.assert_not_called()
+    management[0].assert_not_called()
 
 
-def test_deployment_name_can_be_added_to_env_after_training(connected, monkeypatch):
-    namespace, _, _, project, _ = connected
+def test_deployment_name_can_be_added_to_env_after_training(connected, management, monkeypatch):
+    namespace, *_ = connected
     namespace["job"] = completed_job()
     monkeypatch.setenv("FOUNDRY_CODE_REPAIR_DEPLOYMENT", "")
     (namespace["DEMO_ROOT"] / ".env").write_text(
         "FOUNDRY_CODE_REPAIR_DEPLOYMENT=offline-new-deployment\n", encoding="utf-8"
     )
     execute("mai-deploy", namespace)
-    project.deployments.get.assert_called_once_with("offline-new-deployment")
+    assert management[1].deployments.begin_create_or_update.call_args.args[2] == (
+        "offline-new-deployment"
+    )
+
+
+def test_deployment_checks_target_project_before_creating(connected, management):
+    namespace, *_ = connected
+    namespace["job"] = completed_job()
+    management[1].projects.get.return_value.properties.endpoints = {
+        "AI Foundry API": "https://other.example.test/api/projects/offline"
+    }
+    with pytest.raises(ValueError, match="parent resource"):
+        execute("mai-deploy", namespace)
+    management[1].deployments.begin_create_or_update.assert_not_called()
+
+
+def test_deployment_keeps_the_training_client_project_after_env_reload(connected, management):
+    namespace, *_ = connected
+    namespace["job"] = completed_job()
+    (namespace["DEMO_ROOT"] / ".env").write_text(
+        "FOUNDRY_PROJECT_ENDPOINT=https://other.example.test/api/projects/other\n", encoding="utf-8"
+    )
+    execute("mai-deploy", namespace)
+    assert namespace["PROJECT_ENDPOINT"] == "https://example.test/api/projects/offline"
+    management[1].projects.get.assert_called_once_with("offline-group", "offline-account", "offline")
+
+
+@pytest.mark.parametrize("existing_name", ["offline-deployment", "OFFLINE-DEPLOYMENT"])
+def test_deployment_does_not_replace_an_existing_deployment(connected, management, existing_name):
+    namespace, *_ = connected
+    namespace["job"] = completed_job()
+    management[1].deployments.list.return_value = [SimpleNamespace(name=existing_name)]
+    with pytest.raises(ValueError, match="does not update existing deployments"):
+        execute("mai-deploy", namespace)
+    management[1].deployments.begin_create_or_update.assert_not_called()
+    assert not (namespace["OUTPUT_DIR"] / "deployment-name.txt").exists()
+
+
+@pytest.mark.parametrize("capacity", ["0", "-1"])
+def test_deployment_rejects_nonpositive_capacity(connected, management, monkeypatch, capacity):
+    namespace, *_ = connected
+    monkeypatch.setenv("FOUNDRY_CODE_REPAIR_CAPACITY", capacity)
+    with pytest.raises(ValueError, match="positive deployment capacity"):
+        execute("mai-deploy", namespace)
+    management[0].assert_not_called()
+
+
+@pytest.mark.parametrize("status,artifact", [("running", None), ("succeeded", None)])
+def test_deployment_requires_a_completed_training_artifact(connected, management, status, artifact):
+    namespace, *_ = connected
+    namespace["job"] = SimpleNamespace(status=status, fine_tuned_model=artifact)
+    with pytest.raises(RuntimeError, match="produce a model artifact"):
+        execute("mai-deploy", namespace)
+    management[0].assert_not_called()
 
 
 def test_monitor_recovers_saved_job_without_upload_or_submission(connected):
@@ -449,7 +575,7 @@ def test_missing_metrics_are_not_reported_as_success(connected, monkeypatch, res
     display.assert_not_called()
 
 
-def test_notebook_calls_serialize_with_installed_sdk(monkeypatch, demo_copy):
+def test_notebook_calls_serialize_with_installed_sdk(monkeypatch, demo_copy, management):
     openai = pytest.importorskip("openai")
     httpx = pytest.importorskip("httpx")
     pytest.importorskip("pandas")
@@ -509,3 +635,101 @@ def test_notebook_calls_serialize_with_installed_sdk(monkeypatch, demo_copy):
     assert (demo_copy / "outputs" / "training-metrics-1.csv").read_bytes() == METRICS_CSV
     saved_response = json.loads((demo_copy / "outputs" / "inference-response.json").read_text(encoding="utf-8"))
     assert saved_response["choices"][0]["message"]["content"] == COMPLETION_TEXT
+
+
+def test_deployment_serializes_and_polls_with_installed_management_sdk(monkeypatch, demo_copy):
+    sdk = pytest.importorskip("azure.mgmt.cognitiveservices")
+    from time import time
+    from urllib.parse import urlsplit
+
+    from azure.core.credentials import AccessTokenInfo
+    from azure.core.pipeline.transport import HttpResponse, HttpTransport
+    from azure.core.utils import case_insensitive_dict
+
+    namespace = prepare(monkeypatch, demo_copy)
+    _, _, credential = patch_project_sdk(monkeypatch, Mock())
+    credential.get_token_info.return_value = AccessTokenInfo("offline-token", int(time()) + 3600)
+    configure_serving(monkeypatch)
+    execute("mai-connect", namespace)
+    namespace["job"] = completed_job()
+    account_path = (
+        "/subscriptions/offline-subscription/resourceGroups/offline-group"
+        "/providers/Microsoft.CognitiveServices/accounts/offline-account"
+    )
+    calls = []
+
+    class Response(HttpResponse):
+        def __init__(self, request, status, body, headers=None):
+            super().__init__(request, None)
+            self.status_code = status
+            self.headers = case_insensitive_dict({"Content-Type": "application/json", **(headers or {})})
+            self.content_type = "application/json"
+            self._body = json.dumps(body).encode()
+
+        def body(self):
+            return self._body
+
+        def read(self):
+            return self._body
+
+        def close(self):
+            pass
+
+        def stream_download(self, pipeline, **kwargs):
+            return iter((self._body,))
+
+    class Transport(HttpTransport):
+        def open(self):
+            pass
+
+        def close(self):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.close()
+
+        def send(self, request, **kwargs):
+            path = urlsplit(request.url).path
+            calls.append((request.method, path))
+            if request.method == "GET" and path == account_path + "/projects/offline":
+                return Response(request, 200, {"properties": {"endpoints": {
+                    "AI Foundry API": "https://example.test/api/projects/offline"
+                }}})
+            if request.method == "GET" and path == account_path + "/deployments":
+                return Response(request, 200, {"value": []})
+            if request.method == "PUT" and path == account_path + "/deployments/offline-deployment":
+                assert json.loads(request.body) == {
+                    "sku": {"name": "GlobalStandard", "capacity": 10},
+                    "properties": {"model": {
+                        "format": "Microsoft", "name": "artifact-offline-result", "version": "1"
+                    }},
+                }
+                assert (namespace["OUTPUT_DIR"] / "deployment-name.txt").exists()
+                creating = {**MANAGEMENT_DEPLOYMENT, "properties": {
+                    **MANAGEMENT_DEPLOYMENT["properties"], "provisioningState": "Creating"
+                }}
+                return Response(request, 201, creating, {
+                    "Azure-AsyncOperation": "https://management.azure.com/operations/offline-deployment",
+                    "Retry-After": "0",
+                })
+            if request.method == "GET" and path == "/operations/offline-deployment":
+                return Response(request, 200, {"status": "Succeeded"})
+            if request.method == "GET" and path == account_path + "/deployments/offline-deployment":
+                return Response(request, 200, MANAGEMENT_DEPLOYMENT)
+            raise AssertionError(f"Unexpected management SDK request: {request.method} {path}")
+
+    native_factory = sdk.CognitiveServicesManagementClient
+    factory = Mock(side_effect=lambda credential, subscription_id: native_factory(
+        credential, subscription_id, transport=Transport(), polling_interval=0, retry_total=0
+    ))
+    monkeypatch.setattr(sdk, "CognitiveServicesManagementClient", factory)
+    execute("mai-deploy", namespace)
+    execute("mai-close", namespace)
+    assert ("GET", "/operations/offline-deployment") in calls
+    assert calls[-1] == ("GET", account_path + "/deployments/offline-deployment")
+    receipt = json.loads((namespace["OUTPUT_DIR"] / "completed-deployment.json").read_text(encoding="utf-8"))
+    assert receipt["properties"]["provisioning_state"] == "Succeeded"
+    assert receipt["properties"]["model"]["name"] == "artifact-offline-result"
