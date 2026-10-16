@@ -22,6 +22,9 @@ MAI-Code-1.1-Flash supports managed RFT only, not SFT, DPO, or interactive
 training. Confirm preview access, the exact model identifier, region, grader
 hosting requirements, and quota in your Foundry project before running remote
 cells; the notebook's local checks do not establish service eligibility.
+Optional serving sections walk through a Serverless Global Standard deployment
+in Foundry, verify its artifact with the Project SDK, and send one repair
+request. This is an inference demonstration, not a held-out quality comparison.
 
 ## Notebook roles
 
@@ -38,5 +41,6 @@ The 15 catalog entries each resolve to one canonical end-to-end notebook.
 Report the terminal job status and the service-produced validation loss,
 token-accuracy, or reward curve. Describe improvement only as a training signal;
 do not infer serving quality or downstream task performance from those curves.
-The Retail Capstone additionally includes explicitly enabled deployment and
+MAI Code Repair additionally demonstrates portal deployment and SDK inference.
+The Retail Capstone includes explicitly enabled deployment verification and
 base-versus-fine-tuned comparisons on the same preserved examples.

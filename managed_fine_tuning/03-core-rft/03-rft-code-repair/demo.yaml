@@ -17,6 +17,8 @@ notebooks:
   - train
   - monitor
   - metrics
+  - deploy
+  - inference
 training:
   base_models:
   - MAI-Code-1.1-Flash-2026-09-15
@@ -29,6 +31,8 @@ capabilities:
 - rft
 - model-grader
 - training-metrics
+- deployment
+- inference
 prerequisites:
 - foundry-project
 - entra-id

@@ -35,6 +35,19 @@ EXPECTED_INPUTS = {
 }
 GRADER_HASH = "57ec9f07ff12f001f9cdbf8a1aaa9a2e9d5e2e080d9dea1a000e0ae1fc7a64d7"
 METRICS_CSV = b"step,train_mean_reward,full_valid_mean_reward\n1,0.3,0.4\n2,0.6,0.5\n"
+COMPLETION_TEXT = json.dumps({
+    "patch": "--- a/helpers.py\n+++ b/helpers.py\n@@ -1 +1 @@\n-return items\n+return items[:count]\n",
+    "explanation": "Return the requested prefix.",
+    "tests": ["A zero count returns an empty list."],
+})
+COMPLETION = {
+    "id": "completion-offline", "object": "chat.completion", "created": 1,
+    "model": "offline-deployment",
+    "choices": [{
+        "index": 0, "finish_reason": "stop",
+        "message": {"role": "assistant", "content": COMPLETION_TEXT},
+    }],
+}
 
 
 def execute(cell_id, namespace):
@@ -82,6 +95,7 @@ def patch_project_sdk(monkeypatch, client):
     credential = Mock()
     project = Mock()
     project.get_openai_client.return_value = client
+    project.deployments.get.return_value = SimpleNamespace(model_name="artifact-offline-result")
     project_factory = Mock(return_value=project)
     monkeypatch.setitem(
         sys.modules, "azure.ai.projects", SimpleNamespace(AIProjectClient=project_factory)
@@ -91,6 +105,7 @@ def patch_project_sdk(monkeypatch, client):
         SimpleNamespace(DefaultAzureCredential=Mock(return_value=credential)),
     )
     monkeypatch.setenv("FOUNDRY_PROJECT_ENDPOINT", "https://example.test/api/projects/offline")
+    monkeypatch.setenv("FOUNDRY_CODE_REPAIR_DEPLOYMENT", "offline-deployment")
     return project_factory, project, credential
 
 
@@ -141,6 +156,23 @@ def test_notebook_teaches_sdk_calls_without_workflow_helpers():
     assert not any(name and name.startswith("shared") for name in imports)
 
 
+def test_notebook_tables_use_explicit_left_alignment():
+    tables = 0
+    for cell in NOTEBOOK["cells"]:
+        if cell["cell_type"] != "markdown":
+            continue
+        for line in "".join(cell["source"]).splitlines():
+            if not line.startswith("|"):
+                continue
+            columns = [column.strip() for column in line.strip("|").split("|")]
+            if columns and all(re.fullmatch(r":?-{3,}:?", column) for column in columns):
+                tables += 1
+                assert all(column.startswith(":") and not column.endswith(":") for column in columns)
+    assert tables > 0
+    dataset = next(cell for cell in NOTEBOOK["cells"] if cell["id"] == "mai-data-guide")
+    assert "| :--- | :--- |" in "".join(dataset["source"])
+
+
 def test_metadata_and_navigation_include_the_new_model():
     catalog = yaml.safe_load((ROOT / "catalog.yml").read_text(encoding="utf-8"))
     demo = next(item for item in catalog["demos"] if item["id"] == "rft-mai-code-repair")
@@ -149,6 +181,8 @@ def test_metadata_and_navigation_include_the_new_model():
     assert demo["techniques"] == ["rft"]
     assert demo["status"] == "preview"
     assert demo["validation"]["status"] == "partial"
+    assert {"deploy", "inference"} <= set(demo["notebooks"][0]["sections"])
+    assert {"deployment", "inference"} <= set(demo["capabilities"])
     for path in (
         ROOT / "03-core-rft" / "README.md",
         ROOT / "LEARNING_PATH.md",
@@ -265,13 +299,20 @@ def test_direct_sdk_workflow_saves_ids_and_displays_service_metrics(connected, m
     client.files.content.return_value.write_to_file.side_effect = (
         lambda path: path.write_bytes(METRICS_CSV)
     )
+    client.chat.completions.create.return_value = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=COMPLETION_TEXT))],
+        model_dump_json=lambda **kwargs: json.dumps(COMPLETION, **kwargs),
+    )
     tables = []
     monkeypatch.setitem(sys.modules, "pandas", SimpleNamespace(
         read_csv=lambda path: list(csv.DictReader(io.StringIO(path.read_text(encoding="utf-8"))))
     ))
     monkeypatch.setitem(sys.modules, "IPython.display", SimpleNamespace(display=tables.append))
 
-    for cell_id in ("mai-upload", "mai-submit", "mai-monitor", "mai-metrics", "mai-close"):
+    for cell_id in (
+        "mai-upload", "mai-submit", "mai-monitor", "mai-metrics",
+        "mai-deploy", "mai-infer", "mai-close",
+    ):
         execute(cell_id, namespace)
 
     assert uploaded_bytes == [namespace["TRAIN_PATH"].read_bytes(), namespace["VALIDATION_PATH"].read_bytes()]
@@ -292,6 +333,15 @@ def test_direct_sdk_workflow_saves_ids_and_displays_service_metrics(connected, m
     assert receipt["fine_tuned_model"] == "artifact-offline-result"
     assert (output / "training-metrics-1.csv").read_bytes() == METRICS_CSV
     assert tables[0][-1]["full_valid_mean_reward"] == "0.5"
+    project.deployments.get.assert_called_once_with("offline-deployment")
+    assert (output / "deployment-name.txt").read_text(encoding="utf-8") == "offline-deployment"
+    client.chat.completions.create.assert_called_once_with(
+        model="offline-deployment", messages=namespace["inference_messages"], max_completion_tokens=2048
+    )
+    assert [message["role"] for message in namespace["inference_messages"]] == ["developer", "user"]
+    assert set(namespace["inference_messages"][1]) == {"role", "content"}
+    assert "take_prefix" in namespace["inference_messages"][1]["content"]
+    assert json.loads((output / "inference-response.json").read_text(encoding="utf-8")) == COMPLETION
     namespace["time"].sleep.assert_called_once_with(60)
     client.close.assert_called_once()
     project.close.assert_called_once()
@@ -300,6 +350,45 @@ def test_direct_sdk_workflow_saves_ids_and_displays_service_metrics(connected, m
     assert "https://example.test" not in text
     assert "job-offline-recorded" not in text
     assert "artifact-offline-result" not in text
+
+
+def test_deployment_mismatch_stops_before_inference(connected):
+    namespace, client, _, project, _ = connected
+    namespace["job"] = completed_job()
+    project.deployments.get.return_value = SimpleNamespace(model_name=namespace["MODEL"])
+    with pytest.raises(ValueError, match="this job's fine-tuned model"):
+        execute("mai-deploy", namespace)
+    assert not (namespace["OUTPUT_DIR"] / "deployment-name.txt").exists()
+    client.chat.completions.create.assert_not_called()
+
+
+def test_missing_deployment_is_not_created_implicitly(connected):
+    namespace, client, _, project, _ = connected
+    namespace["job"] = completed_job()
+    project.deployments.get.side_effect = RuntimeError("Deployment not found")
+    with pytest.raises(RuntimeError, match="Deployment not found"):
+        execute("mai-deploy", namespace)
+    project.deployments.create.assert_not_called()
+    client.chat.completions.create.assert_not_called()
+
+
+def test_serving_configuration_is_only_required_for_optional_sections(connected, monkeypatch):
+    namespace, _, _, project, _ = connected
+    monkeypatch.delenv("FOUNDRY_CODE_REPAIR_DEPLOYMENT")
+    with pytest.raises(KeyError, match="FOUNDRY_CODE_REPAIR_DEPLOYMENT"):
+        execute("mai-deploy", namespace)
+    project.deployments.get.assert_not_called()
+
+
+def test_deployment_name_can_be_added_to_env_after_training(connected, monkeypatch):
+    namespace, _, _, project, _ = connected
+    namespace["job"] = completed_job()
+    monkeypatch.setenv("FOUNDRY_CODE_REPAIR_DEPLOYMENT", "")
+    (namespace["DEMO_ROOT"] / ".env").write_text(
+        "FOUNDRY_CODE_REPAIR_DEPLOYMENT=offline-new-deployment\n", encoding="utf-8"
+    )
+    execute("mai-deploy", namespace)
+    project.deployments.get.assert_called_once_with("offline-new-deployment")
 
 
 def test_monitor_recovers_saved_job_without_upload_or_submission(connected):
@@ -398,6 +487,12 @@ def test_notebook_calls_serialize_with_installed_sdk(monkeypatch, demo_copy):
             return httpx.Response(200, content=METRICS_CSV, headers={"content-type": "text/csv"})
         if request.method == "GET" and path in {f"/files/{file_id}" for file_id in file_ids}:
             return httpx.Response(200, json={"id": path.rsplit("/", 1)[1], "status": "processed"})
+        if request.method == "POST" and path == "/chat/completions":
+            assert json.loads(request.content) == {
+                "model": "offline-deployment", "messages": namespace["inference_messages"],
+                "max_completion_tokens": 2048,
+            }
+            return httpx.Response(200, json=COMPLETION)
         raise AssertionError(f"Unexpected SDK request: {request.method} {path}")
 
     with openai.OpenAI(
@@ -405,7 +500,12 @@ def test_notebook_calls_serialize_with_installed_sdk(monkeypatch, demo_copy):
         max_retries=0, http_client=httpx.Client(transport=httpx.MockTransport(handle)),
     ) as client:
         patch_project_sdk(monkeypatch, client)
-        for cell_id in ("mai-connect", "mai-upload", "mai-submit", "mai-monitor", "mai-metrics", "mai-close"):
+        for cell_id in (
+            "mai-connect", "mai-upload", "mai-submit", "mai-monitor", "mai-metrics",
+            "mai-deploy", "mai-infer", "mai-close",
+        ):
             execute(cell_id, namespace)
     assert len(submitted) == 1
     assert (demo_copy / "outputs" / "training-metrics-1.csv").read_bytes() == METRICS_CSV
+    saved_response = json.loads((demo_copy / "outputs" / "inference-response.json").read_text(encoding="utf-8"))
+    assert saved_response["choices"][0]["message"]["content"] == COMPLETION_TEXT

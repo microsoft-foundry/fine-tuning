@@ -2,7 +2,7 @@
 
 The physical curriculum is ordered by prerequisite depth. The 15 demos below
 have canonical notebooks and preserved data. Static and offline
-validation is complete. Upload, training, and Retail comparison cells perform
+validation is complete. Upload, training, inference, and Retail comparison cells perform
 live Foundry operations when executed and can incur charges.
 
 | Stage | Goal | Demos |
@@ -20,15 +20,16 @@ validation, upload/reuse, job creation, terminal monitoring, service training
 metrics, and a scoped training-only conclusion.
 
 The Retail Capstone extends this outline with deployment verification
-and explicitly enabled base-versus-fine-tuned comparisons. Other notebooks do not require a
-fine-tuned deployment to complete their training-metric workflow.
+and explicitly enabled base-versus-fine-tuned comparisons. MAI Code Repair adds
+an optional Serverless deployment walkthrough and SDK inference request.
+Neither serving flow is required to complete the training-metric workflow.
 
 Use [Adapt your own data](ADAPT_YOUR_DATA.md) after completing the first SFT
 with preserved inputs. Use
 [Post-training evaluation, serving, cancellation, and cleanup](POST_TRAINING.md)
 to identify the service-produced model artifact and plan held-out evaluation,
-deployment, inference, or teardown. These are separate journeys from the
-training-only notebook contract.
+deployment, inference, or teardown. These are separate from training completion,
+including when a notebook provides optional serving steps.
 
 Do not skip directly to an advanced track unless its catalog prerequisites are
 satisfied. In particular, preview access, RFT access, model quota, Application

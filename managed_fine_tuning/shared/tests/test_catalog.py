@@ -41,12 +41,15 @@ def test_catalog_and_demo_metadata_match_schemas() -> None:
         validator.validate(demo)
 
 
-def test_retail_is_the_only_deployment_comparison_exception() -> None:
+def test_serving_sections_are_scoped_to_documented_demos() -> None:
     root = Path(__file__).parents[2]
     demos = yaml.safe_load((root / "catalog.yml").read_text(encoding="utf-8"))["demos"]
     for demo in demos:
         sections = demo["notebooks"][0]["sections"]
         if demo["id"] == "agentic-retail-capstone":
             assert "deploy" in sections and "compare" in sections
+        elif demo["id"] == "rft-mai-code-repair":
+            assert "deploy" in sections and "inference" in sections
+            assert not set(sections) & {"compare", "evaluate", "baseline"}
         else:
-            assert not set(sections) & {"deploy", "compare", "evaluate", "baseline"}
+            assert not set(sections) & {"deploy", "inference", "compare", "evaluate", "baseline"}

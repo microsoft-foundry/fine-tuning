@@ -67,7 +67,7 @@ See the [model and region registry](interactive_training/docs/supported_models.m
 > [!NOTE]
 > **Before production:** evaluate quality and safety on held-out data and review model/data licenses. Samples are for experimentation. Training, tools, and serving may incur separate charges; clean up unused resources.
 
-Managed notebooks are offline-validated, not evidence of a successful cloud run. Most stop at service training metrics; only Retail adds comparisons using separately provisioned deployments. Training completion alone does not establish application quality or create a serving endpoint.
+Managed notebooks are offline-validated, not evidence of a successful cloud run. Most stop at service training metrics; MAI Code Repair adds an optional portal deployment walkthrough and SDK inference, while Retail adds comparisons using separately provisioned deployments. Training completion alone does not establish application quality or create a serving endpoint.
 
 ## 🤝 Contributing
 

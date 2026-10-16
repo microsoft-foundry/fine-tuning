@@ -12,8 +12,10 @@ interactive training.
 The notebook walks through inspecting [50 training and 15 validation
 examples](data/README.md), loading a [score-model grader](graders/README.md),
 connecting with `AIProjectClient`, uploading files, creating an RFT job,
-monitoring it, and downloading training metrics. The Files and Fine-tuning
-SDK calls are shown directly.
+monitoring it, and downloading training metrics. Optional sections show
+Serverless deployment through the Foundry portal, SDK deployment verification,
+and a code-repair inference request. SDK calls are shown directly; grader
+settings and RFT hyperparameters are explained alongside the workflow.
 
 ## Setup
 
@@ -33,10 +35,16 @@ Global training does not guarantee residency in the project's region.
 
 ## Run the notebook
 
-Sections 1-3 inspect local data and the grader. Sections 4 onward connect to
-Foundry, upload files, and submit paid training. **Do not use Run All as an
-offline smoke test.** Each execution of the upload or submission cell creates
-new resources; these cells do not automatically discover or reuse earlier runs.
+| Sections | Scope |
+| :--- | :--- |
+| 1-3 | Inspect local data and understand the model grader. |
+| 4-8 | Connect, upload, submit paid training, monitor, and inspect metrics. |
+| 9-10 | Optionally deploy through Foundry, verify the deployment, and run paid inference. |
+| 11 | Close local clients and review evaluation and cleanup responsibilities. |
+
+**Do not use Run All as an offline smoke test.** Each execution of the upload
+or submission cell creates new resources; these cells do not automatically
+discover or reuse earlier runs.
 
 File and job IDs are saved under ignored `outputs/`. After an interruption,
 use the saved IDs and the same project to retrieve existing resources.
@@ -45,6 +53,14 @@ Check Foundry before retrying an operation whose outcome is unknown.
 See [post-training guidance](../../POST_TRAINING.md) for the saved-file layout,
 cancellation, and cleanup.
 
+For serving, MAI-Code-1.1-Flash supports **Serverless Global Standard**
+deployments, not Managed Compute or Fireworks. Create a deployment of the
+job's fine-tuned artifact through Foundry, then set
+`FOUNDRY_CODE_REPAIR_DEPLOYMENT` in your local `.env`. The Project SDK verifies
+the selected artifact and invokes the deployment; it does not create the
+deployment. Serving has separate permission, quota, hosting, and inference-cost
+requirements. You can stop after training and skip these optional sections.
+
 ## Interpret the results
 
 The `o3-mini-2025-01-31` grader returns a score from 0 to 1 with a pass threshold
@@ -52,8 +68,9 @@ of 0.7. It judges repairs against reference patches, expected behavior, and
 requirements; it does not apply patches or execute tests.
 
 The validation split is used during training. Service reward metrics do not
-establish improvement on unseen tasks. This notebook does not deploy a model
-or run endpoint comparisons; use an independent test set, isolated executable
-tests, and human review before making quality claims.
+establish improvement on unseen tasks. The inference example is a single
+repair request, not a base-versus-fine-tuned comparison or a held-out
+evaluation. Use an independent test set, isolated executable tests, and human
+review before making quality claims.
 
 Actual results may vary by model version, data, configuration, region availability, and service conditions.
