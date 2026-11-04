@@ -51,6 +51,29 @@ See the [model and region registry](interactive_training/docs/supported_models.m
 | `Llama-3.3-70B-Instruct` | ✅ (SFT) | ❌ |
 | `gpt-oss-20b` | ✅ (SFT) | ❌ |
 
+## Pricing
+
+See [Foundry Models Pricing](https://azure.microsoft.com/en-us/pricing/details/ai-foundry-models/fine-tuning-models/) for official prices and [Manage fine-tuning costs](https://learn.microsoft.com/en-us/azure/foundry/fine-tuning/cost-management) for cost-management tips. The latest models are not listed on the pricing page yet, so their prices are shown here in the meantime. All prices below are in USD.
+
+| Managed model | SFT (per 1M training tokens) | RFT (per job-hour) |
+|---|---:|---:|
+| `MAI-Code-1.1-Flash` | Not supported | $80.00 |
+| `Qwen3.8-27B` | $3.00 | $80.00 |
+| `Qwen3.6-35B-A3B` | $3.00 | $80.00 |
+| `gpt-oss-120b` | $6.00 | $80.00 |
+| `Muse-Glimmer-30B` | $3.00 | $80.00 |
+
+| Interactive training (serverless, per 1M tokens) | Train | Sampling | Prefill | Cached prefill |
+|---|---:|---:|---:|---:|
+| `Qwen3.8-27B` | $4.10 | $5.60 | $1.86 | $0.37 |
+| `Qwen3.6-35B-A3B` | $1.18 | $1.34 | $0.54 | $0.11 |
+| `gpt-oss-120b` | $0.74 | $0.84 | $0.33 | $0.07 |
+| `Muse-Glimmer-30B` | $5.86 | $4.88 | $1.96 | $0.39 |
+
+| Hosted fine-tuned model | Hosting (per model-hour) | Input (per 1M tokens) | Cached input (per 1M tokens) | Output (per 1M tokens) |
+|---|---:|---:|---:|---:|
+| `MAI-Code-1.1-Flash` | $0.36 | $0.20 | $0.02 | $1.20 |
+
 ## 📂 Repository guide
 
 | Resource | What you'll find |
