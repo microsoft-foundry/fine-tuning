@@ -3,23 +3,29 @@ name: Managed documentation checks
 on:
   pull_request:
     paths:
-      - 'managed_fine_tuning/**'
+      - 'managed_training/**'
+      - 'README.md'
+      - 'AGENTS.md'
+      - 'tests/**'
       - 'Sample_Datasets/**'
-      - 'interactive_training/README.md'
-      - 'interactive_training/docs/**'
-      - 'interactive_training/envs/**/*.md'
-      - 'interactive_training/interactive_training/recipes/**/*.md'
+      - 'programmed_training/README.md'
+      - 'programmed_training/docs/**'
+      - 'programmed_training/envs/**/*.md'
+      - 'programmed_training/programmed_training/recipes/**/*.md'
       - '.github/requirements-docs.txt'
       - '.github/workflows/documentation-checks.yml'
   push:
     branches: [main]
     paths:
-      - 'managed_fine_tuning/**'
+      - 'managed_training/**'
+      - 'README.md'
+      - 'AGENTS.md'
+      - 'tests/**'
       - 'Sample_Datasets/**'
-      - 'interactive_training/README.md'
-      - 'interactive_training/docs/**'
-      - 'interactive_training/envs/**/*.md'
-      - 'interactive_training/interactive_training/recipes/**/*.md'
+      - 'programmed_training/README.md'
+      - 'programmed_training/docs/**'
+      - 'programmed_training/envs/**/*.md'
+      - 'programmed_training/programmed_training/recipes/**/*.md'
       - '.github/requirements-docs.txt'
       - '.github/workflows/documentation-checks.yml'
 
@@ -44,8 +50,10 @@ jobs:
           cache-dependency-path: .github/requirements-docs.txt
       - name: Install offline contract test dependencies
         run: python -m pip install -r .github/requirements-docs.txt
+      - name: Check repository naming and navigation
+        run: python -m unittest discover -s tests -p "test_*.py"
       - name: Run managed offline contracts without cloud credentials
-        working-directory: managed_fine_tuning
+        working-directory: managed_training
         run: >-
           python -m pytest -q --tb=short
           shared/tests/test_catalog.py

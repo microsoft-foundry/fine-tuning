@@ -36,7 +36,7 @@ Standard chat messages JSONL — each line is a JSON object with a `messages` ar
 
 ## Related Demo
 
-See the maintained [code-distillation demo](../../../managed_fine_tuning/05-data-and-distillation/02-code-distillation/README.md) for a training-only workflow. That demo preserves a different, hash-pinned dataset of 1,576 training and 83 validation examples and covers upload, training, and service metrics—not data generation, deployment, or task-quality evaluation.
+See the maintained [code-distillation demo](../../../managed_training/05-data-and-distillation/02-code-distillation/README.md) for a training-only workflow. That demo preserves a different, hash-pinned dataset of 1,576 training and 83 validation examples and covers upload, training, and service metrics—not data generation, deployment, or task-quality evaluation.
 
 ## Languages
 
