@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Changed
+- Rename the Interactive Training track, cookbook distribution, and Python namespace to Programmed Training (`programmed_training/`, `programmed-training`, and `programmed_training`).
+- Rename the Managed Fine-Tuning track directory to `managed_training/` and update notebook guidance, navigation, and CI paths.
+- Preserve the published Azure SDK names, existing logs configuration, preview sign-up URL, and opt-in smoke-test environment. See the [cookbook migration guide](programmed_training/docs/troubleshooting.md#updating-an-older-cookbook-checkout).
+
 ## [3.0.0] - 2026-10-07
 
 Interactive training and managed fine-tuning refresh ([#42](https://github.com/microsoft-foundry/fine-tuning/pull/42)).

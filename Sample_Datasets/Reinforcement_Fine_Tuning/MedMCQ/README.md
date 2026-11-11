@@ -1,6 +1,6 @@
 # Notice
 
-This is a sample training and validation data, along with a sample grader. This was curated using [this](https://github.com/medmcqa/medmcqa) as the reference dataset. **This is a very large dataset and may cause time outs using the RFT service**. If you're just getting started, consider using our simple RFT [Countdown dataset and demo](../../../managed_fine_tuning/03-core-rft/01-rft-countdown/README.md).
+This is a sample training and validation data, along with a sample grader. This was curated using [this](https://github.com/medmcqa/medmcqa) as the reference dataset. **This is a very large dataset and may cause time outs using the RFT service**. If you're just getting started, consider using our simple RFT [Countdown dataset and demo](../../../managed_training/03-core-rft/01-rft-countdown/README.md).
 
 ## Dataset Summary
 

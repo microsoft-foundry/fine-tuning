@@ -4,10 +4,10 @@ These instructions apply to the repository. Use the READMEs, code and recipes; n
 
 ## Resolve sources
 
-1. Start with the root README, then the chosen track's README and setup guide. Use managed jobs for supported predefined methods; use interactive sessions for custom training-loop behavior. A custom managed grader alone does not require interactive training.
-2. For managed work, read `managed_fine_tuning/README.md`, `catalog.yml`, the selected demo's `demo.yaml`, README, `.env.template`, and canonical `notebooks/demo.ipynb`. Use the learning path/task index to select the demo.
-3. For interactive work, read `interactive_training/README.md`, `docs/auth.md`, and the selected recipe's README and configuration.
-4. Interactive model/region eligibility comes from `interactive_training/docs/supported_models.md`. Managed eligibility comes from Foundry's model-specific documentation and the catalog prerequisites; notebook model roles are not a universal availability guarantee.
+1. Start with the root README, then the chosen track's README and setup guide. Use managed jobs for supported predefined methods; use programmed sessions for custom training-loop behavior. A custom managed grader alone does not require programmed training.
+2. For managed work, read `managed_training/README.md`, `catalog.yml`, the selected demo's `demo.yaml`, README, `.env.template`, and canonical `notebooks/demo.ipynb`. Use the learning path/task index to select the demo.
+3. For programmed work, read `programmed_training/README.md`, `docs/auth.md`, and the selected recipe's README and configuration.
+4. Programmed model/region eligibility comes from `programmed_training/docs/supported_models.md`. Managed eligibility comes from Foundry's model-specific documentation and the catalog prerequisites; notebook model roles are not a universal availability guarantee.
 5. Track-specific setup guides define repository paths. Subtree metadata/templates define data and configuration; installed SDK signatures and implementation define operations. Historical changelog entries, benchmarks, and past runtime artifacts do not override these sources. If they conflict, report the conflict and stop before remote operations rather than guessing.
 
 Before updating any README, check whether a more focused guide, recipe, or reference
@@ -19,7 +19,7 @@ implementation details.
 
 Read files and run offline tests, syntax/schema checks, dataset validation, and split/hash checks first. Do not run a whole notebook as a smoke test: later cells may upload data, allocate training, invoke tools, or submit/resume a paid job without another switch.
 
-- Use the appropriate track's environment; managed uses Python 3.11-3.14 and its central lock, interactive uses its own package and SDK requirements.
+- Use the appropriate track's environment; managed uses Python 3.11-3.14 and its central lock, programmed uses its own package and SDK requirements.
 - Check paths, kernel, working directory, exact model ID, schema, and prerequisites. Managed demos should run from their demo directory unless a tested alternative is documented.
 - Preserve canonical/hash-pinned sample files. Put personal-data adaptations in separate, versioned inputs; never bypass validators to make them run.
 
@@ -29,7 +29,7 @@ Run root navigation and model-eligibility checks without cloud credentials:
 python -m unittest discover -s tests -p "test_*.py"
 ```
 
-Use the repository workflow's selected managed tests for the managed contracts. Run interactive tests from `interactive_training` using its test environment. Tests validate local contracts, not cloud eligibility.
+Use the repository workflow's selected managed tests for the managed contracts. Run programmed tests from `programmed_training` using its test environment. Tests validate local contracts, not cloud eligibility.
 
 Dependency installation, network downloads, authentication, and resource reads are not offline checks. When needed for the requested workflow, explain them briefly and proceed within that scope using the selected environment and supported credential providers. Ask for missing information that changes the scope, not repeated approval for routine setup or reads; never request secrets in chat.
 

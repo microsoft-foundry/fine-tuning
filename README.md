@@ -1,13 +1,13 @@
 # Microsoft Foundry Fine-Tuning
 
-[Microsoft Foundry](https://ai.azure.com/) fine-tuning adapts pretrained models to your data and tasks, creating domain-specific responses. Compared to prompt or agent optimization, fine-tuning changes the actual model's behavior to improve quality or reduce costs.  This repo provides examples, datasets, and guidance for two complementary experiences offered by Microsoft Foundry: **managed fine-tuning** and **interactive training (preview)**.
+[Microsoft Foundry](https://ai.azure.com/) fine-tuning adapts pretrained models to your data and tasks, creating domain-specific responses. Compared to prompt or agent optimization, fine-tuning changes the actual model's behavior to improve quality or reduce costs.  This repo provides examples, datasets, and guidance for two complementary experiences offered by Microsoft Foundry: **managed training** and **programmed training (preview)**.
 
 > [!IMPORTANT]
-> Interactive training requires explicit access approval. Request access through the [preview sign-up form](https://aka.ms/foundry-interactive-training-signup) and wait for approval before creating a training session.
+> Programmed training requires explicit access approval. Request access through the [preview sign-up form](https://aka.ms/foundry-interactive-training-signup) and wait for approval before creating a training session.
 
-**🌱 New to fine-tuning? Start with managed fine-tuning.** Interactive training is for advanced workflows that need custom training-loop behavior.
+**🌱 New to fine-tuning? Start with managed training.** Programmed training is for advanced workflows that need custom training-loop behavior.
 
-| | Managed Fine-Tuning | Interactive Training (preview) |
+| | Managed Training | Programmed Training (preview) |
 |---|---|---|
 | **How it works** | Submit data and settings; Foundry runs the training job. | Write a Python loop; Foundry executes training and sampling operations. |
 | **Best for** | Beginners and AI engineers who prefer predefined workflows over lower-level training operations. | Experienced ML practitioners building custom training workflows. |
@@ -23,16 +23,16 @@ Both approaches use Foundry-managed training infrastructure; neither requires yo
 
 Open the folder for your chosen experience and start with its guide for setup and examples:
 
-- **🌱 Managed fine-tuning guide →** [managed_fine_tuning/README.md](managed_fine_tuning/README.md)
-- **🧪 Interactive training guide →** [interactive_training/README.md](interactive_training/README.md)
+- **🌱 Managed training guide →** [managed_training/README.md](managed_training/README.md)
+- **🧪 Programmed training guide →** [programmed_training/README.md](programmed_training/README.md)
 
 ## Models and supported capabilities
 
 Selected models are listed below. Availability also depends on region, access, and quota.
 
-See the [model and region registry](interactive_training/docs/supported_models.md) for interactive model identifiers and regions. Managed methods are model-specific; check [Foundry availability](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/fine-tuning#supported-models) and the [managed model/notebook index](managed_fine_tuning/MODEL_AND_NOTEBOOK_INDEX.md) before starting a job.
+See the [model and region registry](programmed_training/docs/supported_models.md) for programmed model identifiers and regions. Managed methods are model-specific; check [Foundry availability](https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/fine-tuning#supported-models) and the [managed model/notebook index](managed_training/MODEL_AND_NOTEBOOK_INDEX.md) before starting a job.
 
-| Model | Managed Fine-Tuning | Interactive Training (preview) |
+| Model | Managed Training | Programmed Training (preview) |
 |---|---|:---:|
 | `MAI-Code-1.1-Flash` **(preview)** | ✅ (RFT) | ❌ |
 | `Qwen3.8-27B` **(preview)** | ✅ (SFT, RFT) | ✅ |
@@ -55,12 +55,12 @@ See the [model and region registry](interactive_training/docs/supported_models.m
 
 | Resource | What you'll find |
 |---|---|
-| [Managed fine-tuning](managed_fine_tuning/README.md) | Managed training guide. |
-| [Managed fine-tuning learning path](managed_fine_tuning/LEARNING_PATH.md) | Six-stage curriculum and 15 canonical notebooks. |
-| [Managed fine-tuning task index](managed_fine_tuning/TASK_INDEX.md) | Find a notebook by task; each demo owns its data and setup template. |
-| [Interactive training](interactive_training/README.md) | Interactive cookbook, recipes, and SDK guidance. |
-| [Interactive training docs](interactive_training/docs/README.md) | Setup, training concepts, checkpoints, and troubleshooting. |
-| [Interactive training recipes](interactive_training/interactive_training/recipes/) | Runnable SFT, reinforcement learning, preference, and distillation recipes. |
+| [Managed training](managed_training/README.md) | Managed training guide. |
+| [Managed training learning path](managed_training/LEARNING_PATH.md) | Six-stage curriculum and 15 canonical notebooks. |
+| [Managed training task index](managed_training/TASK_INDEX.md) | Find a notebook by task; each demo owns its data and setup template. |
+| [Programmed training](programmed_training/README.md) | Programmed cookbook, recipes, and SDK guidance. |
+| [Programmed training docs](programmed_training/docs/README.md) | Setup, training concepts, checkpoints, and troubleshooting. |
+| [Programmed training recipes](programmed_training/programmed_training/recipes/) | Runnable SFT, reinforcement learning, preference, and distillation recipes. |
 
 **For coding agents:** start with [AGENTS.md](AGENTS.md) for source precedence, offline preflight, paid-run warnings, scope safeguards, and secret handling. The two training paths are not interchangeable.
 
