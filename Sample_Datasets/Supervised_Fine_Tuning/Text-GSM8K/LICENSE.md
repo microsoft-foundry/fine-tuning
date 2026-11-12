@@ -1,5 +1,7 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
+MIT License
+
+Copyright (c) 2021 OpenAI
+Copyright (c) Microsoft Corporation. Modifications to dataset formatting and documentation.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

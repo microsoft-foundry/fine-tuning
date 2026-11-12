@@ -12,6 +12,7 @@ validation rows, and 600 unused provenance rows.
 cd managed_training\02-multimodal-sft\02-image-classification
 Copy-Item .env.template .env
 pip install -r ..\..\requirements.lock
+pip install -e ..\.. --no-deps
 az login
 jupyter lab notebooks\demo.ipynb
 ```
@@ -31,11 +32,27 @@ Generated JSONL, hashes, job state, and downloaded metrics are written under
 ignored `outputs/training-only/`. Saved state is bound to the project,
 dataset hashes, and training recipe so reruns can resume the same job.
 
+One shared cross-process `run-state.json.lock` protects **both** the file and job
+journals. It is acquired before checking either state file and retained until
+pending intent and every returned upload/job ID are saved. A competing kernel
+fails before reading state or posting; retry after the first exits to reload its
+recorded IDs. Normal exceptions and interrupts release the lock. A hard kill may
+leave it behind: confirm no writer remains and reconcile local/remote state
+before removing only the stale lock, never pending state to force another POST.
+See the [shared-state concurrency boundary](../README.md) for filesystem limits.
+
 Job creation disables automatic SDK retries. After an ambiguous submission
 failure, reconcile the remote job before removing state or attempting another
 submission.
 The retained recipe persists `submission_pending` before the POST and refuses
 another submission until the outcome is reconciled and the job ID is recorded.
+
+File uploads also disable SDK retries. The notebook atomically saves each
+upload's pending intent and then its returned ID in the same ignored
+`file-state.json` **before** polling processing or uploading the next split.
+A processing timeout resumes that recorded ID. A missing/lost upload response
+requires independent remote-file reconciliation; do not clear pending state,
+select a file by filename alone, or blindly repeat the upload.
 
 Next: [`../03-video-action-recognition`](../03-video-action-recognition/README.md).
 

@@ -10,7 +10,7 @@ The canonical notebook is a sequential, training-only Microsoft Foundry workflow
 |---|---|
 | Project | Your `FOUNDRY_PROJECT_ENDPOINT` from `.env` or the process environment |
 | Reference region | West US 3; use a project supporting this model and training type |
-| Model | OpenAI-OSS gpt-oss-120b, version `1` |
+| Model | OpenAI-OSS gpt-oss-120b; expected reference version `1`, actual version unverified |
 | Training type | `GlobalStandard` |
 | Recipe | 2 epoch(s), learning-rate multiplier 0.8 |
 | Training split | 224 rows |
@@ -34,7 +34,45 @@ versioned dataset without changing this canonical notebook. This demo always
 uploads the preserved 224-row training and 20-row validation files and enforces
 their fixed row counts, byte counts, and hashes.
 
-Saved state binds the job to its project, model, recipe, and data hashes. Rerunning resumes it; a mismatched state raises an error rather than silently starting another paid job. Archive the state deliberately to start another run. Job-creation POSTs are submitted once with SDK retries disabled. Reconcile ambiguous job-creation failures in Foundry before retrying. Upload and job polling have explicit timeouts; failed or cancelled jobs raise errors.
+### Version evidence is not a version pin
+
+The OpenAI-compatible create request selects the model name; it does not send
+`EXPECTED_MODEL_VERSION` as a version selector. The notebook does not assume an
+undocumented response field or treat request metadata as service evidence.
+Saved state and summaries distinguish `expected_model_version: "1"`,
+`actual_model_version: null`, and `model_version_verification: "unverified"`.
+Resuming a recorded job is not a claim of pinned-version equivalence. If your
+workflow requires verified version pinning, establish it through documented
+service metadata before relying on that claim; this notebook does not provide it.
+
+### Submission recovery
+
+The shared SFT helper binds state to the requested project, model name, expected
+reference version, recipe, suffix, and canonical data hashes. It atomically
+flushes pending intent **before each upload and job POST**, and records each
+returned ID **before polling or another create**. All three POSTs use
+`max_retries=0`. A read timeout resumes from known IDs rather than uploading
+again. Saved files are checked against their canonical bytes before job creation;
+a retrieved job must expose the matching model, file IDs, and supervised recipe.
+Upload and job polling have explicit timeouts; terminal failures retain IDs.
+
+An unknown acceptance outcome leaves `pending_operation` set to
+`training_upload`, `validation_upload`, or `job_create`. Rerunning fails closed:
+it never infers rejection from an empty list response and never repeats that
+POST. Retain the journal and reconcile the exact project, accepted resources,
+recipe, and file contents in Foundry. A known accepted ID must be recorded in its
+matching top-level ID field before the operator resolves the pending marker;
+do not clear it merely to retry. Corrupt, older-format, or mismatched state is
+retained and rejected, not silently migrated or overwritten. A stale lock also
+requires confirming that no writer is active and reconciling state before removal.
+Archive state only after reconciliation when deliberately starting another run.
+
+Top-level `job_id`, `training_file_id`, `validation_file_id`, and
+`equivalence.project_endpoint` keep the cancellation/cleanup guide's state shape.
+Partial uploads can leave just one known file ID; the guide's two-file deletion
+example then needs to be restricted to that identified, confirmed-unshared file.
+A pending POST without an ID must be reconciled first. Monitoring timeouts and
+closing local clients do not cancel remote training or delete uploaded files.
 
 ## Dataset integrity
 

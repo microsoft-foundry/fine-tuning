@@ -127,7 +127,7 @@ The path should point at your source tree, not `site-packages`.
 
 The public cookbook installs the SDK from PyPI, not from a bundled wheel. SDK
 import errors or unexpected/missing arguments can mean the installed release
-does not match the cookbook dependency (`azure-ai-finetuningsessions==1.0.0b1`).
+does not match the cookbook dependency (`azure-ai-finetuningsessions==1.0.0b2`).
 
 ```bash
 python -m pip show azure-ai-finetuningsessions

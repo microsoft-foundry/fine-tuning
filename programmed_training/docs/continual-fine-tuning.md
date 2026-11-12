@@ -31,7 +31,7 @@ An older Qwen3-32B checkpoint still requires `model_name="Qwen/Qwen3-32B"`;
 do not use the new Qwen3.8 default to resume a different base model.
 
 Compatibility is not eligibility: the [current model list](./supported_models.md#available-today)
-excludes Qwen3-32B from new programmed training. Do not launch a restore solely
+excludes Qwen3-32B from new Programmed Training. Do not launch a restore solely
 because a historical checkpoint exists; resolve current project/model support
 before allocating a new session.
 

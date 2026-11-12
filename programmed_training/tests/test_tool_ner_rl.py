@@ -263,6 +263,7 @@ def test_loader_uses_pinned_parquet_and_language_pushdown(monkeypatch):
     assert args == ("parquet",)
     assert kwargs["streaming"] is True
     assert kwargs["filters"] == [("language", "==", "en")]
+    assert kwargs["fragment_scan_options"].pre_buffer is False
     assert all(DEFAULT_DATASET_REVISION in url for url in kwargs["data_files"]["validation"])
 
 
@@ -402,6 +403,10 @@ def test_prompt_seed_depends_only_on_prompt_and_base_seed():
 
 def test_eval_checkpoint_path_parsing():
     assert _parse_checkpoint_path("model_abc/195") == (
+        "model_abc",
+        "195",
+    )
+    assert _parse_checkpoint_path("loom://model_abc/weights/195") == (
         "model_abc",
         "195",
     )

@@ -2,6 +2,18 @@
 
 We've prepared sample datasets to help you understand how to format data for fine-tuning and test end-to-end workloads. These datasets are intended as examples; they are not intended to produce production quality models.
 
+## Dataset integrity before upload
+
+Preserving source bytes is not evidence that labels or generated code are valid.
+The [MedMCQ notice](Reinforcement_Fine_Tuning/MedMCQ/README.md) blocks its unlabelled
+validation file from grading. The [NL-to-Python notice](Supervised_Fine_Tuning/Text-NL-to-Python/README.md)
+documents syntax-audit/explicit-curation requirements and the original asset
+hashes. [dataset_integrity.py](dataset_integrity.py) provides offline checks and
+source-traceable preparation; it never calls a model, executes generated code,
+downloads data or uploads files. Prepared artifacts are not bundled by this
+change. [validation-status.json](validation-status.json) separates source metadata
+and review-reported counts from checks still requiring parent execution.
+
 ## Data Format Documentation
 
 Each technique has specific data format requirements. See the schema documentation for details:
@@ -31,7 +43,7 @@ We offer three training techniques to optimize your models:
     - *When to use:* When you have examples of preferred vs. non-preferred outputs, or when you need to optimize for subjective qualities like helpfulness, harmlessness, or style. Use cases include adapting models to a specific style and tone, or adapting a model to cultural preferences.
     - *Supported Models:* GPT 4o, 4.1, 4.1-mini, 4.1-nano
     - *Sample Datasets*: 
-         -  [OpenOrca](./Direct_Preference_Optimization/orca_dpo_pairs/) - Preference Alignment Data
+         -  [Orca DPO samples](./Direct_Preference_Optimization/orca_dpo_pairs/) - Preference data with pinned Microsoft/Intel references, license scope, and derivation limitations
        
 - **Reinforcement Fine-Tuning (RFT):** Uses reinforcement learning to optimize models based on reward signals, allowing for more complex optimization objectives.
 

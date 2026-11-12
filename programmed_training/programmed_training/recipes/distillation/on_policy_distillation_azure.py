@@ -30,12 +30,15 @@ from datetime import datetime
 from typing import Any
 
 import chz
+
+from programmed_training import auto_resume
 from azure.ai.finetuningsessions.models import LossFn as LossFnType
 
 from programmed_training import cli_utils, model_info
 from programmed_training.distillation.datasets import TuluPromptDatasetBuilder
 from programmed_training.rl import train_azure as rl_azure
 from programmed_training.rl.train import Config, KLReferenceConfig
+from programmed_training.optimizers import AdamConfig
 from programmed_training.training_types import (
     TrainingType,
     normalize_training_type,
@@ -76,7 +79,7 @@ def _parse_checkpoint_path(checkpoint_path: str) -> tuple[str, str]:
 
 
 @chz.chz
-class CLIConfig:
+class CLIConfig(auto_resume.AutoResumeConfig, AdamConfig):
     """Command-line config for on-policy distillation via the Azure SDK."""
 
     # ── Student model ────────────────────────────────────────────────────────
@@ -173,6 +176,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
 
     config = Config(
         learning_rate=cli_config.learning_rate,
+        **cli_config.adam_kwargs(),
         dataset_builder=dataset_builder,
         model_name=tokenizer_name,
         tokenizer_name=tokenizer_name,
@@ -225,8 +229,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
     write_run_meta()
 
     def record_reference_session(session_id: str) -> None:
-        run_meta["azure"]["reference_session_id"] = session_id
-        write_run_meta()
+        auto_resume.record_reference_session(log_path, session_id)
 
     # ── Azure SDK: auth + student session creation ───────────────────────────
     from azure.ai.finetuningsessions.aio import FineTuningSessionClient
@@ -269,8 +272,16 @@ async def cli_main(cli_config: CLIConfig) -> None:
     # silently ignored). rl_azure.main runs on the already-created session, so
     # this must be applied here at session creation.
     student_from_checkpoint: "FromCheckpoint | None" = None
-    if cli_config.load_checkpoint_path:
-        src_session, ckpt_id = _parse_checkpoint_path(cli_config.load_checkpoint_path)
+    checkpoint_path = cli_config.load_checkpoint_path
+    if cli_config.auto_resume:
+        from programmed_training import checkpoint_utils
+
+        selection = checkpoint_utils.select_resume_checkpoint(
+            checkpoint_utils.get_last_checkpoint(log_path), checkpoint_path
+        )
+        checkpoint_path = selection.checkpoint_path
+    if checkpoint_path:
+        src_session, ckpt_id = _parse_checkpoint_path(checkpoint_path)
         student_from_checkpoint = FromCheckpoint(
             source_session_id=src_session, checkpoint_id=ckpt_id
         )
@@ -280,8 +291,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
         f"lora_rank={cli_config.lora_rank}  endpoint={cli_config.project_endpoint}  "
         f"load_checkpoint_path={cli_config.load_checkpoint_path!r}"
     )
-    try:
-        session_id = await client.create_session(
+    session_kwargs = dict(
             base_model=cli_config.model_name,
             lora_config=LoRAConfig(rank=cli_config.lora_rank),
             type="training",
@@ -289,7 +299,9 @@ async def cli_main(cli_config: CLIConfig) -> None:
             timeout_sec=600.0,
             user_metadata=cli_config.user_metadata,
             training_type=normalize_training_type(cli_config.training_type),
-        )
+    )
+    try:
+        session_id = await client.create_session(**session_kwargs)
         print(f"Student session ready: session_id={session_id}")
         run_meta["azure"]["session_id"] = session_id
         write_run_meta()
@@ -299,8 +311,10 @@ async def cli_main(cli_config: CLIConfig) -> None:
             f"(created inside rl_azure.main when kl_penalty_coef > 0)"
         )
 
-        await rl_azure.main(
+        await auto_resume.run_rl(
             config, client, session_id, training_type=cli_config.training_type,
+            recovery_config=cli_config, client_kwargs=client_kwargs,
+            session_kwargs=session_kwargs,
             on_reference_session_created=record_reference_session,
         )
     finally:

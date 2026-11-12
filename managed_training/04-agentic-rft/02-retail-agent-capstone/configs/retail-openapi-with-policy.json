@@ -1,5 +1,17 @@
 {
   "openapi": "3.1.0",
+  "security": [
+    {"bearerAuth": []}
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "The external isolated retail server must verify the FOUNDRY_TOOL_AUTH_TOKEN bearer credential. This authenticates the tool client, not the retail customer. Customer identity, single-user access, ownership, and confirmation rules remain mandatory."
+      }
+    }
+  },
   "info": {
     "title": "Generated API from OpenAI Tool Definitions",
     "version": "1.0.0",
@@ -390,6 +402,57 @@
         }
       }
     },
+    "/list_user_orders": {
+      "post": {
+        "summary": "List User Orders",
+        "description": "List recent orders for a user, optionally filtered by date range. This allows the agent to identify the correct order when the user only mentions product details or approximate timing.\n\nAuthenticate the retail customer first and return only that customer's orders. Do not trust a caller-supplied user_id as authentication. Dates must be valid ISO dates; reject reversed ranges and invalid limits instead of silently coercing them. The isolated external implementation must document its date-boundary and ordering semantics. This repository publishes the contract, not a retail server.",
+        "operationId": "list_user_orders",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "string",
+                    "description": "Unique ID of the user, such as 'sara_doe_496'."
+                  },
+                  "from_date": {
+                    "type": "string",
+                    "description": "ISO date string (e.g., '2025-10-01') for lower bound filtering. Optional."
+                  },
+                  "to_date": {
+                    "type": "string",
+                    "description": "ISO date string (e.g., '2025-11-01') for upper bound filtering. Optional."
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of orders to return (default 10). Optional."
+                  }
+                },
+                "required": [
+                  "user_id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Only the authenticated customer's matching orders. The external server returns the result inside the function_call_output envelope at its configured dispatch URL.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/modify_pending_order_address": {
       "post": {
         "summary": "Modify Pending Order Address",
@@ -620,6 +683,65 @@
         "responses": {
           "200": {
             "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/policy_verify_return": {
+      "post": {
+        "summary": "Verify Return Policy",
+        "description": "Verify return eligibility and calculate fees based on store policy. Call this after you know order_id, item_ids, and reason to check if a return is allowed and what options are available. This tool evaluates return windows, category-specific rules, user tier benefits, and restocking fees.\n\nRead-only: this operation does not request a return, issue a refund, or authorize a later mutation. Authenticate the retail customer, verify order ownership and every requested item occurrence, and reject unknown or excess item IDs. A return still requires delivered status, explicit customer confirmation, and a refund to the original payment method or an existing gift card. Do not infer eligibility or fees from missing policy data. The customer-owned external server must supply the complete policy and deterministic evaluation clock; the preserved dataset is not a policy implementation. Reference grading labels outside the declared reason enum do not extend the API.",
+        "operationId": "policy_verify_return",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "string",
+                    "description": "The order id, such as '#W0000000'. Be careful there is a '#' symbol at the beginning of the order id."
+                  },
+                  "item_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The item ids to be returned, each such as '1008292230'. There could be duplicate items in the list."
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "unwanted",
+                      "wrong_item",
+                      "size_issue",
+                      "defective",
+                      "other"
+                    ],
+                    "description": "The reason for return. Must be one of: 'unwanted', 'wrong_item', 'size_issue', 'defective', or 'other'."
+                  }
+                },
+                "required": [
+                  "order_id",
+                  "item_ids",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Actual policy eligibility, reasons, and applicable fees/options for the requested owned items; not a mutation. The external server returns the result inside the function_call_output envelope at its configured dispatch URL.",
             "content": {
               "application/json": {
                 "schema": {

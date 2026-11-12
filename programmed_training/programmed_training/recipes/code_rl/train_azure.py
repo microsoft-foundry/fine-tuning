@@ -23,6 +23,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 import chz
+
+from programmed_training import auto_resume
 from azure.ai.finetuningsessions.models import LossFn as LossFnType
 
 from programmed_training import cli_utils, model_info
@@ -31,6 +33,7 @@ from programmed_training.recipes.code_rl.code_grading import assert_sandbox_reac
 from programmed_training.rl import train_azure as rl_azure
 from programmed_training.rl.train import AsyncConfig, Config, EvaluationStrategy
 from programmed_training.sandbox import SandboxBackend
+from programmed_training.optimizers import AdamConfig
 from programmed_training.training_types import (
     TrainingType,
     normalize_training_type,
@@ -47,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 
 @chz.chz
-class CLIConfig:
+class CLIConfig(auto_resume.AutoResumeConfig, AdamConfig):
     """Command-line config for Azure SDK-based DeepCoder RL training."""
 
     # Model
@@ -124,7 +127,6 @@ class CLIConfig:
 
     # Code execution sandbox configuration
     sandbox_backend: SandboxBackend = SandboxBackend.SANDBOXFUSION
-
 
 
 # =============================================================================
@@ -218,6 +220,7 @@ async def cli_main(cli_config: CLIConfig):
 
     config = Config(
         learning_rate=cli_config.learning_rate,
+        **cli_config.adam_kwargs(),
         dataset_builder=dataset_builder,
         model_name=tokenizer_name,
         tokenizer_name=tokenizer_name,
@@ -329,8 +332,7 @@ async def cli_main(cli_config: CLIConfig):
     _write_meta()
 
     def record_reference_session(session_id: str) -> None:
-        run_meta["azure"]["reference_session_id"] = session_id
-        _write_meta()
+        auto_resume.record_reference_session(log_path, session_id)
 
     # ── Azure SDK: auth + session creation ───────────────────────────────────
     from azure.ai.finetuningsessions.aio import FineTuningSessionClient
@@ -406,8 +408,7 @@ async def cli_main(cli_config: CLIConfig):
         + (f"  from_checkpoint={from_checkpoint}" if from_checkpoint else "")
     )
 
-    try:
-        session_id = await client.create_session(
+    session_kwargs = dict(
             base_model=cli_config.model_name,
             lora_config=LoRAConfig(rank=cli_config.lora_rank),
             type="training",
@@ -415,14 +416,18 @@ async def cli_main(cli_config: CLIConfig):
             timeout_sec=cli_config.create_session_timeout_sec,
             user_metadata=cli_config.user_metadata,
             training_type=normalize_training_type(cli_config.training_type),
-        )
+    )
+    try:
+        session_id = await client.create_session(**session_kwargs)
         print(f"Session ready: session_id={session_id}")
 
         run_meta["azure"]["session_id"] = session_id
         _write_meta()
 
-        await rl_azure.main(
+        await auto_resume.run_rl(
             config, client, session_id, training_type=cli_config.training_type,
+            recovery_config=cli_config, client_kwargs=client_kwargs,
+            session_kwargs=session_kwargs,
             on_reference_session_created=record_reference_session,
         )
     finally:

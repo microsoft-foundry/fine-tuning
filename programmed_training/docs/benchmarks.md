@@ -11,7 +11,7 @@ is not a monetary cost or GPU-hour comparison.
 > status. Infrastructure and defaults can change; do not predict that timing
 > will improve or relabel old results for a new model. In particular,
 > [current model list](./supported_models.md#available-today)
-> excludes Qwen3-32B from new programmed training; its historical results below
+> excludes Qwen3-32B from new Programmed Training; its historical results below
 > do not authorize recreating those runs.
 
 ## Setup

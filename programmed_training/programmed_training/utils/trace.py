@@ -160,6 +160,7 @@ def trace_init(
 ) -> None:
     """Initialize the trace collector. Must be called before any trace events are created."""
     global _trace_collector
+    trace_shutdown()
     _trace_collector = TraceCollector(flush_interval_sec, output_file)
 
 

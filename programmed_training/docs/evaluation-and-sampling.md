@@ -341,7 +341,7 @@ Transformers/vLLM serving workflow; do not infer those from `state_path` or
 | Run application inference | Separate [Fireworks deployment helper](./deployment-and-inference.md) for saved checkpoints | Preview access, serving auth/API contract, capacity, price, and deletion plan |
 | Export weights or run locally | No verified export/download/conversion recipe in the pinned public workflow | A supported export route, model/data/license rights, format compatibility, and separately validated conversion/runtime |
 
-Programmed training access does not imply serving-preview access. Ask the service or
+Programmed Training access does not imply serving-preview access. Ask the service or
 serving owner for the supported handoff **before** promising an application
 endpoint; do not call session sampling an OpenAI-compatible deployment. Keep
 training, sampler, and deployed-resource identifiers distinct in the handoff.

@@ -4,6 +4,19 @@ LLM extraction usually starts with an output format: entity strings, labeled spa
 
 This recipe brings source grounding and final selection into a two-turn tool workflow. The model proposes text, a Python tool returns matching source spans, and the model submits labeled span IDs. RL optimizes the model's policy against completed extraction quality; the tools remain deterministic. No sandbox, retrieval service, or separate environment server is required.
 
+## Extending the batching policy
+
+The Python `cli_main` entrypoint accepts an optional `batching_policy` implementing
+`NerBatchingPolicy` from `dynamic_policy.py` (Programmed Training 0.2.1+).
+Its `training_overrides()` supplies the shared trainer's strategy, filtering,
+and rollout-cap settings; `name` and `metadata()` identify the effective policy
+in the run name and metadata. The existing dataset builder owns
+`groups_per_batch` and `group_size`; they are not trainer configuration fields.
+An injected policy replaces the default rather than stacking selectors.
+Without an injection, PODS configuration and behavior are unchanged.
+Plugins can reuse the task, manifests, SDK lifecycle, and recovery without
+copying the recipe or changing the public strategy factory.
+
 ## Run It
 
 Training and evaluation now default to `Qwen/Qwen3.8-27B` with its model-specific
@@ -13,7 +26,9 @@ explicit model/renderer in the measured commands is intentionally retained.
 
 Follow the cookbook [installation guide](../../../README.md#install) and [Azure authentication guide](../../../docs/auth.md). Run commands from the cookbook root with `PROJECT_ENDPOINT` set. Model availability depends on the service and region; the measured run used `Qwen/Qwen3.6-35B-A3B`.
 
-The recipe bundles the measured OpenPII training selection as UIDs only. Pinned public datasets download on first use; no separate filtering run or environment service is needed. The command below uses the full run settings:
+The recipe bundles the measured OpenPII training selection as UIDs only. Pinned public datasets download on first use; no separate filtering run or environment service is needed. Dataset metadata resolution can still require network access with cached tokenizers. Bounded Parquet scans disable pre-buffering so early termination does not leave background reads accessing closed streams.
+
+The command below uses the full run settings:
 
 ```bash
 python -m programmed_training.recipes.tool_ner_rl.train_azure \
@@ -33,7 +48,29 @@ For a smoke run, replace the limits with `max_steps=2`, `max_test_examples=16`, 
 
 Optional async training: add `max_steps_off_policy=1`. PODS still keeps `pods_keep` rollouts per nonconstant group (four of eight by default). Only the sync refill loop is disabled; the shared async queue replenishes groups and checks staleness. `groups_per_batch` also controls async rollout workers; `max_concurrent_groups` is a sync-only limit. Both modes default to 64 retained trajectories per update. Async is smoke-tested, but not validated for equivalent learning quality.
 
-In-place resume is rejected because the full sampling state is not restored. To continue from saved weights, set `load_checkpoint_path` and use a fresh `log_path`; this restarts the data schedule and step counter, not an exact resume.
+Optional streaming: add `stream_num_minibatches=2` to overlap sampling with
+minibatch forward/backward work. It uses the sync-streaming loop unless async is
+also enabled explicitly. The minibatch count must evenly divide
+`groups_per_batch / num_substeps`. PODS selection is retained, but the sync-only
+refill loop is disabled, so constant-reward groups can reduce the effective
+batch. Streaming recovery has offline integration coverage; this is not a claim
+of equivalent learning quality across modes.
+
+Best-effort automatic recovery after `engine_dead` is enabled by default,
+including with `max_steps_off_policy=1`. Set `auto_resume=False` to opt out. Recovery
+restarts the training attempt
+after one-time setup, from the latest usable training checkpoint and its saved
+progress, with fresh rollout queues. `auto_resume_max_retries=3` allows three
+retries without new durable checkpoint progress. A new committed recovery point
+beyond the previous high-water mark resets this budget. Unsaved work is repeated
+and async prompt order is not preserved.
+See [automatic engine-loss recovery](../../../docs/training.md#automatic-engine-loss-recovery)
+for error controls, limits, and qualification status.
+
+Manual in-place relaunch with `behavior_if_log_dir_exists=resume` is still
+rejected because the full sampling state is not restored. To continue manually
+from saved weights, set `load_checkpoint_path` and use a fresh `log_path`; this
+restarts the data schedule and step counter, not an exact resume.
 
 ## Task and Tools
 

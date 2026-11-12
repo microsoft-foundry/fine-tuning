@@ -50,6 +50,9 @@ region, or create resources through an undisclosed mechanism.
 - `pyproject.toml` is the readable direct-dependency definition.
 - `requirements.lock` pins the direct dependencies used by the customer
   notebooks and helpers. It is one central environment, not a fully hashed transitive lock.
+- [Dependency compatibility](DEPENDENCY_COMPATIBILITY.md) records the
+  Python 3.11-3.14 direct-package metadata review, coordinated NumPy/OpenCV
+  selection, platform boundaries, and installer/CI validation still required.
 - `catalog.yml` is the root metadata source of truth.
 - `shared/schemas/` contains machine-readable schemas.
 - `shared/templates/` contains identifier-free starting points for track authors.

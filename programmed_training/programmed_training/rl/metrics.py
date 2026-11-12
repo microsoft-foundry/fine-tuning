@@ -26,6 +26,15 @@ def compute_kl_sample_train(
         return {}
     all_diffs: list[torch.Tensor] = []
     all_sampling_logprobs: list[torch.Tensor] = []
+    depth_bins = (
+        ("0_8k", 0, 8192),
+        ("8_16k", 8192, 16384),
+        ("16_32k", 16384, 32768),
+        ("32_64k", 32768, 65536),
+        ("over_64k", 65536, None),
+    )
+    diffs_by_depth: dict[str, list[torch.Tensor]] = {name: [] for name, _, _ in depth_bins}
+    max_action_position = 0
 
     for datum, training_logprobs in safezip(data_D, training_logprobs_D):
         # Get logprobs from sampling
@@ -39,6 +48,15 @@ def compute_kl_sample_train(
             logprob_diff = sampling_logprobs_actions - training_logprobs_actions
             all_diffs.append(logprob_diff)
             all_sampling_logprobs.append(sampling_logprobs_actions)
+            # Targets are shifted one token relative to the complete sequence.
+            positions = torch.arange(1, len(action_mask) + 1)[action_mask]
+            max_action_position = max(max_action_position, int(positions.max().item()))
+            for name, lower, upper in depth_bins:
+                in_bin = positions >= lower
+                if upper is not None:
+                    in_bin &= positions < upper
+                if in_bin.any():
+                    diffs_by_depth[name].append(logprob_diff[in_bin])
 
     assert all_diffs
     flat_diffs = torch.cat(all_diffs)
@@ -47,11 +65,21 @@ def compute_kl_sample_train(
 
     flat_sampling_logprobs = torch.cat(all_sampling_logprobs)
     entropy_sample = -flat_sampling_logprobs.mean().item()
-    return {
+    metrics = {
         "optim/kl_sample_train_v1": kl_sample_train_v1,
         "optim/kl_sample_train_v2": kl_sample_train_v2,
         "optim/entropy": entropy_sample,
+        "optim/kl_sample_train_action_tokens": flat_diffs.numel(),
+        "optim/kl_sample_train_max_action_position": max_action_position,
     }
+    for name, differences in diffs_by_depth.items():
+        prefix = f"optim/kl_sample_train_by_depth/{name}"
+        metrics[f"{prefix}/tokens"] = sum(part.numel() for part in differences)
+        if differences:
+            values = torch.cat(differences)
+            metrics[f"{prefix}/v1"] = values.mean().item()
+            metrics[f"{prefix}/v2"] = 0.5 * values.square().mean().item()
+    return metrics
 
 
 @scope

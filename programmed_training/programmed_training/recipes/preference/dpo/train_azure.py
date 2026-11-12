@@ -4,10 +4,13 @@ import asyncio
 import json
 import logging
 import os
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any, Literal
 
 import chz
+
+from programmed_training import auto_resume
 from azure.ai.finetuningsessions.models import FromCheckpoint, LoRAConfig
 
 from programmed_training import checkpoint_utils, cli_utils, model_info
@@ -24,6 +27,7 @@ from programmed_training.rl.train_azure import (
 )
 from programmed_training.supervised.types import ChatDatasetBuilderCommonConfig
 from programmed_training.tokenizer_utils import get_tokenizer
+from programmed_training.optimizers import AdamConfig
 from programmed_training.training_types import (
     TrainingType,
     normalize_training_type,
@@ -37,7 +41,7 @@ DatasetName = Literal["hhh", "helpsteer3", "ultrafeedback"]
 
 
 @chz.chz
-class CLIConfig:
+class CLIConfig(auto_resume.AutoResumeConfig, AdamConfig):
     project_endpoint: str
     model_name: str = model_info.DEFAULT_MODEL_NAME
     tokenizer_name: str | None = None
@@ -154,6 +158,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
         model_name=cli_config.model_name,
         dataset_builder=get_dataset_builder(cli_config, tokenizer_name, renderer_name),
         learning_rate=cli_config.learning_rate,
+        **cli_config.adam_kwargs(),
         lr_schedule=cli_config.lr_schedule,
         num_epochs=cli_config.num_epochs,
         max_steps=cli_config.max_steps,
@@ -219,27 +224,24 @@ async def cli_main(cli_config: CLIConfig) -> None:
 
     training_type = normalize_training_type(cli_config.training_type)
     session_ids: list[str] = []
-    try:
-        session_id = await client.create_session(
-            base_model=cli_config.model_name,
-            lora_config=LoRAConfig(rank=cli_config.lora_rank),
-            type="training",
-            from_checkpoint=from_checkpoint,
-            timeout_sec=600.0,
-            user_metadata=cli_config.user_metadata,
-            training_type=training_type,
-        )
-        session_ids.append(session_id)
-        training_client = AzureSDKTrainingClient(client, session_id, tokenizer)
-        logger.info("DPO training session: %s", session_id)
-        run_meta["azure"] = {"session_id": session_id}
-        await asyncio.to_thread(write_run_metadata, log_path, run_meta)
-        if resume:
-            reference_state_path = resume["reference_state_path"]
-            source_session, checkpoint_id = _parse_reference_checkpoint_path(
-                reference_state_path
-            )
-            reference_session_id = await client.create_session(
+    session_kwargs = dict(
+        base_model=cli_config.model_name,
+        lora_config=LoRAConfig(rank=cli_config.lora_rank),
+        type="training",
+        from_checkpoint=from_checkpoint,
+        timeout_sec=600.0,
+        user_metadata=cli_config.user_metadata,
+        training_type=training_type,
+    )
+    reference_state_path: str | None = resume["reference_state_path"] if resume else None
+
+    async def workload(attempt_client, attempt_session):
+        nonlocal reference_state_path
+        training_client = AzureSDKTrainingClient(attempt_client, attempt_session, tokenizer)
+        if reference_state_path is not None:
+            source_session, checkpoint_id = _parse_reference_checkpoint_path(reference_state_path)
+            reference_session_id = await auto_resume.create_owned_session(
+                attempt_client,
                 base_model=cli_config.model_name,
                 lora_config=LoRAConfig(rank=cli_config.lora_rank),
                 type="training",
@@ -249,37 +251,62 @@ async def cli_main(cli_config: CLIConfig) -> None:
                 timeout_sec=600.0,
                 training_type=training_type,
             )
-            session_ids.append(reference_session_id)
+            if not cli_config.auto_resume:
+                session_ids.append(reference_session_id)
             reference_training_client = AzureSDKTrainingClient(
-                client, reference_session_id, tokenizer
+                attempt_client, reference_session_id, tokenizer
             )
         else:
             reference_future = await training_client.save_state_async("dpo_reference")
             reference_state_path = (await reference_future.result_async()).path
             reference_training_client = training_client
         reference_client = (
-            await reference_training_client.save_weights_and_get_sampling_client_async(
-                "dpo_reference"
-            )
+            await reference_training_client.save_weights_and_get_sampling_client_async("dpo_reference")
         )
         await main(
-            config,
-            training_client,
-            reference_client,
-            reference_state_path,
+            config, training_client, reference_client, reference_state_path,
             prepared_datasets=prepared_datasets,
         )
+
+    supervisor_owned = False
+    workload_error: BaseException | None = None
+    try:
+        session_id = await client.create_session(**session_kwargs)
+        session_ids.append(session_id)
+        logger.info("DPO training session: %s", session_id)
+        run_meta["azure"] = {"session_id": session_id}
+        await asyncio.to_thread(write_run_metadata, log_path, run_meta)
+        supervisor_owned = cli_config.auto_resume
+        await auto_resume.run(
+            workload, config=cli_config, log_path=log_path,
+            client=client, session_id=session_id,
+            client_factory=lambda: FineTuningSessionClient(**client_kwargs),
+            session_kwargs=session_kwargs,
+        )
+    except BaseException as exc:
+        workload_error = exc
+        raise
     finally:
-        for session_id in reversed(session_ids):
+        cleanup_errors: list[BaseException] = []
+        for session_id in reversed(session_ids if not supervisor_owned else []):
             try:
                 await client.close_session(session_id)
-            except Exception:
+            except BaseException as exc:
                 logger.exception("Failed to close DPO session %s", session_id)
-        try:
-            await client.close()
-        finally:
-            if hasattr(credential, "close"):
-                await credential.close()
+                cleanup_errors.append(exc)
+        closers: list[Callable[[], Awaitable[Any]]] = [client.close]
+        if hasattr(credential, "close"):
+            closers.append(credential.close)
+        for closer in closers:
+            try:
+                await closer()
+            except BaseException as exc:
+                logger.exception("DPO client or credential cleanup failed")
+                cleanup_errors.append(exc)
+        if cleanup_errors and workload_error is None:
+            if len(cleanup_errors) == 1:
+                raise cleanup_errors[0]
+            raise BaseExceptionGroup("DPO resource cleanup failed", cleanup_errors)
 
 
 if __name__ == "__main__":

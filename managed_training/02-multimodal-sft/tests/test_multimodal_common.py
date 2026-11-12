@@ -18,16 +18,20 @@ class FakeFiles:
     def __init__(self) -> None:
         self.created_name = ""
         self.retrieve_status = "processed"
+        self.create_calls = 0
+        self.retrieve_calls = []
 
     def list(self) -> list[object]:
         return []
 
     def create(self, *, file: tuple[str, object, str], purpose: str) -> object:
+        self.create_calls += 1
         self.created_name = file[0]
         assert purpose == "fine-tune"
         return SimpleNamespace(id="file-created")
 
     def retrieve(self, file_id: str) -> object:
+        self.retrieve_calls.append(file_id)
         return SimpleNamespace(id=file_id, status=self.retrieve_status)
 
 
@@ -53,12 +57,164 @@ def test_upload_uses_content_addressed_filename(tmp_path: Path) -> None:
     source.write_text('{"messages":[]}\n', encoding="utf-8")
     files = FakeFiles()
     client = SimpleNamespace(files=files)
+    options = {}
+    client.with_options = lambda **kwargs: options.update(kwargs) or client
 
     uploaded = common.upload_or_reuse_file(client, source)
 
     digest = hashlib.sha256(source.read_bytes()).hexdigest()[:16]
     assert files.created_name == f"training-{digest}.jsonl"
     assert uploaded.id == "file-created"
+    assert files.create_calls == 1
+    assert options == {"max_retries": 0}
+
+
+def test_upload_accepted_then_response_lost_posts_once(tmp_path: Path) -> None:
+    import httpx
+    from openai import APIConnectionError, OpenAI
+
+    source = tmp_path / "training.jsonl"
+    source.write_text('{"messages":[]}\n', encoding="utf-8")
+    requests = []
+    accepted = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append((request.method, request.url.path))
+        if request.method == "GET" and request.url.path == "/v1/files":
+            return httpx.Response(200, json={"data": [], "has_more": False})
+        if request.method == "POST" and request.url.path == "/v1/files":
+            accepted.append("file-accepted")
+            raise httpx.ReadError("accepted, then response lost", request=request)
+        pytest.fail(f"Unexpected request: {request.method} {request.url.path}")
+
+    with OpenAI(
+        api_key="offline-test", base_url="https://offline.invalid/v1",
+        max_retries=2, http_client=httpx.Client(transport=httpx.MockTransport(handle)),
+    ) as client:
+        with pytest.raises(RuntimeError, match="not retried.*Reconcile") as caught:
+            common.upload_or_reuse_file(client, source)
+
+    assert isinstance(caught.value.__cause__, APIConnectionError)
+    assert "filename alone" in str(caught.value)
+    assert accepted == ["file-accepted"]
+    assert requests == [("GET", "/v1/files"), ("POST", "/v1/files")]
+
+
+@pytest.mark.parametrize("status_code", [400, 401, 403, 422, 429, 503])
+def test_upload_request_errors_never_repeat_post(
+    tmp_path: Path, status_code: int,
+) -> None:
+    import httpx
+    from openai import APIStatusError, OpenAI
+
+    source = tmp_path / "training.jsonl"
+    source.write_text('{"messages":[]}\n', encoding="utf-8")
+    requests = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append((request.method, request.url.path))
+        if request.method == "GET" and request.url.path == "/v1/files":
+            return httpx.Response(200, json={"data": [], "has_more": False})
+        assert (request.method, request.url.path) == ("POST", "/v1/files")
+        return httpx.Response(
+            status_code,
+            json={"error": {"message": "Upload rejected", "type": "upload_error"}},
+        )
+
+    with OpenAI(
+        api_key="offline-test", base_url="https://offline.invalid/v1",
+        max_retries=2, http_client=httpx.Client(transport=httpx.MockTransport(handle)),
+    ) as client:
+        with pytest.raises(RuntimeError, match="not retried") as caught:
+            common.upload_or_reuse_file(client, source)
+
+    assert isinstance(caught.value.__cause__, APIStatusError)
+    assert caught.value.__cause__.status_code == status_code
+    assert requests == [("GET", "/v1/files"), ("POST", "/v1/files")]
+
+
+@pytest.mark.parametrize("status", ["error", "failed", "cancelled", "expired"])
+def test_upload_terminal_file_error_does_not_repeat_post(
+    tmp_path: Path, status: str,
+) -> None:
+    source = tmp_path / "training.jsonl"
+    source.write_text('{"messages":[]}\n', encoding="utf-8")
+    files = FakeFiles()
+    files.retrieve_status = status
+    client = SimpleNamespace(files=files)
+    client.with_options = lambda **_kwargs: client
+
+    with pytest.raises(RuntimeError, match=f"File file-created ended in terminal state {status}"):
+        common.upload_or_reuse_file(client, source)
+
+    assert files.create_calls == 1
+    assert files.retrieve_calls == ["file-created"]
+
+
+@pytest.mark.parametrize("missing_id", [None, "", "  "])
+def test_upload_missing_id_fails_closed_without_waiting(
+    tmp_path: Path, missing_id: str | None,
+) -> None:
+    source = tmp_path / "training.jsonl"
+    source.write_text('{"messages":[]}\n', encoding="utf-8")
+    created = []
+    client = SimpleNamespace(files=SimpleNamespace(
+        list=lambda: [],
+        create=lambda **kwargs: created.append(kwargs) or SimpleNamespace(id=missing_id),
+        retrieve=lambda *_args: pytest.fail("Must not poll an unknown file ID"),
+    ))
+    client.with_options = lambda **_kwargs: client
+
+    with pytest.raises(RuntimeError, match="returned no file ID.*Reconcile"):
+        common.upload_or_reuse_file(client, source)
+    assert len(created) == 1
+
+
+@pytest.mark.parametrize("case", ["duplicate", "wrong-purpose", "wrong-size", "missing-metadata"])
+def test_upload_refuses_ambiguous_filename_reuse(tmp_path: Path, case: str) -> None:
+    source = tmp_path / "training.jsonl"
+    source.write_text('{"messages":[]}\n', encoding="utf-8")
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()[:16]
+    candidate = SimpleNamespace(
+        id="file-existing", filename=f"training-{digest}.jsonl",
+        purpose="fine-tune", bytes=source.stat().st_size,
+    )
+    if case == "wrong-purpose":
+        candidate.purpose = "assistants"
+    elif case == "wrong-size":
+        candidate.bytes += 1
+    elif case == "missing-metadata":
+        del candidate.purpose
+    matches = [candidate, candidate] if case == "duplicate" else [candidate]
+    client = SimpleNamespace(files=SimpleNamespace(
+        list=lambda: matches,
+        retrieve=lambda *_args: pytest.fail("Must not reuse ambiguous matches"),
+    ))
+    client.with_options = lambda **_kwargs: pytest.fail("Must not create another file")
+
+    with pytest.raises(RuntimeError, match="reconcile"):
+        common.upload_or_reuse_file(client, source)
+
+
+def test_upload_reuses_unique_file_with_matching_metadata(tmp_path: Path) -> None:
+    source = tmp_path / "training.jsonl"
+    source.write_text('{"messages":[]}\n', encoding="utf-8")
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()[:16]
+    candidate = SimpleNamespace(
+        id="file-existing", filename=f"training-{digest}.jsonl",
+        purpose="fine-tune", bytes=source.stat().st_size,
+    )
+    retrieved = []
+    client = SimpleNamespace(files=SimpleNamespace(
+        list=lambda: [candidate],
+        retrieve=lambda file_id: retrieved.append(file_id) or SimpleNamespace(
+            id=file_id, status="processed",
+        ),
+    ))
+    client.with_options = lambda **_kwargs: pytest.fail("Must not upload an existing file")
+
+    assert common.upload_or_reuse_file(client, source).id == "file-existing"
+    assert retrieved == ["file-existing"]
 
 
 def test_reused_failed_job_raises(

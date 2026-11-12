@@ -27,6 +27,19 @@ def test_multi_root_discovered_runs_resolve(tmp_path, duplicate_names):
     }
 
 
+def test_recovery_attempts_are_discovered_as_separate_runs(tmp_path):
+    initial = tmp_path / "run"
+    replacement = initial / "recovery_attempts" / "replacement"
+    replacement.mkdir(parents=True)
+    for path in (initial, replacement):
+        (path / "config.json").write_text("{}\n", encoding="utf-8")
+    runs = discover_runs([tmp_path])
+    assert len(runs) == 2
+    assert {_handler([tmp_path])._resolve_run_dir(run["id"]) for run in runs} == {
+        initial, replacement,
+    }
+
+
 @pytest.mark.parametrize("filename", ["eval_secret.txt", "train_iteration_key.env", "eval_data.json"])
 def test_iteration_prefix_does_not_allow_non_html_files(tmp_path, filename):
     assert _handler([tmp_path])._resolve_run_file("run", filename) is None

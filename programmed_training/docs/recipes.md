@@ -12,6 +12,7 @@ A recipe is a small launcher that wires task-specific data and configuration int
 | Executable program solutions | [code_rl](../programmed_training/recipes/code_rl/README.md) | SandboxFusion or Modal; **executes generated code**, including in evaluation | Held-out test pass rate and sandbox failures |
 | Retrieval-augmented QA | [search_tool](../programmed_training/recipes/search_tool/README.md) | Vector-search extra, large index download, running retrieval server | Held-out answer correctness and tool-call behavior |
 | Grounded entity extraction | [tool_ner_rl](../programmed_training/recipes/tool_ner_rl/README.md) | Public dataset terms; artifact content may be sensitive | Exact-span micro-F1, errors, comparable evaluation manifests |
+| Semantic summarization quality | [llm_judge_rl](../programmed_training/recipes/llm_judge_rl/README.md) | Separate structured-output judge endpoint; review judge limitations | Fixed-validation adjusted reward, eligibility, and raw judge reward |
 | Image-grounded tasks | [visual_spatial](../programmed_training/recipes/visual_spatial/README.md) | Image extra, compatible vision model and enabled image fine-tuning | Exact-match task evaluation, not general vision quality |
 | Image-returning external tools | [mcp_image_tool](../programmed_training/recipes/mcp_image_tool/README.md) | MCP/image extras, approved tool processes and data access | Fresh/post-SFT/final task evaluations and tool success |
 | Pairwise preferences | [preference/dpo](../programmed_training/recipes/preference/dpo/README.md) | Preference pairs and reference-session capacity | Held-out losses plus an independent task/preference evaluation |
@@ -39,6 +40,13 @@ recipes are deliberate exceptions to the text default.
   - Single-turn, execution-free — the model emits tool calls graded against gold answers.
   - Uses BFCL-style AST matching with bipartite scoring for smooth RL gradients.
   - Requires Hugging Face authentication (`hf auth login`) and a tool-aware renderer (e.g. `qwen3`, `gpt_oss`, `deepseek_v3`).
+
+- **[llm_judge_rl](../programmed_training/recipes/llm_judge_rl/)** — Single-turn BillSum summarization RL with a separately authenticated Azure OpenAI structured judge, deterministic train-derived validation, strict failure semantics, and mechanical word-limit enforcement.
+
+- **[rl_numerics_check](../programmed_training/recipes/rl_numerics_check/)** - Long-context, many-turn document counting for RL sampler/trainer numerics checks.
+  - Reads WikiText pages through one `read_page` call per turn and grades count accuracy.
+  - Uses the shared GRPO loop and sampler/trainer KL metrics, with context-budget and token-prefix diagnostics.
+  - Defaults to model-aware non-thinking rendering. Long-context runs require compatible trainer and sampler deployments; a model's advertised context is not a capacity guarantee.
 
 - **[code_rl](../programmed_training/recipes/code_rl/)** — RL on competitive programming problems using the [DeepCoder-Preview](https://huggingface.co/datasets/agentica-org/DeepCoder-Preview-Dataset) dataset.
   - Multi-turn tool-use: a `check_solution` tool lets the model test code in a sandbox before submitting.
@@ -79,6 +87,7 @@ and renderer overrides unless needed so the recipe selects the matching template
 | Recipe | Default model |
 |---|---|
 | `math_rl`, `code_rl`, `tool_rl`, `search_tool` | `Qwen/Qwen3.8-27B` |
+| `llm_judge_rl` | `Qwen/Qwen3-32B` |
 | `tulu3_sft`, `preference/dpo`, `distillation` | `Qwen/Qwen3.8-27B` |
 | `tool_ner_rl` (training and evaluation) | `Qwen/Qwen3.8-27B` |
 | `mcp_image_tool` | `meta-models/Muse-Glimmer-30B` |

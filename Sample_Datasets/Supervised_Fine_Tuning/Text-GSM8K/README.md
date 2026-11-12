@@ -1,6 +1,15 @@
 # Notice
 
-This issample training & validation data This was curated using [this](https://huggingface.co/datasets/openai/gsm8k) as the reference dataset.
+This sample training and validation data was curated from
+[OpenAI GSM8K](https://huggingface.co/datasets/openai/gsm8k).
+
+## Attribution and license
+
+GSM8K is Copyright (c) 2021 OpenAI and distributed under the
+[upstream MIT license](https://github.com/openai/grade-school-math/blob/master/LICENSE).
+The complete notice is retained in [LICENSE.md](LICENSE.md). Microsoft copyright
+applies separately to modifications to the chat formatting and documentation;
+it does not replace OpenAI's dataset attribution.
 
 ## Dataset Summary
 

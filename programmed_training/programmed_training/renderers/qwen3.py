@@ -134,7 +134,7 @@ class Qwen3Renderer(Renderer):
         role = self._get_qwen_role_for_message(message)
         header_str = f"{maybe_newline}<|im_start|>{role}\n"
 
-        content = message["content"]
+        content = message["content"] or ""
 
         if isinstance(content, list):
             # Structured content - handle with list operations
@@ -166,13 +166,14 @@ class Qwen3Renderer(Renderer):
         if message["role"] == "tool":
             output_content = self._wrap_qwen_tool_response(output_content)
 
-        # Handle tool_calls field
-        if "tool_calls" in message:
+        # Hugging Face datasets normalize optional struct fields to None.
+        tool_calls = message.get("tool_calls") or []
+        if tool_calls:
             # Add leading newline to match HF template behavior
             output_content += "\n" + "\n".join(
                 [
                     f"<tool_call>\n{json.dumps(_tool_call_payload(tool_call))}\n</tool_call>"
-                    for tool_call in message["tool_calls"]
+                    for tool_call in tool_calls
                 ]
             )
         output_content += "<|im_end|>"
@@ -237,7 +238,7 @@ class Qwen3Renderer(Renderer):
 
         We use reasoning_content for cleaner separation.
         """
-        content = message["content"]
+        content = message["content"] or ""
         if not isinstance(content, str) and any(
             part["type"] in {"image", "image_url"} for part in content
         ):
@@ -441,7 +442,7 @@ class Qwen3VLRenderer(Qwen3Renderer):
         Converts ThinkingPart to <think>...</think> text (or strips if strip_thinking=True).
         Wraps images with vision tokens. Tool calls are in message's tool_calls field.
         """
-        content = message["content"]
+        content = message["content"] or ""
         if isinstance(content, str):
             base_parts: list[ImagePart | ImageURLPart | TextPart] = [
                 TextPart(type="text", text=content)
@@ -501,7 +502,8 @@ class Qwen3VLRenderer(Qwen3Renderer):
         if message["role"] == "tool":
             output_chunks = self._wrap_qwen_tool_response_chunks(output_chunks)
 
-        if "tool_calls" in message:
+        tool_calls = message.get("tool_calls") or []
+        if tool_calls:
             # Add leading newline to match HF template behavior
             output_chunks += [
                 TextPart(
@@ -510,7 +512,7 @@ class Qwen3VLRenderer(Qwen3Renderer):
                     + "\n".join(
                         [
                             f"<tool_call>\n{json.dumps(_tool_call_payload(tool_call))}\n</tool_call>"
-                            for tool_call in message["tool_calls"]
+                            for tool_call in tool_calls
                         ]
                     ),
                 )

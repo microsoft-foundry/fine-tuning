@@ -35,6 +35,11 @@ from programmed_training.rl.train import save_checkpoint_and_get_sampling_client
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture(params=["{session}/{name}", "loom://{session}/weights/{name}"], ids=["plain", "service-uri"])
+def checkpoint_path_template(request):
+    return request.param
+
+
 def _write_checkpoints(log_dir: str, rows: list[dict]) -> str:
     """Write rows to ``<log_dir>/checkpoints.jsonl`` and return the path."""
     path = os.path.join(log_dir, checkpoint_utils.CHECKPOINTS_BASE_NAME)
@@ -89,29 +94,32 @@ class TestGetLastCheckpoint:
         _write_checkpoints(str(tmp_path), [])
         assert checkpoint_utils.get_last_checkpoint(str(tmp_path)) is None
 
-    def test_returns_last_resumable_row(self, tmp_path):
+    def test_returns_last_resumable_row(self, tmp_path, checkpoint_path_template):
         """With several rows, the LAST one with state_path wins."""
+        first_path = checkpoint_path_template.format(session="model_abc", name="2")
+        last_path = checkpoint_path_template.format(session="model_abc", name="4")
         _write_checkpoints(str(tmp_path), [
-            {"name": "2", "batch": 2, "state_path": "model_abc/2", "sampler_path": "2"},
-            {"name": "4", "batch": 4, "state_path": "model_abc/4", "sampler_path": "4"},
+            {"name": "2", "batch": 2, "state_path": first_path, "sampler_path": "2"},
+            {"name": "4", "batch": 4, "state_path": last_path, "sampler_path": "4"},
         ])
         row = checkpoint_utils.get_last_checkpoint(str(tmp_path))
         assert row is not None
         assert row["batch"] == 4
-        assert row["state_path"] == "model_abc/4"
+        assert row["state_path"] == last_path
 
-    def test_skips_trailing_sampler_only_row(self, tmp_path):
+    def test_skips_trailing_sampler_only_row(self, tmp_path, checkpoint_path_template):
         """A sampler-only row (no state_path) is NOT resumable; fall back to the
         last row that does have state_path."""
+        state_path = checkpoint_path_template.format(session="model_abc", name="2")
         _write_checkpoints(str(tmp_path), [
-            {"name": "2", "batch": 2, "state_path": "model_abc/2", "sampler_path": "2"},
+            {"name": "2", "batch": 2, "state_path": state_path, "sampler_path": "2"},
             # ephemeral sampler sync between steps — no state_path
             {"name": "step3", "sampler_path": "step3"},
         ])
         row = checkpoint_utils.get_last_checkpoint(str(tmp_path))
         assert row is not None
         assert row["batch"] == 2
-        assert row["state_path"] == "model_abc/2"
+        assert row["state_path"] == state_path
 
     def test_none_when_only_sampler_rows(self, tmp_path):
         """If NO row has state_path, there is nothing resumable → None."""
@@ -142,10 +150,10 @@ class TestSaveCheckpointRow:
     """The row written by save_checkpoint_async is exactly what resume reads."""
 
     @pytest.mark.asyncio
-    async def test_both_writes_full_row(self, tmp_path):
+    async def test_both_writes_full_row(self, tmp_path, checkpoint_path_template):
         """kind='both' writes name + loop_state + state_path + sampler_path."""
         client = _make_training_client(
-            state_path="model_abc/4", sampler_path="4"
+            state_path=checkpoint_path_template.format(session="model_abc", name="4"), sampler_path="4"
         )
         paths = await checkpoint_utils.save_checkpoint_async(
             training_client=client,
@@ -169,9 +177,11 @@ class TestSaveCheckpointRow:
         }
 
     @pytest.mark.asyncio
-    async def test_state_only_omits_sampler(self, tmp_path):
+    async def test_state_only_omits_sampler(self, tmp_path, checkpoint_path_template):
         """kind='state' writes a resumable row with state_path but no sampler_path."""
-        client = _make_training_client(state_path="model_abc/7")
+        client = _make_training_client(
+            state_path=checkpoint_path_template.format(session="model_abc", name="7")
+        )
         await checkpoint_utils.save_checkpoint_async(
             training_client=client,
             name="7",
@@ -203,14 +213,18 @@ class TestSaveCheckpointRow:
         assert checkpoint_utils.get_last_checkpoint(str(tmp_path)) is None
 
     @pytest.mark.asyncio
-    async def test_rows_append(self, tmp_path):
+    async def test_rows_append(self, tmp_path, checkpoint_path_template):
         """Successive saves append; get_last_checkpoint returns the newest."""
-        client = _make_training_client(state_path="model_abc/1", sampler_path="1")
+        client = _make_training_client(
+            state_path=checkpoint_path_template.format(session="model_abc", name="1"), sampler_path="1"
+        )
         await checkpoint_utils.save_checkpoint_async(
             training_client=client, name="1", log_path=str(tmp_path),
             loop_state={"batch": 1}, kind="both",
         )
-        client2 = _make_training_client(state_path="model_abc/2", sampler_path="2")
+        client2 = _make_training_client(
+            state_path=checkpoint_path_template.format(session="model_abc", name="2"), sampler_path="2"
+        )
         await checkpoint_utils.save_checkpoint_async(
             training_client=client2, name="2", log_path=str(tmp_path),
             loop_state={"batch": 2}, kind="both",
@@ -230,9 +244,9 @@ class TestResumeContract:
     and parses back into (session_id, checkpoint_name) for from_checkpoint."""
 
     @pytest.mark.asyncio
-    async def test_round_trip_state_path_and_batch(self, tmp_path):
+    async def test_round_trip_state_path_and_batch(self, tmp_path, checkpoint_path_template):
         client = _make_training_client(
-            state_path="model_6ff3628a/4", sampler_path="4"
+            state_path=checkpoint_path_template.format(session="model_6ff3628a", name="4"), sampler_path="4"
         )
         await checkpoint_utils.save_checkpoint_async(
             training_client=client, name="4", log_path=str(tmp_path),
@@ -285,19 +299,21 @@ class TestSelectResumeCheckpoint:
         assert sel.is_resume is False
         assert sel.ignored_load_checkpoint_path is None
 
-    def test_resume_used_when_ledger_present(self):
-        resume_info = {"state_path": "model_abc/4", "batch": 4}
+    def test_resume_used_when_ledger_present(self, checkpoint_path_template):
+        state_path = checkpoint_path_template.format(session="model_abc", name="4")
+        resume_info = {"state_path": state_path, "batch": 4}
         sel = checkpoint_utils.select_resume_checkpoint(resume_info, None)
-        assert sel.checkpoint_path == "model_abc/4"
+        assert sel.checkpoint_path == state_path
         assert sel.is_resume is True
         assert sel.ignored_load_checkpoint_path is None
 
-    def test_resume_preempts_explicit_path(self):
+    def test_resume_preempts_explicit_path(self, checkpoint_path_template):
         """The key precedence rule: a present ledger wins, and the ignored
         explicit path is surfaced so the recipe can warn."""
-        resume_info = {"state_path": "model_abc/4", "batch": 4}
+        state_path = checkpoint_path_template.format(session="model_abc", name="4")
+        resume_info = {"state_path": state_path, "batch": 4}
         sel = checkpoint_utils.select_resume_checkpoint(resume_info, "model_x/final")
-        assert sel.checkpoint_path == "model_abc/4"
+        assert sel.checkpoint_path == state_path
         assert sel.is_resume is True
         assert sel.ignored_load_checkpoint_path == "model_x/final"
 
@@ -336,11 +352,11 @@ class TestResumeConsistency:
         start_batch = resume_info["batch"] if resume_info else 0
         return selection, start_batch
 
-    def test_resume_weights_and_cursor_share_the_ledger_checkpoint(self, tmp_path):
+    def test_resume_weights_and_cursor_share_the_ledger_checkpoint(self, tmp_path, checkpoint_path_template):
         """Ledger present + explicit load_checkpoint_path: weights come from the
         ledger's state_path (not the explicit path) AND the cursor comes from the
         same ledger row — so they can't drift apart."""
-        state_path = "model_abc/7"
+        state_path = checkpoint_path_template.format(session="model_abc", name="7")
         _write_checkpoints(
             str(tmp_path),
             [{"name": "step-7", "batch": 7, "state_path": state_path, "sampler_path": "7"}],
@@ -399,11 +415,11 @@ class TestPeriodicSaveProducer:
     """
 
     @pytest.mark.asyncio
-    async def test_save_boundary_writes_resumable_batch_row(self, tmp_path):
+    async def test_save_boundary_writes_resumable_batch_row(self, tmp_path, checkpoint_path_template):
         """On a save_every boundary the loop writes a row whose ``batch`` is the
         current iteration and round-trips into the right ``start_batch``."""
         client = _make_training_client(
-            state_path="model_abc/4", sampler_path="4"
+            state_path=checkpoint_path_template.format(session="model_abc", name="4"), sampler_path="4"
         )
         _, _metrics = await save_checkpoint_and_get_sampling_client(
             training_client=client,
@@ -452,11 +468,11 @@ class TestPeriodicSaveProducer:
         assert checkpoint_utils.get_last_checkpoint(str(tmp_path)) is None
 
     @pytest.mark.asyncio
-    async def test_eval_boundary_also_saves(self, tmp_path):
+    async def test_eval_boundary_also_saves(self, tmp_path, checkpoint_path_template):
         """An eval_every boundary saves a resumable row even when not on a
         save_every boundary (so the just-evaluated iteration is recoverable)."""
         client = _make_training_client(
-            state_path="model_abc/3", sampler_path="3"
+            state_path=checkpoint_path_template.format(session="model_abc", name="3"), sampler_path="3"
         )
         await save_checkpoint_and_get_sampling_client(
             training_client=client,
@@ -470,11 +486,11 @@ class TestPeriodicSaveProducer:
         assert row is not None and row["batch"] == 3
 
     @pytest.mark.asyncio
-    async def test_loop_state_extra_is_persisted(self, tmp_path):
+    async def test_loop_state_extra_is_persisted(self, tmp_path, checkpoint_path_template):
         """Dynamic sampling threads extra loop state (prompt_cursor) through to the
         row, alongside ``batch``."""
         client = _make_training_client(
-            state_path="model_abc/4", sampler_path="4"
+            state_path=checkpoint_path_template.format(session="model_abc", name="4"), sampler_path="4"
         )
         await save_checkpoint_and_get_sampling_client(
             training_client=client,

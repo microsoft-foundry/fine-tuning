@@ -78,7 +78,7 @@ def _status(value: Any) -> str:
 
 
 def _resource_id(value: Any, resource_name: str) -> str:
-    resource_id = str(getattr(value, "id", "")).strip()
+    resource_id = str(getattr(value, "id", "") or "").strip()
     if not resource_id:
         raise RuntimeError(f"{resource_name} response did not include an id.")
     return resource_id
@@ -244,27 +244,53 @@ def upload_or_reuse_file(
     existing = _iter_page(
         retry_call(client.files.list, operation_name="list uploaded files")
     )
-    for candidate in existing:
-        if str(getattr(candidate, "filename", "")) == remote_name:
-            print({"file": remote_name, "action": "reuse"})
-            return wait_for_file(
-                client,
-                _resource_id(candidate, "File"),
-                timeout_seconds=timeout_seconds,
+    matching = [
+        candidate
+        for candidate in existing
+        if str(getattr(candidate, "filename", "")) == remote_name
+    ]
+    if len(matching) > 1:
+        raise RuntimeError(
+            f"Multiple remote files match {remote_name}; reconcile their IDs "
+            "and contents before resuming. Refusing to choose by filename."
+        )
+    if matching:
+        candidate = matching[0]
+        if (
+            getattr(candidate, "purpose", None) != "fine-tune"
+            or getattr(candidate, "bytes", None) != selected.stat().st_size
+        ):
+            raise RuntimeError(
+                f"Remote file {remote_name} does not expose the expected "
+                "fine-tune purpose and byte count; reconcile it before reuse."
             )
+        print({"file": remote_name, "action": "reuse"})
+        return wait_for_file(
+            client,
+            _resource_id(candidate, "File"),
+            timeout_seconds=timeout_seconds,
+        )
 
-    def upload() -> Any:
+    print({"file": remote_name, "action": "upload"})
+    try:
         with selected.open("rb") as stream:
-            return client.files.create(
+            uploaded = client.with_options(max_retries=0).files.create(
                 file=(remote_name, stream, "application/jsonl"),
                 purpose="fine-tune",
             )
-
-    print({"file": remote_name, "action": "upload"})
-    uploaded = retry_call(upload, operation_name="upload fine-tuning file")
+        file_id = _resource_id(uploaded, "File")
+    except Exception as error:
+        raise RuntimeError(
+            f"Upload of {remote_name} failed or returned no file ID; it was "
+            "not retried (SDK max_retries=0). The submission outcome may be "
+            "unknown. Reconcile the project's remote files against the local "
+            "content, purpose, and byte count, then record the confirmed file "
+            "ID before resuming. Do not blindly repeat the POST or select a "
+            "file by filename alone."
+        ) from error
     return wait_for_file(
         client,
-        _resource_id(uploaded, "File"),
+        file_id,
         timeout_seconds=timeout_seconds,
     )
 

@@ -19,7 +19,7 @@ def test_cookbook_distribution_and_wheel_use_current_namespace():
     assert metadata["tool"]["hatch"]["build"]["targets"]["wheel"]["packages"] == [
         "programmed_training"
     ]
-    assert "azure-ai-finetuningsessions==1.0.0b1" in metadata["project"]["dependencies"]
+    assert "azure-ai-finetuningsessions==1.0.0b2" in metadata["project"]["dependencies"]
     assert Path(programmed_training.__file__).resolve() == ROOT / "programmed_training" / "__init__.py"
     assert all(not (ROOT / package).exists() for package in OLD_PACKAGES)
 

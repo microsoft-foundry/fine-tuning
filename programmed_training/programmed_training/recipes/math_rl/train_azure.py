@@ -30,12 +30,18 @@ from typing import Any
 from urllib.parse import urlparse
 
 import chz
+
+from programmed_training import auto_resume
 import torch
 from azure.ai.finetuningsessions.models import Datum, LossFn as LossFnType, TensorData
 
 from programmed_training import cli_utils, model_info
 from programmed_training.dynamic_batching import build_strategy
 from programmed_training.recipes.math_rl import arithmetic_env, math_env
+from programmed_training.recipes.math_rl.grading_executor import (
+    DEFAULT_GRADING_CONCURRENCY,
+    GradingExecutor,
+)
 from programmed_training.rl import train_azure as rl_azure
 from programmed_training.rl.train import (
     AsyncConfig,
@@ -46,6 +52,7 @@ from programmed_training.rl.train import (
 from programmed_training.rl.train_azure import AzureSDKTrainingClient
 from programmed_training.rl.types import RLDatasetBuilder
 from programmed_training.tensor_utils import tensor_data_to_torch
+from programmed_training.optimizers import AdamConfig
 from programmed_training.training_types import (
     TrainingType,
     normalize_training_type,
@@ -309,7 +316,7 @@ class CustomLossTrainingClient(AzureSDKTrainingClient):
 
 
 @chz.chz
-class CLIConfig:
+class CLIConfig(auto_resume.AutoResumeConfig, AdamConfig):
     """Command-line config for Azure SDK-based math RL training."""
 
     # Model
@@ -422,6 +429,9 @@ class CLIConfig:
     # that's 2048 concurrent requests.  None = unlimited; lower this if the
     # service or your local environment cannot sustain the request rate.
     max_concurrent_groups: int | None = None
+
+    # Local grading subprocess concurrency, independent of HTTP/rollout limits.
+    grading_concurrency: int = DEFAULT_GRADING_CONCURRENCY
 
     # Opt-in Python-side custom loss.  When set, every ``forward_backward``
     # call is routed through ``forward_backward_custom_async`` with a
@@ -539,6 +549,9 @@ def _parse_checkpoint_path(checkpoint_path: str) -> tuple[str, str]:
 async def cli_main(cli_config: CLIConfig):
     """Build Config (same as train.py), create Azure session, run training."""
 
+    if cli_config.grading_concurrency < 1:
+        raise ValueError("grading_concurrency must be positive")
+
     cli_config_dump = {
         key: getattr(cli_config, key, None) for key in CLIConfig.__annotations__.keys()
     }
@@ -587,6 +600,7 @@ async def cli_main(cli_config: CLIConfig):
 
     config = Config(
         learning_rate=cli_config.learning_rate,
+        **cli_config.adam_kwargs(),
         dataset_builder=get_dataset_builder(
             env=cli_config.env,
             batch_size=cli_config.groups_per_batch,
@@ -601,7 +615,7 @@ async def cli_main(cli_config: CLIConfig):
             forced_commit_max_tokens=cli_config.forced_commit_max_tokens,
             forced_commit_prefill_boxed=cli_config.forced_commit_prefill_boxed,
         ),
-        model_name=tokenizer_name,
+        model_name=cli_config.model_name,
         tokenizer_name=tokenizer_name,
         lora_rank=effective_lora_rank,
         lora_alpha=effective_lora_alpha,
@@ -716,6 +730,7 @@ async def cli_main(cli_config: CLIConfig):
             "eval_strategy": cli_config.eval_strategy,
             "eval_every": cli_config.eval_every,
             "save_every": cli_config.save_every,
+            "grading_concurrency": cli_config.grading_concurrency,
             "strategy": cli_config.strategy or "baseline",
             "max_rolls_per_group": cli_config.max_rolls_per_group,
             "refill_on_drop": cli_config.refill_on_drop,
@@ -730,8 +745,7 @@ async def cli_main(cli_config: CLIConfig):
     _write_meta()
 
     def record_reference_session(session_id: str) -> None:
-        run_meta["azure"]["reference_session_id"] = session_id
-        _write_meta()
+        auto_resume.record_reference_session(log_path, session_id)
 
     # ── Azure SDK: auth + session creation ───────────────────────────────────
     from azure.ai.finetuningsessions.aio import FineTuningSessionClient
@@ -812,8 +826,7 @@ async def cli_main(cli_config: CLIConfig):
     )
 
     lora_config = LoRAConfig(rank=effective_lora_rank)
-    try:
-        session_id = await client.create_session(
+    session_kwargs = dict(
             base_model=cli_config.model_name,
             lora_config=lora_config,
             type="training",
@@ -821,7 +834,9 @@ async def cli_main(cli_config: CLIConfig):
             timeout_sec=cli_config.create_session_timeout_sec,
             user_metadata=cli_config.user_metadata,
             training_type=normalize_training_type(cli_config.training_type),
-        )
+    )
+    try:
+        session_id = await client.create_session(**session_kwargs)
         print(f"Session ready: session_id={session_id}")
 
         run_meta["azure"]["session_id"] = session_id
@@ -852,14 +867,18 @@ async def cli_main(cli_config: CLIConfig):
                     custom_loss_fn=custom_loss_fn,
                 )
 
-        await rl_azure.main(
-            config,
-            client,
-            session_id,
-            training_type=cli_config.training_type,
-            training_client_factory=training_client_factory,
-            on_reference_session_created=record_reference_session,
-        )
+        async with GradingExecutor(cli_config.grading_concurrency):
+            await auto_resume.run_rl(
+                config,
+                client,
+                session_id,
+                recovery_config=cli_config,
+                client_kwargs=client_kwargs,
+                session_kwargs=session_kwargs,
+                training_type=cli_config.training_type,
+                training_client_factory=training_client_factory,
+                on_reference_session_created=record_reference_session,
+            )
     finally:
         await client.close()
         if hasattr(credential, "close"):

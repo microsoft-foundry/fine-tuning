@@ -74,6 +74,15 @@ def _arm_request(
         raise RuntimeError(f"ARM {method} request failed with HTTP {exc.code}") from exc
 
 
+def _validate_deployment_identity(
+    deployment: dict[str, Any], deployment_name: str, model: str, sku_capacity: int
+) -> None:
+    if deployment["properties"]["model"]["name"] != model:
+        raise RuntimeError(f"Deployment {deployment_name} already targets another checkpoint")
+    if deployment["sku"]["capacity"] != sku_capacity:
+        raise RuntimeError(f"Deployment {deployment_name} already has another SKU capacity")
+
+
 def _wait(credential: DefaultAzureCredential, url: str, deployment: dict[str, Any]) -> dict[str, Any]:
     deadline = time.monotonic() + _DEPLOYMENT_TIMEOUT_SECONDS
     while True:
@@ -140,12 +149,19 @@ def create_deployment(
         }
         deployment = _arm_request(credential, "GET", url)
         if deployment:
-            if deployment["properties"]["model"]["name"] != model:
-                raise RuntimeError(f"Deployment {deployment_name} already targets another checkpoint")
-            if deployment["sku"]["capacity"] != sku_capacity:
-                raise RuntimeError(f"Deployment {deployment_name} already has another SKU capacity")
+            _validate_deployment_identity(deployment, deployment_name, model, sku_capacity)
         else:
             deployment = _arm_request(credential, "PUT", url, body)
+            if not deployment:
+                # A successful ARM PUT can acknowledge creation without a body.
+                # Reconcile by reading; never replay the creation request.
+                deployment = _arm_request(credential, "GET", url)
+                if not deployment:
+                    raise RuntimeError(
+                        "Deployment create returned an empty response and the deployment "
+                        "could not be fetched; inspect remote state before retrying"
+                    )
+                _validate_deployment_identity(deployment, deployment_name, model, sku_capacity)
         return _wait(credential, url, deployment)
 
 

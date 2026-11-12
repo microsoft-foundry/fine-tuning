@@ -114,7 +114,11 @@ def load_deepcoder_tasks(
     ds: Dataset = _load_deepcoder_split(split)
     if split == "train":
         ds = ds.shuffle(seed=seed)
+    return deepcoder_tasks_from_dataset(ds)
 
+
+def deepcoder_tasks_from_dataset(ds: Dataset) -> list[DeepcoderTask]:
+    """Normalize a selected DeepCoder source without changing its example order."""
     logger.info(f"Processing {len(ds)} examples into tasks...")
     tasks: list[DeepcoderTask] = []
     for item in ds:
@@ -206,6 +210,7 @@ class DeepcoderEnvGroupBuilder(EnvGroupBuilder):
                     max_trajectory_tokens=self.max_trajectory_tokens,
                     max_turns=self.max_turns,
                     failed_parse_reward=self.failed_parse_reward,
+                    parse_failure_metrics={"format": 0.0, "correct": 0.0},
                 )
             )
         return envs

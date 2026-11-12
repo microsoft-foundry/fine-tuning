@@ -28,10 +28,13 @@ httpx client, no urllib3 pool exhaustion warnings.
 """
 
 import asyncio
+
+from programmed_training import auto_resume
 import json
 import logging
 import os
 import time
+import uuid
 from collections import deque
 from collections.abc import Callable
 from typing import Any
@@ -46,8 +49,10 @@ from azure.ai.finetuningsessions.models import (
     SamplingParams,
     TensorData,
 )
+from azure.core.exceptions import HttpResponseError
 
 from programmed_training import checkpoint_utils
+from programmed_training.optimizers import AdamConfig
 from programmed_training.rl.train import (
     Config,
     _config_for_logging,
@@ -59,14 +64,36 @@ from programmed_training.rl.train import (
     run_evaluations_parallel,
 )
 from programmed_training.rl.metric_util import RLTestSetEvaluator
+from programmed_training.rl.metric_util import timed_phase
 from programmed_training.training_types import TrainingType, normalize_training_type
 from programmed_training.rl.types import SamplingCheckpoint
 from programmed_training.tokenizer_utils import Tokenizer, get_tokenizer
 from programmed_training.utils import ml_log
-from programmed_training.utils.misc_utils import timed
 from programmed_training.utils.trace import scope, trace_init
 
 logger = logging.getLogger(__name__)
+
+
+class _LazyTokenizer:
+    """Resolve a tokenizer only if token-only training requests its text API."""
+
+    def __init__(self, model_name: str):
+        self._model_name = model_name
+        self._tokenizer: Tokenizer | None = None
+
+    def _resolve(self) -> Tokenizer:
+        if self._tokenizer is None:
+            self._tokenizer = get_tokenizer(self._model_name)
+        return self._tokenizer
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._resolve(), name)
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        return self._resolve()(*args, **kwargs)
+
+    def __len__(self) -> int:
+        return len(self._resolve())
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +109,7 @@ class _SDKFuture:
     """
 
     def __init__(self, task: asyncio.Future, converter=None):
+        auto_resume.own_future(task)
         self._task = task
         self._converter = converter  # optional callable: sdk_result -> adapter
 
@@ -148,10 +176,16 @@ class _OptimResult:
 
 
 class _CheckpointResult:
-    """Adapts SaveCheckpointOperationResult: exposes ``.path``."""
+    """Adapts SaveCheckpointOperationResult, qualifying fallback checkpoint IDs."""
 
-    def __init__(self, sdk_result):
-        self.path = getattr(sdk_result, "path", None) or sdk_result.checkpoint_id
+    def __init__(self, sdk_result, source_session_id: str):
+        self.path = getattr(sdk_result, "path", None)
+        if not self.path:
+            checkpoint_id = sdk_result.checkpoint_id
+            self.path = (
+                checkpoint_id if "/" in checkpoint_id
+                else f"{source_session_id}/{checkpoint_id}"
+            )
 
 
 class _SamplerCheckpointResult:
@@ -204,6 +238,7 @@ class AzureSDKSamplingClient:
         """The immutable session and checkpoint binding used for sampling."""
         return self._sampling_checkpoint
 
+    @auto_resume.session_errors
     async def sample_async(
         self,
         prompt: ModelInput,
@@ -223,6 +258,7 @@ class AzureSDKSamplingClient:
         )
         return _SampleResult(sdk_result)
 
+    @auto_resume.session_errors
     async def compute_logprobs_async(self, model_input: ModelInput) -> list[float | None]:
         """Compute per-token log-probabilities for the given input."""
         prompt_tokens: list[int] = []
@@ -474,6 +510,7 @@ class AzureSDKTrainingClient:
 
         reset_operation_label(token)
 
+    @auto_resume.session_errors
     async def forward_backward_async(
         self,
         batch: list[Datum],
@@ -514,6 +551,7 @@ class AzureSDKTrainingClient:
             self._unpaired_forward_tasks.append(task)
         return _SDKFuture(task, _FwdBwdResult)
 
+    @auto_resume.session_errors
     async def forward_async(
         self,
         batch: list[Datum],
@@ -536,6 +574,7 @@ class AzureSDKTrainingClient:
         )
         return _SDKFuture(task, _FwdBwdResult)
 
+    @auto_resume.session_errors
     async def forward_backward_custom_async(
         self,
         data: list[Datum],
@@ -661,6 +700,7 @@ class AzureSDKTrainingClient:
 
         return _SDKFuture(task, _convert)
 
+    @auto_resume.session_errors
     async def optim_step_async(
         self, adam_params: AdamParams | None = None
     ) -> _SDKFuture:
@@ -672,9 +712,7 @@ class AzureSDKTrainingClient:
         polling waits for the corresponding forward task to complete.
         """
         if adam_params is None:
-            adam_params = AdamParams(
-                learning_rate=3e-4, beta1=0.9, beta2=0.95, eps=1e-8
-            )
+            adam_params = AdamConfig().to_adam_params(learning_rate=3e-4)
         self._step += 1
 
         poll_kwargs: dict[str, float] = {}
@@ -711,6 +749,7 @@ class AzureSDKTrainingClient:
             )
         return _SDKFuture(task, _OptimResult)
 
+    @auto_resume.session_errors
     async def save_state_async(
         self, name: str, ttl_seconds: int | None = None,
         *, step_number: int | None = None, metrics: dict[str, Any] | None = None,
@@ -723,8 +762,11 @@ class AzureSDKTrainingClient:
         task = await self._client.save_weights_async(
             self._session_id, name, step_number=step_number, metrics=metrics
         )
-        return _SDKFuture(task, _CheckpointResult)
+        return _SDKFuture(
+            task, lambda result: _CheckpointResult(result, self._session_id)
+        )
 
+    @auto_resume.session_errors
     async def save_weights_for_sampler_async(
         self, name: str, ttl_seconds: int | None = None
     ) -> _SDKFuture:
@@ -737,6 +779,7 @@ class AzureSDKTrainingClient:
         )
         return _SDKFuture(task, _SamplerCheckpointResult)
 
+    @auto_resume.session_errors
     async def save_weights_and_get_sampling_client_async(
         self, name: str | None = None,
     ) -> "AzureSDKSamplingClient":
@@ -744,15 +787,43 @@ class AzureSDKTrainingClient:
 
         Returns a sampling client pointed at the synced weights.
         """
-        checkpoint_name = name or f"step{self._step}"
-        task = await self._client.save_weights_and_get_sampling_client_async(
-            self._session_id, checkpoint_name,
-        )
-        future = _SDKFuture(task, _SamplerCheckpointResult)
-        result = await future.result_async()
-        return AzureSDKSamplingClient(
-            self._client, self._session_id, result.checkpoint_id, self._tokenizer
-        )
+        # A no-op batch can refresh again without advancing the optimizer step.
+        checkpoint_name = name or f"step{self._step}-sync-{uuid.uuid4().hex}"
+        for conflict_retry in range(3):
+            sync_name = (
+                checkpoint_name
+                if conflict_retry == 0
+                else f"{checkpoint_name}-retry{conflict_retry}"
+            )
+            try:
+                task = await self._client.save_weights_and_get_sampling_client_async(
+                    self._session_id, sync_name,
+                )
+            except HttpResponseError as exc:
+                status = getattr(exc, "status_code", None)
+                detail = str(exc).lower()
+                duplicate = (
+                    status == 409
+                    and "checkpoint" in detail
+                    and "already exists" in detail
+                )
+                if not duplicate or conflict_retry == 2:
+                    raise
+                logger.warning(
+                    "Sampler checkpoint %s may still be pending after a timed-out "
+                    "POST; submitting and polling a new sync as %s",
+                    sync_name,
+                    f"{checkpoint_name}-retry{conflict_retry + 1}",
+                )
+                continue
+
+            future = _SDKFuture(task, _SamplerCheckpointResult)
+            result = await future.result_async()
+            return AzureSDKSamplingClient(
+                self._client, self._session_id, result.checkpoint_id, self._tokenizer
+            )
+
+        raise RuntimeError("unreachable sampler checkpoint retry state")
 
     def create_sampling_client(
         self, model_path: str | None
@@ -849,7 +920,8 @@ async def _create_kl_reference_client(
         ref_base,
         ref_ckpt_path,
     )
-    ref_session_id = await client.create_session(
+    ref_session_id = await auto_resume.create_owned_session(
+        client,
         base_model=ref_base,
         lora_config=LoRAConfig(rank=cfg.lora_rank),
         type="training",
@@ -872,6 +944,8 @@ async def _create_kl_reference_client(
             )
         )
     except BaseException:
+        if auto_resume.current_attempt() is not None:
+            raise
         logger.warning(
             "Reference sampler snapshot failed; closing reference session %s",
             ref_session_id,
@@ -904,6 +978,7 @@ async def main(
         [FineTuningSessionClient, str, Any], "AzureSDKTrainingClient"
     ]
     | None = None,
+    defer_tokenizer_loading: bool = False,
 ) -> None:
     """Training loop using the Azure AI Fine-Tuning Sessions SDK backend.
 
@@ -923,7 +998,11 @@ async def main(
             that routes ``forward_backward_async`` through
             ``forward_backward_custom_async`` for a Python-side loss).  Default:
             the plain :class:`AzureSDKTrainingClient` constructor.
+        defer_tokenizer_loading: Resolve the local tokenizer only when its text
+            API is used. Token-only rollout backends can avoid an unnecessary
+            tokenizer dependency; other recipes retain eager loading by default.
     """
+    cfg = auto_resume.attempt_config(cfg)
     e2e_start_time = time.time()
 
     ml_logger = ml_log.setup_logging(
@@ -949,11 +1028,11 @@ async def main(
     resume_info = checkpoint_utils.get_last_checkpoint(cfg.log_path)
     start_batch = resume_info["batch"] if resume_info else 0
 
-    # Build tokenizer
+    tokenizer_name = cfg.tokenizer_name or cfg.model_name
     tokenizer = (
-        get_tokenizer(cfg.tokenizer_name)
-        if cfg.tokenizer_name
-        else get_tokenizer(cfg.model_name)
+        _LazyTokenizer(tokenizer_name)
+        if defer_tokenizer_loading
+        else get_tokenizer(tokenizer_name)
     )
 
     training_client = (
@@ -1001,15 +1080,16 @@ async def main(
                     observer=cfg.validation_observer,
                     response_format=cfg.response_format,
                     require_full_validation=cfg.require_full_validation,
+                    max_concurrent_groups=cfg.max_concurrent_groups,
                 )
             )
 
         num_batches = len(dataset)
-        effective_end = compute_effective_end(
+        effective_end = auto_resume.fixed_end_batch(compute_effective_end(
             start_batch=start_batch,
             num_batches=num_batches,
             max_steps=cfg.max_steps,
-        )
+        ))
         if cfg.max_steps is not None:
             logger.info(
                 f"Will train on {effective_end - start_batch} batches "
@@ -1018,7 +1098,7 @@ async def main(
         else:
             logger.info(f"Will train on {num_batches} batches")
 
-        deadline: float | None = (
+        deadline: float | None = auto_resume.current_deadline(
             e2e_start_time + cfg.max_wall_clock_seconds
             if cfg.max_wall_clock_seconds is not None
             else None
@@ -1089,7 +1169,12 @@ async def main(
                 final_paths["sampler_path"]
             )
             metrics: dict[str, Any] = {}
-            with timed("run_evals", metrics):
+            with timed_phase(
+                "run_evals",
+                metrics,
+                actual_next_batch,
+                observer=cfg.phase_timing_observer,
+            ):
                 eval_metrics = await run_evaluations_parallel(
                     evaluators, sampling_client, cfg, actual_next_batch
                 )
@@ -1097,21 +1182,21 @@ async def main(
             ml_logger.log_metrics(metrics, step=actual_next_batch)
 
     finally:
-        # Close the KL reference (teacher) session first, if one was created.
-        if kl_reference_session_id is not None:
-            logger.info("Closing KL reference session ...")
+        if auto_resume.current_attempt() is None:
+            # Close the KL reference (teacher) session first, if one was created.
+            if kl_reference_session_id is not None:
+                logger.info("Closing KL reference session ...")
+                try:
+                    await client.close_session(kl_reference_session_id)
+                except Exception as exc:
+                    logger.warning("close_session(reference) failed: %s", exc)
+            logger.info("Closing session ...")
             try:
-                await client.close_session(kl_reference_session_id)
+                await client.close_session(session_id)
             except Exception as exc:
-                logger.warning("close_session(reference) failed: %s", exc)
-        # Close the session to release GPU resources on the service
-        logger.info("Closing session ...")
-        try:
-            await client.close_session(session_id)
-        except Exception as exc:
-            logger.warning("close_session() failed: %s", exc)
-        await client.close()
-        logger.info("Session closed.")
+                logger.warning("close_session() failed: %s", exc)
+            await client.close()
+            logger.info("Session closed.")
 
     e2e_seconds = time.time() - e2e_start_time
     h, rem = divmod(int(e2e_seconds), 3600)
@@ -1131,8 +1216,9 @@ async def main(
                 f,
                 indent=4,
             )
-    except Exception:
-        pass
+    except OSError:
+        logger.exception("Failed to write training timing artifact")
 
-    ml_logger.close()
+    if auto_resume.current_attempt() is None:
+        ml_logger.close()
     logger.info("Training completed successfully")

@@ -3,8 +3,13 @@ from __future__ import annotations
 from typing import ClassVar
 
 import pytest
-
+from azure.ai.finetuningsessions.models import ModelInput, ModelInputChunk
 from programmed_training.renderers.base import Message, ToolCall
+from programmed_training.rl.message_env import (
+    EnvFromMessageEnv,
+    MessageEnv,
+    MessageStepResult,
+)
 from programmed_training.tool_use.agent_tool_message_env import (
     AgentToolMessageEnv,
     build_agent_tool_env,
@@ -98,3 +103,35 @@ def test_builder_threads_parse_failure_metrics():
     )
 
     assert env.parse_failure_metrics == {"correct": 0.0}
+
+
+@pytest.mark.asyncio
+async def test_context_rejection_reports_zero_outcomes_not_a_successful_grade():
+    class Renderer:
+        def get_stop_sequences(self):
+            return None
+
+        def parse_response(self, action):
+            return {"role": "assistant", "content": "answer"}, True
+
+        def build_generation_prompt(self, messages):
+            return ModelInput(chunks=[ModelInputChunk(tokens=[1] * 10)])
+
+    class SuccessfulMessageEnv(MessageEnv):
+        async def initial_observation(self):
+            return []
+
+        async def step(self, message):
+            return MessageStepResult(
+                reward=1.0, episode_done=True, next_messages=[],
+                metrics={"format": 1.0, "correct": 1.0},
+            )
+
+    env = EnvFromMessageEnv(
+        Renderer(), SuccessfulMessageEnv(), max_trajectory_tokens=5,
+        parse_failure_metrics={"format": 0.0, "correct": 0.0},
+    )
+    result = await env.step([])
+    assert result.episode_done
+    assert result.reward == 0.0
+    assert result.metrics == {"format": 0.0, "correct": 0.0, "context_overflow": 1.0}

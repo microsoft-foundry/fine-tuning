@@ -1,3 +1,10 @@
+# Scope of the retained Microsoft notice
+
+The following pre-existing MIT notice is retained for applicable Microsoft
+material. It does not replace the Apache-2.0 declaration on the Intel dataset
+card or relicense upstream data. See [source and scope details](README.md) and
+the retained [Apache License 2.0](APACHE-2.0.txt).
+
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 

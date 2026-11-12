@@ -92,7 +92,7 @@ def test_tulu3_builder_preserves_valid_and_default_behavior(
 async def test_real_tulu3_preflight_rejects_truncation_before_session(
     synthetic_tulu3, monkeypatch, tmp_path,
 ):
-    monkeypatch.delenv("INTERACTIVE_POST_TRAINING_API_ENDPOINT", raising=False)
+    monkeypatch.delenv("LOOM_API_ENDPOINT", raising=False)
     create = Mock(side_effect=AssertionError("must not allocate a session"))
     monkeypatch.setattr("azure.ai.finetuningsessions.FineTuningSession.create", create)
     with pytest.raises(ValueError, match="Training dataset preflight failed"):
@@ -113,7 +113,7 @@ async def test_real_tulu3_preflight_rejects_truncation_before_session(
 
 @pytest.mark.asyncio
 async def test_invalid_dataset_fails_before_sdk_session(monkeypatch, tmp_path):
-    monkeypatch.delenv("INTERACTIVE_POST_TRAINING_API_ENDPOINT", raising=False)
+    monkeypatch.delenv("LOOM_API_ENDPOINT", raising=False)
     create = Mock(side_effect=AssertionError("must not allocate a session"))
     monkeypatch.setattr("azure.ai.finetuningsessions.FineTuningSession.create", create)
     preflight = Mock(side_effect=ValueError("Training dataset preflight failed"))
@@ -136,7 +136,7 @@ async def test_invalid_dataset_fails_before_sdk_session(monkeypatch, tmp_path):
 
 @pytest.mark.asyncio
 async def test_preflight_only_never_contacts_service(monkeypatch, tmp_path):
-    monkeypatch.delenv("INTERACTIVE_POST_TRAINING_API_ENDPOINT", raising=False)
+    monkeypatch.delenv("LOOM_API_ENDPOINT", raising=False)
     create = Mock(side_effect=AssertionError("must not allocate a session"))
     monkeypatch.setattr("azure.ai.finetuningsessions.FineTuningSession.create", create)
     preflight = Mock(return_value=([], None))

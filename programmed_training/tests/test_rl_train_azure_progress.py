@@ -42,7 +42,8 @@ def test_rl_train_azure_final_checkpoint_preserves_prompt_cursor(tmp_path):
     }
 
 
-def test_rl_train_azure_preserves_async_seed_progress(tmp_path):
+@pytest.mark.parametrize("checkpoint_path", ["model_abc/2", "loom://model_abc/weights/2"])
+def test_rl_train_azure_preserves_async_seed_progress(tmp_path, checkpoint_path):
     from programmed_training.rl.train import AsyncConfig
 
     cfg = _main_cfg(tmp_path, num_batches=10)
@@ -57,13 +58,14 @@ def test_rl_train_azure_preserves_async_seed_progress(tmp_path):
     with patch.object(train_azure, "do_async_training", new=fake_training_func):
         _run_main(cfg, save_checkpoint, fake_training_func,
                   resume_info={"batch": 2, "async_group_ordinal": 123,
-                               "state_path": "model_abc/2"})
+                               "state_path": checkpoint_path})
     assert save_checkpoint.await_args.kwargs["loop_state"] == {
         "batch": 3, "async_group_ordinal": 150,
     }
 
 
-def test_rl_train_azure_skips_final_checkpoint_when_no_progress(tmp_path):
+@pytest.mark.parametrize("checkpoint_path", ["model_source/state", "loom://model/state"])
+def test_rl_train_azure_skips_final_checkpoint_when_no_progress(tmp_path, checkpoint_path):
     save_checkpoint = AsyncMock(return_value={"sampler_path": "sampler"})
     cfg = _main_cfg(tmp_path, num_batches=4, evaluators=[lambda: AsyncMock()], eval_every=1)
 
@@ -74,7 +76,7 @@ def test_rl_train_azure_skips_final_checkpoint_when_no_progress(tmp_path):
         cfg,
         save_checkpoint,
         fake_training_func,
-            resume_info={"batch": 1, "state_path": "model_source/state"},
+        resume_info={"batch": 1, "state_path": checkpoint_path},
     )
 
     save_checkpoint.assert_not_awaited()
@@ -82,7 +84,8 @@ def test_rl_train_azure_skips_final_checkpoint_when_no_progress(tmp_path):
     ml_logger.log_metrics.assert_not_called()
 
 
-def test_rl_train_azure_forwards_resume_prompt_cursor(tmp_path):
+@pytest.mark.parametrize("checkpoint_path", ["model_abc/21", "loom://model_abc/weights/21"])
+def test_rl_train_azure_forwards_resume_prompt_cursor(tmp_path, checkpoint_path):
     save_checkpoint = AsyncMock(return_value={"sampler_path": "sampler"})
     cfg = _main_cfg(tmp_path, num_batches=30)
     received: dict = {}
@@ -98,7 +101,7 @@ def test_rl_train_azure_forwards_resume_prompt_cursor(tmp_path):
         resume_info={
             "batch": 21,
             "prompt_cursor": 117,
-            "state_path": "model_abc/21",
+            "state_path": checkpoint_path,
         },
     )
 
@@ -109,7 +112,7 @@ def test_rl_train_azure_forwards_resume_prompt_cursor(tmp_path):
 
 @pytest.mark.parametrize(
     "training_type",
-    [None, "GlobalStandard"],
+    [None, "DeveloperTier", "GlobalStandard", "DatazoneStandard", "DataZoneStandard"],
 )
 def test_rl_main_forwards_training_type_to_reference_session(tmp_path, training_type):
     cfg = _main_cfg(tmp_path)

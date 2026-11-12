@@ -13,7 +13,10 @@ from typing import Any
 
 import chz
 
+from programmed_training import auto_resume
+
 from programmed_training import cli_utils
+from programmed_training.optimizers import AdamConfig
 from programmed_training.recipes.visual_spatial import train_rft_azure, train_sft_azure
 from programmed_training.recipes.visual_spatial.training import TaskVariant
 from programmed_training.renderers import TrainOnWhat
@@ -32,7 +35,7 @@ class CheckpointEvaluation:
 
 
 @chz.chz
-class CLIConfig:
+class CLIConfig(auto_resume.AutoResumeConfig, AdamConfig):
     """Configuration for the staged visual-spatial SFT-to-RFT workflow."""
 
     model_name: str = "meta-models/Muse-Glimmer-30B"
@@ -115,7 +118,23 @@ def _optional_int(record: dict[str, Any], key: str) -> int | None:
 
 def _select_best_sft_checkpoint(log_path: str) -> CheckpointEvaluation:
     """Select the highest-accuracy SFT checkpoint with a matching evaluation."""
+    candidates = [
+        candidate for path in auto_resume.attempt_log_paths(log_path)
+        for candidate in _sft_checkpoint_candidates(path)
+    ]
+    if not candidates:
+        raise RuntimeError(
+            "SFT completed without a held-out evaluation that matches a durable "
+            f"checkpoint in {log_path}. Keep sft_eval_every and sft_save_every "
+            "aligned and greater than zero."
+        )
+    return max(candidates, key=lambda candidate: (candidate.accuracy, -candidate.step))
+
+
+def _sft_checkpoint_candidates(log_path: str) -> list[CheckpointEvaluation]:
     root = Path(log_path)
+    if not (root / "checkpoints.jsonl").exists() or not (root / "metrics.jsonl").exists():
+        return []
     checkpoints_by_step: dict[int, str] = {}
     checkpoint_steps_by_path: dict[str, int] = {}
     for record in _read_jsonl(root / "checkpoints.jsonl"):
@@ -185,13 +204,7 @@ def _select_best_sft_checkpoint(log_path: str) -> CheckpointEvaluation:
         for step, evaluation in legacy_evaluations_by_step.items()
         if step not in correlated_steps
     )
-    if not candidates:
-        raise RuntimeError(
-            "SFT completed without a held-out evaluation that matches a durable "
-            f"checkpoint in {log_path}. Keep sft_eval_every and sft_save_every "
-            "aligned and greater than zero."
-        )
-    return max(candidates, key=lambda candidate: (candidate.accuracy, -candidate.step))
+    return candidates
 
 
 def _write_staged_summary(
@@ -214,6 +227,7 @@ def _write_staged_summary(
     os.replace(temporary, destination)
 
 
+@auto_resume.shared_run
 async def cli_main(cli_config: CLIConfig) -> None:
     run_name = (
         f"visual-spatial-staged-{cli_config.model_name.replace('/', '-')}"
@@ -256,6 +270,9 @@ async def cli_main(cli_config: CLIConfig) -> None:
     write_run_meta()
 
     shared = {
+        "auto_resume": cli_config.auto_resume,
+        "auto_resume_max_retries": cli_config.auto_resume_max_retries,
+        "resumable_error_codes": cli_config.resumable_error_codes,
         "project_endpoint": cli_config.project_endpoint,
         "model_name": cli_config.model_name,
         "tokenizer_name": cli_config.tokenizer_name,
@@ -280,6 +297,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
     print("Stage 1/2: supervised warmup")
     await run_stage("sft", train_sft_azure.cli_main,
         train_sft_azure.CLIConfig(
+            **cli_config.adam_kwargs(),
             **shared,
             preflight_only=cli_config.preflight_only,
             load_checkpoint_path=cli_config.load_checkpoint_path,
@@ -311,6 +329,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
         print("Stage 2/2: reinforcement fine-tuning preflight")
         await run_stage("rft", train_rft_azure.cli_main,
             train_rft_azure.CLIConfig(
+                **cli_config.adam_kwargs(),
                 **shared,
                 preflight_only=True,
                 load_checkpoint_path=None,
@@ -355,6 +374,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
     print("Stage 2/2: reinforcement fine-tuning")
     await run_stage("rft", train_rft_azure.cli_main,
         train_rft_azure.CLIConfig(
+            **cli_config.adam_kwargs(),
             **shared,
             preflight_only=False,
             load_checkpoint_path=selected_checkpoint.checkpoint_path,
@@ -382,7 +402,10 @@ async def cli_main(cli_config: CLIConfig) -> None:
             ),
         ),
     )
-    rft_summary_path = Path(rft_log_path) / "visual_spatial_accuracy_summary.json"
+    rft_summary_path = (
+        Path(auto_resume.latest_attempt_log_path(rft_log_path))
+        / "visual_spatial_accuracy_summary.json"
+    )
     rft_accuracy_summary = (
         json.loads(rft_summary_path.read_text(encoding="utf-8"))
         if rft_summary_path.exists()

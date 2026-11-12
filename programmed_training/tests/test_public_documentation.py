@@ -7,6 +7,7 @@ import json
 import re
 import sys
 import tomllib
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
@@ -192,9 +193,33 @@ def test_sdk_dependency_matches_source_or_public_install():
     assert len(dependencies) == 1
     sources = metadata["tool"]["uv"]["sources"]
     if SOURCE_SDK_ROOT is not None:
-        assert dependencies == [SDK_DISTRIBUTION]
+        version_source = ast.parse(
+            (SOURCE_SDK_ROOT / "azure/ai/finetuningsessions/_version.py").read_text(encoding="utf-8")
+        )
+        versions = [
+            ast.literal_eval(node.value)
+            for node in version_source.body
+            if isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "VERSION" for target in node.targets)
+        ]
+        assert len(versions) == 1
+        assert dependencies[0] in (SDK_DISTRIBUTION, f"{SDK_DISTRIBUTION}=={versions[0]}")
         assert sources[SDK_DISTRIBUTION] == {"path": f"../{SDK_DISTRIBUTION}"}
         assert (ROOT / sources[SDK_DISTRIBUTION]["path"]).resolve() == SOURCE_SDK_ROOT
+        resolution_metadata = [
+            item for item in metadata["tool"]["uv"].get("dependency-metadata", [])
+            if item["name"] == SDK_DISTRIBUTION
+        ]
+        if resolution_metadata:
+            sdk_project = tomllib.loads(
+                (SOURCE_SDK_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+            )["project"]
+            assert resolution_metadata == [{
+                "name": SDK_DISTRIBUTION,
+                "version": versions[0],
+                "requires-python": sdk_project["requires-python"],
+                "requires-dist": sdk_project["dependencies"],
+            }]
     else:
         assert re.fullmatch(r"azure-ai-finetuningsessions==[0-9][0-9A-Za-z.!+-]*", dependencies[0])
         assert SDK_DISTRIBUTION not in sources
@@ -214,6 +239,30 @@ def test_image_extras_include_fast_processor_dependency():
         assert "torchvision" in metadata["project"]["optional-dependencies"][extra]
     sources = metadata["tool"]["uv"]["sources"]
     assert sources["torchvision"] == sources["torch"]
+
+
+def test_public_model_tables_match_and_preserve_available_models():
+    """The overview delegates eligibility to one nonempty, unambiguous guide."""
+    overview = (ROOT / "README.md").read_text(encoding="utf-8")
+    section = overview.split("## Supported models & regions\n", 1)[1].split("\n## ", 1)[0]
+    assert "[Supported models](./docs/supported_models.md)" in section
+    assert "### Available today\n" not in overview
+    assert "### Legacy models\n" not in overview
+
+    text = (ROOT / "docs/supported_models.md").read_text(encoding="utf-8")
+    identifiers = []
+    for heading in ("Available today", "Legacy models"):
+        section = text.split(f"### {heading}\n", 1)[1].split("\n#", 1)[0]
+        rows = [
+            [cell.strip() for cell in line.strip("|").split("|")]
+            for line in section.splitlines()
+            if line.startswith("| ") and "`" in line.split("|")[2]
+            and not line.startswith("| Model ")
+            and (line.split("|")[3].strip() == "Available" or "Legacy" in line.split("|")[3])
+        ]
+        assert rows, heading
+        identifiers.extend(row[1].strip("`") for row in rows)
+    assert len(identifiers) == len(set(identifiers)) == 8
 
 
 def test_public_model_tables_distinguish_available_and_legacy_models():
@@ -241,6 +290,9 @@ def test_public_model_tables_distinguish_available_and_legacy_models():
         ]
         assert [row[1].strip("`") for row in rows] == expected
         assert all(row[2:] == statuses for row in rows)
+
+
+
 
 
 def _notebook_cell(path, marker):
@@ -272,6 +324,42 @@ def test_foundational_notebook_default_keeps_non_thinking_preference():
     assert namespace["renderer_name"] == "qwen3_8_disable_thinking"
 
 
+def test_llm_judge_smoke_command_uses_configured_endpoint_and_is_non_thinking():
+    path = ROOT / "programmed_training/recipes/llm_judge_rl/README.md"
+    text = path.read_text(encoding="utf-8")
+    smoke_section = text.split("### Low-cost smoke run", 1)[1]
+    smoke = smoke_section.split("```bash", 1)[1].split("```", 1)[0]
+    assert "renderer_name=qwen3_disable_thinking" in smoke
+    assert "renderer_name=qwen3 " not in smoke
+    assert "judge_endpoint=" not in smoke
+    assert "judge_deployment=" not in smoke
+    assert '$env:AZURE_OPENAI_JUDGE_ENDPOINT = "https://<judge-host>/openai/v1"' in text
+    assert "`metrics.jsonl`" in text
+    assert "`checkpoints.jsonl`" in text
+    assert "test/env/all/policy/eligibility_adjusted_reward" in text
+    assert "The judge must support strict JSON-schema structured output." in text
+    assert "Keep `/openai/v1` when it is part of the endpoint." in text
+
+
+def test_llm_judge_documents_verified_one_stage_hill_climb():
+    text = (ROOT / "programmed_training/recipes/llm_judge_rl/README.md").read_text(
+        encoding="utf-8"
+    )
+    assert "two-stage" not in text.lower()
+    for value in (
+        "same 128 validation rows every 10 steps",
+        "0.736621",
+        "0.848242",
+        "0.827344",
+        "0.111621",
+        "Checkpoint 70",
+        "saturation and mild late-run regression",
+    ):
+        assert value in text
+    assert "official `test` and `ca_test`" in text
+    assert "one run and one judge rubric" in text
+
+
 @pytest.mark.parametrize("working_dir", [ROOT, ROOT / "notebooks", ROOT / "notebooks" / "foundational"])
 def test_foundational_import_bootstrap_supports_documented_working_dirs(monkeypatch, working_dir):
     monkeypatch.chdir(working_dir)
@@ -293,6 +381,28 @@ async def test_notebooks_report_missing_endpoint_before_client_creation(monkeypa
         result = eval(code, {})
         if inspect.isawaitable(result):
             await result
+
+
+def test_notebook_auth_guide_lists_only_implemented_endpoint_aliases():
+    guide = (ROOT / "docs/auth.md").read_text(encoding="utf-8")
+    section = guide.split("## Notebook endpoint configuration\n", 1)[1].split("\n## ", 1)[0]
+    documented = set(re.findall(r"`([A-Z_]+PROJECT_ENDPOINT)`", section))
+    assert documented == {"AZURE_AI_PROJECT_ENDPOINT", "FOUNDRY_PROJECT_ENDPOINT"}
+    for path in NOTEBOOKS:
+        source = ast.parse(_notebook_cell(path, "PROJECT_ENDPOINT ="))
+        assignment = next(
+            node for node in source.body
+            if isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "PROJECT_ENDPOINT" for target in node.targets)
+        )
+        implemented = {
+            node.args[0].value for node in ast.walk(assignment.value)
+            if isinstance(node, ast.Call) and node.args
+            and isinstance(node.args[0], ast.Constant)
+            and isinstance(node.args[0].value, str)
+            and node.args[0].value.endswith("PROJECT_ENDPOINT")
+        }
+        assert documented == implemented, path
 
 
 def _foundational_cleanup_state(*, use_api_key, session_id="session_test"):
@@ -440,16 +550,121 @@ async def test_sdk_guide_helper_matches_wrapper_signature_and_closes_session(mon
     client.close_session.assert_awaited_once_with("session_test")
 
 
-def test_management_notebook_chooses_latest_checkpoint_by_time():
+@pytest.mark.parametrize("include_unfinished", [False, True])
+def test_management_notebook_chooses_latest_checkpoint_by_time(include_unfinished):
     path = ROOT / "notebooks/manage_sessions.ipynb"
     source = _notebook_cell(path, "latest_training =")
+    checkpoints = [
+        SimpleNamespace(
+            checkpoint_type="training",
+            checkpoint_id="newest",
+            time=datetime(2026, 1, 2, tzinfo=UTC),
+        ),
+        SimpleNamespace(
+            checkpoint_type="training",
+            checkpoint_id="older",
+            time=datetime(2026, 1, 1, tzinfo=UTC),
+        ),
+    ]
+    if include_unfinished:
+        checkpoints.insert(
+            0,
+            SimpleNamespace(
+                checkpoint_type="training", checkpoint_id="unfinished", time=None
+            ),
+        )
     client = Mock()
     namespace = dict(
-        ckpts=SimpleNamespace(checkpoints=[
-            SimpleNamespace(checkpoint_type="training", checkpoint_id="newest", time=20),
-            SimpleNamespace(checkpoint_type="training", checkpoint_id="older", time=10),
-        ]),
-        client=client, SESSION_ID="session_test", OPTS={}, _enum=lambda value: value,
+        ckpts=SimpleNamespace(checkpoints=checkpoints),
+        client=client,
+        SESSION_ID="session_test",
+        OPTS={},
+        _enum=lambda value: value,
     )
     exec(compile(source, "latest-checkpoint-example", "exec"), namespace)
     assert client.checkpoints.get.call_args.kwargs["checkpoint_id"] == "newest"
+
+
+def test_public_preview_install_uses_its_own_repository():
+    for relative in ("README.md", "docs/quickstart.md"):
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        assert "git clone https://github.com/microsoft-foundry/fine-tuning.git" in text
+        assert "cd fine-tuning/programmed_training" in text
+
+
+@pytest.mark.parametrize(
+    ("times", "expected_order"),
+    [
+        (
+            (
+                None,
+                datetime(2026, 1, 2, tzinfo=UTC),
+                datetime(2026, 1, 1, tzinfo=UTC),
+                None,
+            ),
+            (2, 1, 0, 3),
+        ),
+        ((None, None), (0, 1)),
+    ],
+)
+def test_management_notebook_lists_unfinished_checkpoints_last(
+    times, expected_order, capsys
+):
+    source = _notebook_cell(
+        ROOT / "notebooks/manage_sessions.ipynb", "ckpts = client.checkpoints.list("
+    )
+    client = Mock()
+    client.checkpoints.list.return_value = SimpleNamespace(
+        checkpoints=[
+            SimpleNamespace(
+                checkpoint_type="training",
+                checkpoint_id=f"checkpoint_{index}",
+                time=time,
+            )
+            for index, time in enumerate(times)
+        ]
+    )
+    namespace = {
+        "client": client,
+        "SESSION_ID": "session_test",
+        "OPTS": {},
+        "_enum": lambda value: value,
+    }
+    exec(compile(source, "checkpoint-list-example", "exec"), namespace)  # noqa: S102
+    listed = [
+        line.split()[0]
+        for line in capsys.readouterr().out.splitlines()
+        if line.startswith("  checkpoint_")
+    ]
+    assert listed == [f"checkpoint_{index}" for index in expected_order]
+
+
+def test_management_notebook_does_not_inspect_unfinished_training_checkpoints(capsys):
+    source = _notebook_cell(
+        ROOT / "notebooks/manage_sessions.ipynb", "latest_training ="
+    )
+    client = Mock()
+    namespace = {
+        "ckpts": SimpleNamespace(
+            checkpoints=[
+                SimpleNamespace(
+                    checkpoint_type="training", checkpoint_id="pending", time=None
+                ),
+                SimpleNamespace(
+                    checkpoint_type="training", checkpoint_id="failed", time=None
+                ),
+                SimpleNamespace(
+                    checkpoint_type="sampler",
+                    checkpoint_id="sampler",
+                    time=datetime(2026, 1, 1, tzinfo=UTC),
+                ),
+            ]
+        ),
+        "client": client,
+        "SESSION_ID": "session_test",
+        "OPTS": {},
+        "_enum": lambda value: value,
+    }
+    exec(compile(source, "latest-checkpoint-example", "exec"), namespace)  # noqa: S102
+    client.checkpoints.get.assert_not_called()
+    assert "no completed training checkpoints" in capsys.readouterr().out

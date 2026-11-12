@@ -10,7 +10,7 @@ direct coverage.
 from __future__ import annotations
 
 import pytest
-from programmed_training.model_info import get_recommended_renderer_names
+from programmed_training.model_info import get_model_attributes, get_recommended_renderer_names
 from programmed_training.renderers import get_renderer
 from programmed_training.renderers.base import Message, TrainOnWhat
 from programmed_training.renderers.qwen3_8 import (
@@ -169,13 +169,19 @@ def test_synthetic_system_message_omits_trainable_otherwise(tokenizer):
     assert "trainable" not in normalized[0]
 
 
-def test_model_info_routes_qwen3_8_to_its_own_renderers():
-    assert get_recommended_renderer_names(MODEL) == [
+@pytest.mark.parametrize("model", [MODEL, "Qwen/Qwen3.8-27B-256K"])
+def test_model_info_routes_qwen3_8_to_its_own_renderers(model):
+    assert get_recommended_renderer_names(model) == [
         "qwen3_8_low_reasoning",
         "qwen3_8",
         "qwen3_8_medium_reasoning",
         "qwen3_8_disable_thinking",
     ]
+    if model.endswith("-256K"):
+        attributes = get_model_attributes(model)
+        assert attributes.size_str == "27B"
+        assert attributes.max_context_length == 262144
+        assert attributes.is_vl is False
 
 
 def test_auto_selection_uses_low_reasoning_without_disabling_thinking(tokenizer):

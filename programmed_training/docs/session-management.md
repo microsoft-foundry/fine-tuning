@@ -94,10 +94,28 @@ ckpts = client.checkpoints.list(
     api_version=API_VERSION,
 )
 for c in ckpts.checkpoints:
-    print(c.checkpoint_id, c.checkpoint_type, c.time)
+    saved_at = c.time.isoformat() if c.time is not None else "not completed"
+    print(c.checkpoint_id, c.checkpoint_type, saved_at)
 ```
 
 `checkpoint_type` distinguishes `"training"` (full state, for `load_checkpoint_path`) from `"sampler"` (persisted sampler-format weights without optimizer state). The separate per-step ephemeral sync is not a persisted sampler save. See [SDK save semantics](./sdk-reference.md#persistent-versus-ephemeral-checkpoints).
+
+### Checkpoint list compatibility
+
+The preview `v1` listing can include protected pending/failed save reservations
+with `time=None`. Keep them visible; guard before formatting, comparing, or
+sorting timestamps. A real completion timestamp describes the save, not safety
+approval. Newer SDKs also expose optional save/publication metadata; absent
+metadata is not deployment approval.
+
+The cookbook remains pinned to public preview `1.0.0b1`. Source changes do not
+update that published wheel, installed clients, or existing images. Coordinate
+a nullable-aware SDK/application update before rolling out a service that
+returns these rows; do not assume new metadata exists on the pinned SDK.
+The [management notebook](../notebooks/manage_sessions.ipynb) handles absent
+timestamps without hiding reservations or inventing completion dates. Its
+latest-training example inspects metadata only; it does not select an approved
+deployment asset or authorize fallback around publication policy.
 
 > [!TIP]
 > If the local ledger is lost, you cannot recover its exact dataset cursor. A retained compatible **training** checkpoint can still initialize a fresh run: pass `load_checkpoint_path=<session_id>/<checkpoint_id>` and use a new `log_path` ([continual training](./continual-fine-tuning.md)). Discovery does not guarantee indefinite checkpoint retention or access from another project.

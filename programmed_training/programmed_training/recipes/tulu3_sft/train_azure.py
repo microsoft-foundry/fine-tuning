@@ -28,6 +28,7 @@ import logging
 import os
 import re
 import sys
+from collections.abc import Awaitable
 from datetime import datetime
 from importlib import import_module
 from typing import Any
@@ -35,11 +36,12 @@ from urllib.parse import urlparse
 
 import chz
 
-from programmed_training import checkpoint_utils, cli_utils, model_info
+from programmed_training import auto_resume, checkpoint_utils, cli_utils, model_info
 from programmed_training.recipes.tulu3_sft.chat_datasets import Tulu3Builder
 from programmed_training.renderers import TrainOnWhat
 from programmed_training.supervised import train
 from programmed_training.supervised.types import ChatDatasetBuilder, ChatDatasetBuilderCommonConfig
+from programmed_training.optimizers import AdamConfig
 from programmed_training.training_types import (
     TrainingType,
     normalize_training_type,
@@ -55,7 +57,7 @@ def _resolve_session_route(
     project_endpoint: str,
 ) -> tuple[str, bool, str, bool]:
     """Resolve endpoint, auth scope, and HTTP policy for the session client."""
-    if not os.environ.get("INTERACTIVE_POST_TRAINING_API_ENDPOINT", "").strip():
+    if not os.environ.get("LOOM_API_ENDPOINT", "").strip():
         return (
             project_endpoint,
             False,
@@ -69,7 +71,7 @@ def _resolve_session_route(
         if error.name not in {"utils", "utils.direct_api"}:
             raise
         raise RuntimeError(
-            "INTERACTIVE_POST_TRAINING_API_ENDPOINT requires the interactive-post-training-command-job runtime utilities."
+            "LOOM_API_ENDPOINT requires the loom-command-job runtime utilities."
         ) from error
 
     endpoint = direct_api.resolve_endpoint(project_endpoint)
@@ -96,7 +98,79 @@ def _build_session_credentials(
     from azure.identity import DefaultAzureCredential
     from azure.identity.aio import DefaultAzureCredential as AsyncDefaultAzureCredential
 
-    return DefaultAzureCredential(), AsyncDefaultAzureCredential(), True
+    credential = DefaultAzureCredential()
+    try:
+        async_credential = AsyncDefaultAzureCredential()
+    except BaseException:
+        try:
+            credential.close()
+        except BaseException:
+            logger.exception("Credential cleanup failed during initialization")
+        raise
+    return credential, async_credential, True
+
+
+async def _await_owned_task(task: asyncio.Future[Any]) -> Any:
+    """Finish acquisition or cleanup before propagating caller cancellation.
+
+    Cancelling an executor future does not stop its worker. Shield it so a
+    session returned after cancellation is still available to the cleanup scope.
+    The same rule prevents a second cancellation from abandoning cleanup.
+    """
+    cancellation: asyncio.CancelledError | None = None
+    while True:
+        try:
+            result = await asyncio.shield(task)
+        except asyncio.CancelledError as exc:
+            if task.done():
+                # Executor futures can finish *with* CancelledError without
+                # reporting cancelled(). Consume any completed failure once.
+                try:
+                    task.result()
+                except asyncio.CancelledError as operation_error:
+                    raise cancellation or operation_error
+                except BaseException:
+                    logger.exception("Owned lifecycle operation failed during cancellation")
+                raise cancellation or exc
+            if cancellation is None:
+                cancellation = exc
+        except BaseException:
+            if cancellation is not None:
+                logger.exception("Owned lifecycle operation failed during cancellation")
+                raise cancellation
+            raise
+        else:
+            if cancellation is not None:
+                raise cancellation
+            return result
+
+
+_SESSION_CLOSE_HEARTBEAT_ATTEMPTS = 12
+_HEARTBEAT_STILL_RUNNING = (
+    "Heartbeat is still running; session lifecycle request was not sent"
+)
+
+
+def _close_owned_session(session: Any) -> None:
+    """Drain the owning SDK heartbeat before releasing capacity and clients.
+
+    The sync SDK joins for five seconds, shorter than its heartbeat's combined
+    connect/read timeouts. Only this explicit *pre-request* failure is safe to
+    retry: no completion POST has been sent. Repeated bounded joins allow up to
+    a minute for in-flight I/O/retries to drain. Never replay a completion after
+    an HTTP/transport failure with an ambiguous outcome, or hide exhaustion.
+    """
+    for attempt in range(_SESSION_CLOSE_HEARTBEAT_ATTEMPTS):
+        try:
+            session.close()
+            return
+        except RuntimeError as exc:
+            if str(exc) != _HEARTBEAT_STILL_RUNNING or attempt + 1 == _SESSION_CLOSE_HEARTBEAT_ATTEMPTS:
+                raise
+            logger.warning(
+                "Waiting for the owned heartbeat before retrying unsent session completion (%s/%s)",
+                attempt + 1, _SESSION_CLOSE_HEARTBEAT_ATTEMPTS,
+            )
 
 
 # =============================================================================
@@ -105,7 +179,7 @@ def _build_session_credentials(
 
 
 @chz.chz
-class CLIConfig:
+class CLIConfig(auto_resume.AutoResumeConfig, AdamConfig):
     """Command-line config for Tulu3 SFT training via Azure SDK."""
 
     # Model
@@ -328,6 +402,7 @@ async def cli_main(cli_config: CLIConfig):
         evaluator_builders=[],
         infrequent_evaluator_builders=[],
         learning_rate=cli_config.learning_rate,
+        **cli_config.adam_kwargs(),
         lr_schedule=cli_config.lr_schedule,
         num_epochs=cli_config.num_epochs,
         max_steps=cli_config.max_steps,
@@ -358,79 +433,91 @@ async def cli_main(cli_config: CLIConfig):
         direct_path=direct_path,
         azure_api_key=azure_api_key,
     )
-    if not uses_token_credential:
-        logger.info("Using AzureKeyCredential (AZURE_AI_API_KEY).")
-    else:
-        if direct_path and configured_azure_api_key:
+    client = None
+    async_client = None
+    session: FineTuningSession | None = None
+    training_client = None
+    workload_error: BaseException | None = None
+    session_close_task: asyncio.Task[None] | None = None
+    supervisor_cleanup_started = False
+
+    async def close_initial_session() -> None:
+        nonlocal session_close_task
+        if session_close_task is None:
+            session_close_task = asyncio.create_task(asyncio.to_thread(_close_owned_session, session))
+        await _await_owned_task(session_close_task)
+
+    async def close_supervised_session() -> None:
+        nonlocal supervisor_cleanup_started
+        supervisor_cleanup_started = True
+        await close_initial_session()
+
+    try:
+        if not uses_token_credential:
+            logger.info("Using AzureKeyCredential (AZURE_AI_API_KEY).")
+        else:
+            if direct_path and configured_azure_api_key:
+                logger.info(
+                    "Ignoring AZURE_AI_API_KEY for the direct Programmed Training path; using the "
+                    "command-job managed identity."
+                )
             logger.info(
-                "Ignoring AZURE_AI_API_KEY for the direct Programmed Training path; using the "
-                "command-job managed identity."
+                "Using DefaultAzureCredential (MI → CLI fallback; pin AZURE_CLIENT_ID for a specific UAMI)."
             )
-        logger.info(
-            "Using DefaultAzureCredential (MI → CLI fallback; pin AZURE_CLIENT_ID for a specific UAMI)."
+
+        if cli_config.verbose_http:
+            import azure.ai.finetuningsessions._patch as _patch_module
+
+            _patch_module.VERBOSE_HTTP = True
+            logging.getLogger("azure.ai.finetuningsessions._patch").setLevel(logging.INFO)
+
+        client_kwargs: dict[str, Any] = dict(
+            endpoint=endpoint,
+            credential=credential,
+        )
+        if uses_token_credential:
+            client_kwargs["credential_scopes"] = [token_scope]
+
+        if allow_insecure_http:
+            client_kwargs["allow_insecure_http"] = True
+
+        client = FineTuningSessionClient(**client_kwargs)
+
+        # Automatic recovery pairs ledger weights and progress. Opt-out keeps
+        # the launcher's legacy explicit-checkpoint precedence.
+        resume_info = checkpoint_utils.get_last_checkpoint(log_path)
+        from_checkpoint: FromCheckpoint | None = None
+        if cli_config.auto_resume and resume_info and "state_path" in resume_info:
+            checkpoint_path = resume_info["state_path"]
+            print(f"Resuming from checkpoint: {checkpoint_path}")
+        elif cli_config.load_checkpoint_path:
+            checkpoint_path = cli_config.load_checkpoint_path
+            print(f"Continual fine-tuning from checkpoint: {checkpoint_path}")
+        elif resume_info and "state_path" in resume_info:
+            checkpoint_path = resume_info["state_path"]
+            print(f"Resuming from checkpoint: {checkpoint_path}")
+        else:
+            checkpoint_path = None
+
+        if checkpoint_path is not None:
+            source_session_id, checkpoint_id = _parse_checkpoint_path(checkpoint_path)
+            from_checkpoint = FromCheckpoint(
+                source_session_id=source_session_id,
+                checkpoint_id=checkpoint_id,
+            )
+            run_meta["azure"]["from_checkpoint"] = {
+                "source_session_id": source_session_id,
+                "checkpoint_id": checkpoint_id,
+            }
+            _write_meta()
+
+        print(
+            f"Creating session: base_model={cli_config.model_name}  "
+            f"lora_rank={cli_config.lora_rank}  endpoint={endpoint}"
+            + (f"  from_checkpoint={from_checkpoint}" if from_checkpoint else "")
         )
 
-    if cli_config.verbose_http:
-        import azure.ai.finetuningsessions._patch as _patch_module
-
-        _patch_module.VERBOSE_HTTP = True
-        logging.getLogger("azure.ai.finetuningsessions._patch").setLevel(logging.INFO)
-
-    client_kwargs: dict[str, Any] = dict(
-        endpoint=endpoint,
-        credential=credential,
-    )
-    if uses_token_credential:
-        client_kwargs["credential_scopes"] = [token_scope]
-
-    if allow_insecure_http:
-        client_kwargs["allow_insecure_http"] = True
-
-    client = FineTuningSessionClient(**client_kwargs)
-
-    # ── Resolve the checkpoint to start from ─────────────────────────────────
-    # An explicit ``load_checkpoint_path`` (continual-FT, e.g. RL→SFT) wins; else
-    # auto-resume from the last state saved in this log dir. Either way the new
-    # session must be *created* ``from_checkpoint`` so its LoRA weights/optimizer
-    # are bootstrapped from that checkpoint — the supervised loop only advances
-    # the epoch/batch counters and never reloads weights itself, so omitting this
-    # silently cold-starts from the base model.
-    resume_info = checkpoint_utils.get_last_checkpoint(log_path)
-    from_checkpoint: FromCheckpoint | None = None
-    if cli_config.load_checkpoint_path:
-        checkpoint_path = cli_config.load_checkpoint_path
-        print(f"Continual fine-tuning from checkpoint: {checkpoint_path}")
-    elif resume_info and "state_path" in resume_info:
-        checkpoint_path = resume_info["state_path"]
-        print(f"Resuming from checkpoint: {checkpoint_path}")
-    else:
-        checkpoint_path = None
-
-    if checkpoint_path is not None:
-        source_session_id, checkpoint_id = _parse_checkpoint_path(checkpoint_path)
-        from_checkpoint = FromCheckpoint(
-            source_session_id=source_session_id,
-            checkpoint_id=checkpoint_id,
-        )
-        run_meta["azure"]["from_checkpoint"] = {
-            "source_session_id": source_session_id,
-            "checkpoint_id": checkpoint_id,
-        }
-        _write_meta()
-
-    print(
-        f"Creating session: base_model={cli_config.model_name}  "
-        f"lora_rank={cli_config.lora_rank}  endpoint={endpoint}"
-        + (f"  from_checkpoint={from_checkpoint}" if from_checkpoint else "")
-    )
-
-    # FineTuningSession.create() is synchronous and blocks during model load
-    # (up to timeout_sec).  Run it off the event loop thread.
-    loop = asyncio.get_running_loop()
-    session: FineTuningSession = await loop.run_in_executor(
-        None,
-        lambda: FineTuningSession.create(
-            client,
+        session_kwargs = dict(
             base_model=cli_config.model_name,
             lora_config=LoRAConfig(rank=cli_config.lora_rank),
             type="training",
@@ -438,41 +525,77 @@ async def cli_main(cli_config: CLIConfig):
             timeout_sec=cli_config.create_session_timeout_sec,
             user_metadata=cli_config.user_metadata,
             training_type=normalize_training_type(cli_config.training_type),
-        ),
-    )
-    print(f"Session ready: session_id={session.session_id}")
-    run_meta["azure"]["session_id"] = session.session_id
-    _write_meta()
+        )
 
-    # ── Wrap session in the async training client ─────────────────────────────
-    from azure.ai.finetuningsessions.aio import FineTuningSessionClient as AsyncFineTuningSessionClient
-    from programmed_training.rl.train_azure import AzureSDKTrainingClient
-    from programmed_training.tokenizer_utils import get_tokenizer
+        def create_owned_session() -> FineTuningSession:
+            nonlocal session
+            session = FineTuningSession.create(client, **session_kwargs)
+            return session
 
-    # AzureSDKTrainingClient needs the async SDK client for forward/forward_backward
-    async_client_kwargs = dict(client_kwargs)
-    async_client_kwargs["credential"] = async_credential
-    async_client = AsyncFineTuningSessionClient(**async_client_kwargs)
-    tokenizer = get_tokenizer(tokenizer_name)
-    training_client = AzureSDKTrainingClient(async_client, session.session_id, tokenizer)
+        # Creation blocks during model load. Retain ownership if the caller is
+        # cancelled while the worker is still acquiring the hosted session.
+        loop = asyncio.get_running_loop()
+        session = await _await_owned_task(
+            loop.run_in_executor(None, create_owned_session)
+        )
+        print(f"Session ready: session_id={session.session_id}")
+        run_meta["azure"]["session_id"] = session.session_id
+        _write_meta()
 
-    # ── Run SFT training ──────────────────────────────────────────────────────
-    workload_error: BaseException | None = None
-    try:
-        if prepared_datasets is None:
-            await train.main(config, training_client)
-        else:
-            await train.main(config, training_client, prepared_datasets=prepared_datasets)
+        # Keep SDK/tokenizer imports lazy, but inside the ownership scope: any
+        # import, constructor, or metadata failure must still release capacity.
+        from azure.ai.finetuningsessions.aio import FineTuningSessionClient as AsyncFineTuningSessionClient
+        from programmed_training.rl.train_azure import AzureSDKTrainingClient
+        from programmed_training.tokenizer_utils import get_tokenizer
+
+        async_client_kwargs = dict(client_kwargs)
+        async_client_kwargs["credential"] = async_credential
+        async_client = AsyncFineTuningSessionClient(**async_client_kwargs)
+        tokenizer = get_tokenizer(tokenizer_name)
+        training_client = AzureSDKTrainingClient(async_client, session.session_id, tokenizer)
+
+        await auto_resume.run_supervised(
+            config, training_client, recovery_config=cli_config,
+            client=async_client, session_id=session.session_id,
+            client_kwargs=async_client_kwargs, session_kwargs=session_kwargs,
+            prepared_datasets=prepared_datasets,
+            initial_session_closer=close_supervised_session,
+        )
     except BaseException as exc:
         workload_error = exc
         raise
     finally:
-        try:
-            await training_client.close_poller()
-            await async_client.close_session(session.session_id)
-            await async_client.close()
+        async def close_owned_resources() -> BaseException | None:
+            cleanup_error: BaseException | None = None
+
+            async def close_resource(name: str, operation: Awaitable[Any]) -> None:
+                nonlocal cleanup_error
+                try:
+                    await operation
+                except BaseException as exc:
+                    if cleanup_error is None:
+                        cleanup_error = exc
+                    logger.exception("Failed to close owned %s", name)
+
+            if training_client is not None and not supervisor_cleanup_started:
+                await close_resource("training poller", training_client.close_poller())
+            if session is not None:
+                # The sync wrapper owns its heartbeat. Closing through the
+                # async client alone would leave that heartbeat thread running.
+                await close_resource("session", close_initial_session())
+            if async_client is not None and not supervisor_cleanup_started:
+                await close_resource("async SDK client", async_client.close())
+            if client is not None:
+                await close_resource("sync SDK client", asyncio.to_thread(client.close))
             if uses_token_credential:
-                await async_credential.close()
+                await close_resource("async credential", async_credential.close())
+                await close_resource("sync credential", asyncio.to_thread(credential.close))
+            return cleanup_error
+
+        try:
+            cleanup_error = await _await_owned_task(asyncio.create_task(close_owned_resources()))
+            if cleanup_error is not None:
+                raise cleanup_error
         except BaseException:
             if workload_error is None:
                 raise

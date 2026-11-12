@@ -16,12 +16,14 @@ TEXT_ENTRYPOINTS = (
     "distillation.on_policy_distillation_azure",
     "math_rl.train_azure",
     "preference.dpo.train_azure",
+    "rl_numerics_check.train_azure",
     "search_tool.train_azure",
     "tool_rl.train_azure",
     "tool_ner_rl.train_azure",
     "tool_ner_rl.eval_azure",
     "tulu3_sft.train_azure",
 )
+QWEN3_32B_ENTRYPOINTS = ("llm_judge_rl.train_azure",)
 
 VISION_MODEL = "meta-models/Muse-Glimmer-30B"
 VISION_ENTRYPOINTS = (
@@ -49,7 +51,9 @@ def _public_cli_entrypoints(recipes_dir):
 
 def test_default_inventory_covers_all_recipe_cli_configs():
     recipes_dir = Path(__file__).resolve().parents[1] / "programmed_training" / "recipes"
-    assert _public_cli_entrypoints(recipes_dir) == set(TEXT_ENTRYPOINTS + VISION_ENTRYPOINTS)
+    assert _public_cli_entrypoints(recipes_dir) == set(
+        TEXT_ENTRYPOINTS + QWEN3_32B_ENTRYPOINTS + VISION_ENTRYPOINTS
+    )
 
 
 def test_default_inventory_excludes_only_marker_scoped_recipes(tmp_path):
@@ -76,7 +80,11 @@ def test_public_text_recipe_defaults_to_qwen38(entrypoint):
     config = chz.Blueprint(module.CLIConfig).make_from_argv(
         ["project_endpoint=https://example.invalid/api/projects/test"]
     )
-    assert config.model_name == "Qwen/Qwen3.8-27B"
+    expected_model = (
+        "Qwen/Qwen3.8-27B-256K" if entrypoint == "rl_numerics_check.train_azure"
+        else "Qwen/Qwen3.8-27B"
+    )
+    assert config.model_name == expected_model
     assert config.tokenizer_name is None
     assert config.renderer_name is None
     assert model_info.get_recommended_renderer_name(config.model_name) == "qwen3_8_low_reasoning"
@@ -100,7 +108,36 @@ def test_explicit_qwen38_renderer_override_is_preserved(entrypoint, renderer_nam
     assert config.renderer_name == renderer_name
 
 
-@pytest.mark.parametrize("entrypoint", TEXT_ENTRYPOINTS)
+@pytest.mark.parametrize("entrypoint", QWEN3_32B_ENTRYPOINTS)
+def test_llm_judge_recipe_uses_published_qwen3_32b_default(entrypoint):
+    module = import_module(f"programmed_training.recipes.{entrypoint}")
+    config = chz.Blueprint(module.CLIConfig).make_from_argv(
+        ["project_endpoint=https://example.invalid/api/projects/test"]
+    )
+    assert config.model_name == "Qwen/Qwen3-32B"
+    assert config.tokenizer_name is None
+    assert config.renderer_name is None
+    assert config.learning_rate == 5e-6
+    assert config.temperature == 0.7
+    assert config.max_tokens == 320
+    assert config.group_size == config.groups_per_batch == 8
+    assert config.seed == 20261014
+    assert config.word_limit == 175
+    assert config.validation_size == 128
+    assert config.max_train_examples == 800
+    assert config.max_test_examples == 128
+    assert config.max_steps == 100
+    assert config.eval_every == 10
+    assert config.save_every == 4
+    assert config.max_concurrent_groups == 4
+    assert config.judge_max_response_tokens == 2400
+    assert config.max_retries_per_trajectory == 4
+    assert config.max_extra_trajectory_attempts_per_group == 4
+    assert config.rollout_failure_max_resets == 20
+    assert config.rollout_failure_reset_backoff_sec == 120.0
+
+
+@pytest.mark.parametrize("entrypoint", TEXT_ENTRYPOINTS + QWEN3_32B_ENTRYPOINTS)
 def test_explicit_supported_model_override_is_preserved(entrypoint):
     module = import_module(f"programmed_training.recipes.{entrypoint}")
     config = module.CLIConfig(
@@ -139,7 +176,9 @@ def test_public_vision_recipe_defaults_to_muse(entrypoint):
     assert model_info.get_model_attributes(config.model_name).is_vl
 
 
-@pytest.mark.parametrize("entrypoint", TEXT_ENTRYPOINTS + VISION_ENTRYPOINTS)
+@pytest.mark.parametrize(
+    "entrypoint", TEXT_ENTRYPOINTS + QWEN3_32B_ENTRYPOINTS + VISION_ENTRYPOINTS
+)
 def test_explicit_model_tokenizer_and_renderer_overrides_are_preserved(entrypoint):
     module = import_module(f"programmed_training.recipes.{entrypoint}")
     config = chz.Blueprint(module.CLIConfig).make_from_argv([
@@ -176,7 +215,7 @@ def test_visual_sampling_cli_default_and_override(monkeypatch, override):
 
 @pytest.mark.parametrize("entrypoint", ["train_azure", "eval_azure"])
 @pytest.mark.parametrize(
-    "checkpoint", ["session_abc/final", "session_abc/final"]
+    "checkpoint", ["session_abc/final", "loom://session_abc/weights/final"]
 )
 def test_ner_checkpoint_preserves_public_session_id(entrypoint, checkpoint):
     module = import_module(f"programmed_training.recipes.tool_ner_rl.{entrypoint}")

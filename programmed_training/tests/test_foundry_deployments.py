@@ -86,6 +86,49 @@ class DeploymentTests(unittest.TestCase):
         self.assertIs(create_deployment(PROJECT_ID, "session_123", DeploymentTarget.FIREWORKS, 40), SUCCEEDED)
         self.arm.assert_called_once()
 
+    def test_empty_put_body_fetches_then_polls_without_repeating_put(self):
+        creating = {
+            **SUCCEEDED,
+            "properties": {**SUCCEEDED["properties"], "provisioningState": "Creating"},
+        }
+        self.arm.side_effect = [{}, {}, creating, SUCCEEDED]
+        with patch.object(deployment.time, "sleep"):
+            result = create_deployment(PROJECT_ID, "session_123", DeploymentTarget.FIREWORKS, 40)
+        self.assertIs(result, SUCCEEDED)
+        self.assertEqual(
+            [call.args[1] for call in self.arm.call_args_list],
+            ["GET", "PUT", "GET", "GET"],
+        )
+
+    def test_empty_put_reconciliation_rejects_mismatched_model(self):
+        other = {
+            **SUCCEEDED,
+            "properties": {**SUCCEEDED["properties"], "model": {"name": "different"}},
+        }
+        self.arm.side_effect = [{}, {}, other, SUCCEEDED]
+        with patch.object(deployment, "_wait") as wait:
+            with self.assertRaisesRegex(RuntimeError, "already targets another checkpoint"):
+                create_deployment(PROJECT_ID, "session_123", DeploymentTarget.FIREWORKS, 40)
+        wait.assert_not_called()
+        self.assertEqual([call.args[1] for call in self.arm.call_args_list], ["GET", "PUT", "GET"])
+        self.assertIs(next(self.arm.side_effect), SUCCEEDED)
+
+    def test_empty_put_reconciliation_rejects_mismatched_capacity(self):
+        other = {**SUCCEEDED, "sku": {"capacity": 50}}
+        self.arm.side_effect = [{}, {}, other, SUCCEEDED]
+        with patch.object(deployment, "_wait") as wait:
+            with self.assertRaisesRegex(RuntimeError, "already has another SKU capacity"):
+                create_deployment(PROJECT_ID, "session_123", DeploymentTarget.FIREWORKS, 40)
+        wait.assert_not_called()
+        self.assertEqual([call.args[1] for call in self.arm.call_args_list], ["GET", "PUT", "GET"])
+        self.assertIs(next(self.arm.side_effect), SUCCEEDED)
+
+    def test_empty_put_and_missing_read_fail_with_reconciliation_guidance(self):
+        self.arm.side_effect = [{}, {}, {}]
+        with self.assertRaisesRegex(RuntimeError, "inspect remote state"):
+            create_deployment(PROJECT_ID, "session_123", DeploymentTarget.FIREWORKS, 40)
+        self.assertEqual([call.args[1] for call in self.arm.call_args_list], ["GET", "PUT", "GET"])
+
     def test_existing_deployment_not_overwritten(self):
         for other in (
             {**SUCCEEDED, "properties": {"model": {"name": "different"}}},
