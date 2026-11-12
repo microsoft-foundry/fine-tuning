@@ -4,3 +4,4 @@ PyYAML>=6,<7
 jsonschema>=4,<5
 python-dotenv>=1.1,<2
 Pillow>=12,<13
+azure-core>=1.37.0,<2
