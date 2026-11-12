@@ -5,3 +5,7 @@ jsonschema>=4,<5
 python-dotenv>=1.1,<2
 Pillow>=12,<13
 azure-core>=1.37.0,<2
+fastapi>=0.141,<1
+httpx>=0.28,<1
+openai>=2.8,<3
+requests>=2.33,<3
