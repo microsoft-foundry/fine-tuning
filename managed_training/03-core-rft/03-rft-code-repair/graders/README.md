@@ -10,7 +10,8 @@ reward function for Python code repairs.
 | Minimality, maintainability, and absence of regressions | 0.15 |
 | Usable patch and concise explanation | 0.10 |
 
-The grading model is `o3-mini-2025-01-31`, not `MAI-Code-1.1-Flash`.
+The grading model is `o3-mini-2025-01-31`, not MAI-Code-1.1-Flash or
+MAI-Code-2-Flash, which are the training-model choices.
 `{{item.reference_patch}}`, `{{item.test_expectations}}`, and
 `{{item.requirements}}` bind to each JSONL record. `{{sample.output_text}}`
 binds to the candidate's complete JSON-as-text response. The grader returns

@@ -1,12 +1,12 @@
-# RFT Code Repair: MAI-Code-1.1-Flash (preview)
+# RFT Code Repair: MAI-Code-1.1-Flash and MAI-Code-2-Flash (preview)
 
 **Role:** TRAINING
 
 **Canonical notebook:** [`notebooks/demo.ipynb`](notebooks/demo.ipynb)
 
 Use the Microsoft Foundry Project SDK to train
-`MAI-Code-1.1-Flash` to produce minimal, regression-safe Python code
-repairs. This preview model supports **managed RFT only**, not SFT, DPO, or
+MAI-Code-1.1-Flash or MAI-Code-2-Flash to produce minimal, regression-safe Python code
+repairs. Both preview models support **managed RFT only**, not SFT, DPO, or
 programmed training.
 
 The notebook walks through inspecting [50 training and 15 validation
@@ -17,6 +17,35 @@ Serverless deployment creation with the Azure management SDK and a
 code-repair inference request through the Project SDK. SDK calls are shown
 directly; grader settings and RFT hyperparameters are explained alongside the
 workflow.
+
+## Model selection and support
+
+| Model | Training model ID |
+| :--- | :--- |
+| MAI-Code-1.1-Flash | `MAI-Code-1.1-Flash` |
+| MAI-Code-2-Flash | `mai-code-2-flash-2026-11-17` |
+
+The notebook keeps MAI-Code-1.1-Flash as its default. To use MAI-Code-2-Flash,
+replace the `MODEL` assignment in Section 1 with:
+
+```python
+MODEL = "mai-code-2-flash-2026-11-17"
+```
+
+Its catalog identifier is `Microsoft/mai-code-2-flash/2026-11-17`. The date
+identifies the model version, not a launch date. Use the training model ID,
+not the catalog path, in `fine_tuning.jobs.create`.
+
+Both models use the same data schema, score-model grader, RFT submission,
+monitoring, and optional deployment/inference workflow in this notebook.
+They support **Global** and **Developer** training, not Standard or Data zone,
+and **Serverless Global Standard** serving, not Managed Compute or Fireworks.
+For supported regions, REST API, SDK, and Foundry portal workflows, follow
+the [Foundry fine-tuning support reference](https://learn.microsoft.com/azure/foundry/fine-tuning/overview#supported-models)
+and [RFT guide](https://learn.microsoft.com/azure/foundry/openai/how-to/reinforcement-fine-tuning).
+The same model-grader prerequisites and safety/evaluation guidance below
+apply to either model. Support parity does not imply identical prices,
+numerical limits, or model quality.
 
 ## Setup
 
@@ -29,7 +58,7 @@ Follow the central [setup guide](../../GETTING_STARTED.md), select the
 Before remote execution, confirm preview/RFT access, model and grader
 availability, region support, quota, and data terms for your project.
 The notebook explicitly selects **Global training**
-(`trainingType=globalStandard`): MAI supports Global and Developer, not
+(`trainingType=globalStandard`): both MAI models support Global and Developer, not
 Standard or Data zone. Review [training-type support](https://learn.microsoft.com/azure/foundry/fine-tuning/overview#supported-models)
 and [grader hosting requirements](https://learn.microsoft.com/azure/foundry/openai/how-to/reinforcement-fine-tuning#model-grader-deployments).
 Global training does not guarantee residency in the project's region.
@@ -54,7 +83,7 @@ Check Foundry before retrying an operation whose outcome is unknown.
 See [post-training guidance](../../POST_TRAINING.md) for the saved-file layout,
 cancellation, and cleanup.
 
-For serving, MAI-Code-1.1-Flash supports **Serverless Global Standard**
+For serving, both MAI-Code-1.1-Flash and MAI-Code-2-Flash support **Serverless Global Standard**
 deployments, not Managed Compute or Fireworks. Fill in the deployment-only
 settings in your local `.env` for the same parent Foundry resource used in
 training, a new deployment name, and capacity within your quota. Section 9

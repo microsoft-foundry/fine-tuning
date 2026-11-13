@@ -1,5 +1,5 @@
 id: rft-mai-code-repair
-title: 'RFT Code Repair: MAI-Code-1.1-Flash'
+title: 'RFT Code Repair: MAI-Code-1.1-Flash and MAI-Code-2-Flash'
 stage: 03-core-rft
 status: preview
 path: 03-core-rft/03-rft-code-repair
@@ -22,6 +22,7 @@ notebooks:
 training:
   base_models:
   - MAI-Code-1.1-Flash
+  - mai-code-2-flash-2026-11-17
   teacher_models: []
   evaluator_models:
   - o3-mini-2025-01-31

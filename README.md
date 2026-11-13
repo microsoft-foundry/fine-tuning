@@ -35,6 +35,7 @@ See the [model and region registry](programmed_training/docs/supported_models.md
 | Model | Managed Training | Programmed Training (preview) |
 |---|---|:---:|
 | `MAI-Code-1.1-Flash` **(preview)** | ✅ (RFT) | ❌ |
+| `MAI-Code-2-Flash` **(preview)** | ✅ (RFT) | ❌ |
 | `Qwen3.8-27B` **(preview)** | ✅ (SFT, RFT) | ✅ |
 | `Qwen3.6-35B-A3B` **(preview)** | ✅ (SFT, RFT) | ✅ |
 | `gpt-oss-120b` **(preview)** | ✅ (SFT, RFT) | ✅ |
