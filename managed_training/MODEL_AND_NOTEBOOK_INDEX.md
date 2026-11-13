@@ -13,13 +13,18 @@
 `validation.status: partial` describes the portable notebook and dataset checks;
 live outcomes still depend on the reader's model access, region, quota, and data.
 
-## MAI-Code-1.1-Flash (preview)
+<a id="mai-code-11-flash-preview"></a>
+
+## MAI-Code-1.1-Flash and MAI-Code-2-Flash (preview)
 
 The [code-repair RFT tutorial](03-core-rft/03-rft-code-repair/README.md) uses
-`MAI-Code-1.1-Flash` as the base model and `o3-mini-2025-01-31` as the
+`MAI-Code-1.1-Flash` by default, or `mai-code-2-flash-2026-11-17` for
+MAI-Code-2-Flash, as the base model and `o3-mini-2025-01-31` as the
 score-model grader. The grader is not a teacher or the model being fine-tuned.
-MAI-Code-1.1-Flash supports managed RFT only, not SFT, DPO, or interactive
-training. Confirm preview access, the exact model identifier, region, grader
+Both models support managed RFT only, not SFT, DPO, or programmed
+training. See the tutorial's [model selection and support](03-core-rft/03-rft-code-repair/README.md#model-selection-and-support)
+for identifiers, training types, and links to region and workflow guidance.
+Confirm preview access, the exact model identifier, region, grader
 hosting requirements, and quota in your Foundry project before running remote
 cells; the notebook's local checks do not establish service eligibility.
 Optional serving sections create a Serverless Global Standard deployment

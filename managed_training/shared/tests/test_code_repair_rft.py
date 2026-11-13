@@ -213,7 +213,9 @@ def test_notebook_tables_use_explicit_left_alignment():
 def test_metadata_and_navigation_include_the_new_model():
     catalog = yaml.safe_load((ROOT / "catalog.yml").read_text(encoding="utf-8"))
     demo = next(item for item in catalog["demos"] if item["id"] == "rft-mai-code-repair")
-    assert demo["training"]["base_models"] == ["MAI-Code-1.1-Flash"]
+    assert demo["training"]["base_models"] == [
+        "MAI-Code-1.1-Flash", "mai-code-2-flash-2026-11-17",
+    ]
     assert demo["training"]["evaluator_models"] == ["o3-mini-2025-01-31"]
     assert demo["techniques"] == ["rft"]
     assert demo["status"] == "preview"
@@ -310,10 +312,17 @@ def test_rft_data_checks_reject_invalid_rows(tmp_path, change):
         ).require_valid()
 
 
+@pytest.mark.parametrize("use_code2", [False, True])
 def test_direct_sdk_workflow_saves_ids_and_displays_service_metrics(
-    connected, management, monkeypatch, capsys
+    connected, management, monkeypatch, capsys, use_code2
 ):
     namespace, client, project_factory, project, credential = connected
+    if use_code2:
+        preparation = next(cell for cell in NOTEBOOK["cells"] if cell["id"] == "mai-preparation-guide")
+        model_selection = re.search(r"```python\n(.*?)\n```", "".join(preparation["source"]), re.S)
+        assert model_selection is not None
+        exec(compile(model_selection[1], "code-repair:model-selection", "exec"), namespace)
+        assert namespace["MODEL"] == "mai-code-2-flash-2026-11-17"
     output = namespace["OUTPUT_DIR"]
     uploaded_bytes = []
 
