@@ -377,7 +377,7 @@ class MuseGlimmerRenderer(Renderer):
         if thinking:
             result["reasoning_content"] = thinking
             result["content"] = _render_content(message)
-        for tool_call in result.get("tool_calls", []):
+        for tool_call in result.get("tool_calls") or []:
             arguments = tool_call["function"].get("arguments")
             if isinstance(arguments, str):
                 tool_call["function"]["arguments"] = json.loads(arguments)

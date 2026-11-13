@@ -6,6 +6,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 
 import chz
+import pytest
 
 from programmed_training.utils.ml_log import JsonLogger, dump_config
 
@@ -47,3 +48,24 @@ def test_json_logger_concurrent_appends_produce_complete_records(tmp_path):
     ]
     assert len(rows) == record_count
     assert {row["record"] for row in rows} == set(range(record_count))
+
+
+@pytest.mark.parametrize("value,label", [
+    (float("nan"), "NaN"), (float("inf"), "Infinity"), (-float("inf"), "-Infinity"),
+])
+def test_json_logger_preserves_nonfinite_metrics_as_valid_json(tmp_path, caplog, value, label):
+    logger = JsonLogger(tmp_path)
+    source = {"kl": value, "nested": [0.0, {"value": value}], "finite": -0.02}
+    logger.log_metrics(source, step=7)
+    text = logger.metrics_file.read_text(encoding="utf-8")
+
+    def reject_constant(constant):
+        raise AssertionError(f"Non-standard JSON constant: {constant}")
+
+    row = json.loads(text, parse_constant=reject_constant)
+    assert row == {
+        "step": 7, "kl": {"__nonfinite__": label},
+        "nested": [0.0, {"value": {"__nonfinite__": label}}], "finite": -0.02,
+    }
+    assert isinstance(source["kl"], float)
+    assert "Recording invalid metric /kl" in caplog.text

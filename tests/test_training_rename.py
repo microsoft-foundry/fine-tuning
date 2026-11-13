@@ -30,7 +30,7 @@ class TrainingRenameTests(unittest.TestCase):
             ["programmed_training"],
         )
         self.assertIn(
-            "azure-ai-finetuningsessions==1.0.0b1", metadata["project"]["dependencies"]
+            "azure-ai-finetuningsessions==1.0.0b2", metadata["project"]["dependencies"]
         )
 
     def test_python_imports_use_existing_renamed_modules(self):

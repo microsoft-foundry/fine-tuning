@@ -3,6 +3,8 @@ Implements RL on general MDPs
 """
 
 import asyncio
+
+from programmed_training import auto_resume
 import inspect
 import io
 import json
@@ -20,7 +22,6 @@ import numpy as np
 import torch
 from azure.ai.finetuningsessions import FineTuningSession, FineTuningSessionClient
 from azure.ai.finetuningsessions.models import (
-    AdamParams,
     Datum,
     ForwardBackwardOperationResult,
     LossFn as LossFnType,
@@ -29,6 +30,7 @@ from azure.ai.finetuningsessions.models import (
 from tqdm import tqdm
 
 from programmed_training import checkpoint_utils
+from programmed_training.optimizers import AdamConfig
 from programmed_training.completers import SessionTokenCompleter
 from programmed_training.display import colorize_example
 from programmed_training.dynamic_batching.strategy import DynamicBatchStrategy
@@ -39,9 +41,12 @@ from programmed_training.rl.data_processing import (
     remove_constant_reward_groups,
 )
 from programmed_training.rl.metric_util import (
+    PhaseTimingObserver,
     RLTestSetEvaluator,
     ValidationObserver,
     compute_trajectory_metrics,
+    record_phase_time,
+    timed_phase,
 )
 from programmed_training.rl.metrics import (
     compute_kl_sample_train,
@@ -178,7 +183,7 @@ async def gather_with_progress(
         return result
 
     try:
-        results = await asyncio.gather(*[track(coro) for coro in coroutine_list])
+        results = await auto_resume.gather(*[track(coro) for coro in coroutine_list])
     finally:
         pbar.close()
 
@@ -323,6 +328,8 @@ async def train_step(
     loss_fn: LossFnType,
     loss_fn_config: dict[str, Any] | None = None,
     metrics: dict[str, Any] | None = None,
+    *,
+    adam_config: AdamConfig | None = None,
 ) -> List[torch.Tensor]:
     """Train the model on collected trajectories.
 
@@ -333,7 +340,9 @@ async def train_step(
 
     batches = split_list(data_D, min(num_substeps, len(data_D)))
 
-    adam_params = AdamParams(learning_rate=learning_rate, beta1=0.9, beta2=0.95, eps=1e-8)
+    if adam_config is None:
+        adam_config = AdamConfig()
+    adam_params = adam_config.to_adam_params(learning_rate)
     training_logprobs_D: list[torch.Tensor] = []
     optim_result: OptimStepOperationResult | None = None
 
@@ -421,7 +430,7 @@ class AsyncConfig:
 
 
 @chz.chz
-class Config:
+class Config(AdamConfig):
     """Configuration for RL training."""
 
     # -------------------------------------------------------------------------
@@ -451,6 +460,8 @@ class Config:
     evaluator_builders: list[SamplingClientEvaluatorBuilder] = chz.field(default_factory=list)
     # Optional observer for the built-in validation evaluator.
     validation_observer: ValidationObserver | None = None
+    # Optional interval observer used by command-job telemetry.
+    phase_timing_observer: PhaseTimingObserver | None = None
     # Reject empty/incomplete built-in validation passes and observer failures.
     require_full_validation: bool = False
     # Start training from weights at this checkpoint (fresh optimizer state).
@@ -778,7 +789,7 @@ async def run_evaluations_parallel(
     tasks = []
     for i, evaluator in enumerate(evaluators):
         ev_name = _get_evaluator_name(evaluator)
-        task = asyncio.create_task(
+        task = auto_resume.create_task(
             run_single_evaluation(evaluator, cfg, i_batch, sampling_client),
             name=f"eval_{ev_name or i}_iteration_{i_batch:06d}",
         )
@@ -862,6 +873,7 @@ async def do_sync_training_with_stream_minibatch(
         start_batch,
         cfg.ttl_seconds,
         eval_every=checkpoint_eval_every(cfg),
+        phase_timing_observer=cfg.phase_timing_observer,
     )
     retry_policy, failure_tracker = _make_rollout_failure_policy(cfg)
 
@@ -879,7 +891,7 @@ async def do_sync_training_with_stream_minibatch(
             "optim/lr": cfg.learning_rate,
             "progress/done_frac": (i_batch + 1) / num_batches,
         }
-        t_start = time.time()
+        t_start = time.monotonic()
 
         # Run evaluations
         if should_evaluate_rl_iteration(
@@ -888,7 +900,9 @@ async def do_sync_training_with_stream_minibatch(
             step=i_batch,
             is_fresh_run=fresh_run,
         ):
-            with timed("run_evals", metrics):
+            with timed_phase(
+                "run_evals", metrics, i_batch, observer=cfg.phase_timing_observer
+            ):
                 eval_metrics = await run_evaluations_parallel(
                     evaluators, sampling_client, cfg, i_batch
                 )
@@ -958,7 +972,7 @@ async def do_sync_training_with_stream_minibatch(
             for i, builder in enumerate(env_group_builders_P):
                 group_seed = _derive_group_seed(cfg.sampling_seed, i_batch, i)
                 worker_tasks.append(
-                    asyncio.create_task(
+                    auto_resume.create_task(
                         trajectory_group_worker_task(
                             builder,
                             group_index=i,
@@ -992,7 +1006,9 @@ async def do_sync_training_with_stream_minibatch(
 
         # Log metrics
         metrics.update(full_batch_metrics)
-        metrics["time/total"] = time.time() - t_start
+        record_phase_time(
+            "total", metrics, t_start, i_batch, observer=cfg.phase_timing_observer
+        )
         ml_logger.log_metrics(metrics, step=i_batch)
         actual_next_batch = i_batch + 1
         if full_batch_metrics.get("train/skipped_no_valid_groups") != 1:
@@ -1197,7 +1213,9 @@ async def do_async_training(
         and evaluators
     ):
         metrics = {}
-        with timed("run_evals", metrics):
+        with timed_phase(
+            "run_evals", metrics, start_batch, observer=cfg.phase_timing_observer
+        ):
             eval_metrics = await run_evaluations_parallel(
                 evaluators, sampling_client, cfg, start_batch
             )
@@ -1432,7 +1450,7 @@ async def do_async_training(
                     max_steps_off_policy=cfg.async_config.max_steps_off_policy,
                 ):
                     logger.info(f"[training_loop] Step {i_batch}: Samples are too stale, skipping")
-                    asyncio.create_task(
+                    auto_resume.create_task(
                         env_group_builders_queue.put(
                             _QueuedEnvGroupBuilder(
                                 builder=wrapped_trajectory_group.env_group_builder,
@@ -1589,7 +1607,12 @@ async def do_async_training(
                 step=sampling_client_eval_step,
                 is_fresh_run=fresh_run,
             ):
-                with timed("run_evals", metrics):
+                with timed_phase(
+                    "run_evals",
+                    metrics,
+                    sampling_client_eval_step,
+                    observer=cfg.phase_timing_observer,
+                ):
                     for evaluator in evaluators:
                         eval_metrics = await _call_sampling_evaluator(
                             evaluator,
@@ -1659,17 +1682,17 @@ async def do_async_training(
         cfg.max_concurrent_groups,
     )
 
-    await asyncio.gather(
-        asyncio.create_task(dataloader_loop(), name="dataloader_loop"),
+    await auto_resume.gather(
+        auto_resume.create_task(dataloader_loop(), name="dataloader_loop"),
         *[
-            asyncio.create_task(
+            auto_resume.create_task(
                 trajectory_group_worker_loop(), name=f"trajectory_group_worker_loop_{i}"
             )
             for i in range(num_rollout_workers)
         ],
-        asyncio.create_task(training_loop(), name="training_loop"),
-        asyncio.create_task(evaluation_loop(), name="evaluation_loop"),
-        asyncio.create_task(heartbeat_loop(), name="heartbeat_loop"),
+        auto_resume.create_task(training_loop(), name="training_loop"),
+        auto_resume.create_task(evaluation_loop(), name="evaluation_loop"),
+        auto_resume.create_task(heartbeat_loop(), name="heartbeat_loop"),
     )
 
     return actual_next_batch, last_completed_step
@@ -1863,25 +1886,23 @@ async def do_group_rollout_and_filter_constant_reward(
         sample_timeout_sec=sample_timeout_sec,
     )
 
-    with logtree.optional_enable_logging(enable_logging):
-        # Primary roll with optional resilience (retry budget + failure-rate
-        # circuit breaker). Falls back to a single attempt when disabled.
+    async def rollout_with_failure_policy(
+        rollout_policy: SessionTokenCompleter,
+        additional_trajectories: int = 0,
+    ) -> TrajectoryGroup | None:
         while True:
             try:
                 if retry_policy is None and failure_tracker is None:
-                    trajectory_group = await do_group_rollout(
-                        env_group_builder, policy
-                    )
-                else:
-                    trajectory_group = await do_group_rollout(
-                        env_group_builder,
-                        policy,
-                        retry_policy=retry_policy,
-                        failure_tracker=failure_tracker,
-                    )
+                    return await do_group_rollout(env_group_builder, rollout_policy)
+                return await do_group_rollout(
+                    env_group_builder,
+                    rollout_policy,
+                    retry_policy=retry_policy,
+                    failure_tracker=failure_tracker,
+                )
             except IncompleteGroupGradingError as error:
                 await _handle_incomplete_group_drop(
-                    GroupDropEvent(error, training_step),
+                    GroupDropEvent(error, training_step, additional_trajectories),
                     allowed=allow_incomplete_grading_group_drop,
                     callback=on_group_drop,
                 )
@@ -1914,8 +1935,11 @@ async def do_group_rollout_and_filter_constant_reward(
                     backoff,
                 )
                 await asyncio.sleep(backoff)
-                continue
-            break
+
+    with logtree.optional_enable_logging(enable_logging):
+        trajectory_group = await rollout_with_failure_policy(policy)
+        if trajectory_group is None:
+            return None
         trajectory_group = _assign_selection_seeds(
             trajectory_group, seed
         )
@@ -1948,18 +1972,10 @@ async def do_group_rollout_and_filter_constant_reward(
                         response_format=response_format,
                         sample_timeout_sec=sample_timeout_sec,
                     )
-                    try:
-                        extra_group = await do_group_rollout(
-                            env_group_builder, reroll_policy
-                        )
-                    except IncompleteGroupGradingError as error:
-                        await _handle_incomplete_group_drop(
-                            GroupDropEvent(
-                                error, training_step, len(trajectory_group.trajectories_G),
-                            ),
-                            allowed=allow_incomplete_grading_group_drop,
-                            callback=on_group_drop,
-                        )
+                    extra_group = await rollout_with_failure_policy(
+                        reroll_policy, len(trajectory_group.trajectories_G),
+                    )
+                    if extra_group is None:
                         return None
                     extra_group = _assign_selection_seeds(
                         extra_group,
@@ -2007,6 +2023,7 @@ async def save_checkpoint_and_get_sampling_client(
     eval_every: int = 0,
     loop_state_extra: dict[str, Any] | None = None,
     checkpoint_metrics: dict[str, Any] | None = None,
+    phase_timing_observer: PhaseTimingObserver | None = None,
 ) -> tuple[FineTuningSession | None, dict[str, Any]]:
     """
     Save a checkpoint on save_every boundaries (full retention via ttl_seconds)
@@ -2015,7 +2032,9 @@ async def save_checkpoint_and_get_sampling_client(
     persisting a checkpoint row to checkpoints.jsonl.
     """
     metrics = {}
-    with timed("save_checkpoint", metrics):
+    with timed_phase(
+        "save_checkpoint", metrics, i_batch, observer=phase_timing_observer
+    ):
         on_save_boundary = save_every > 0 and i_batch % save_every == 0
         on_eval_boundary = eval_every > 0 and i_batch % eval_every == 0
         if i_batch > start_batch and (on_save_boundary or on_eval_boundary):
@@ -2217,6 +2236,7 @@ async def compute_full_batch_metrics_and_get_sampling_client(
     ttl_seconds: int | None = None,
     eval_every: int = 0,
     loop_state_extra: dict[str, Any] | None = None,
+    phase_timing_observer: PhaseTimingObserver | None = None,
 ) -> tuple[FineTuningSession, dict[str, Any]]:
     """
     At the end of the iteration, this will compute metrics for the full batch
@@ -2244,6 +2264,7 @@ async def compute_full_batch_metrics_and_get_sampling_client(
         eval_every=eval_every,
         loop_state_extra=loop_state_extra,
         checkpoint_metrics=kl_sample_train_metrics,
+        phase_timing_observer=phase_timing_observer,
     )
     metrics.update(checkpoint_metrics)
 
@@ -2383,9 +2404,7 @@ async def do_train_step_streaming_and_get_sampling_client(
             continue
 
         # Enqueue optim_step before awaiting results (so they land on same clock cycle)
-        adam_params = AdamParams(
-            learning_rate=cfg.learning_rate, beta1=0.9, beta2=0.95, eps=1e-8
-        )
+        adam_params = cfg.to_adam_params(cfg.learning_rate)
         with timed(f"train/optim_substep_{i_substep}_enqueue", metrics):
             optim_future = await training_client.optim_step_async(adam_params)
 
@@ -2438,6 +2457,7 @@ async def do_train_step_streaming_and_get_sampling_client(
         cfg.ttl_seconds,
         eval_every=checkpoint_eval_every(cfg),
         loop_state_extra=loop_state_extra,
+        phase_timing_observer=cfg.phase_timing_observer,
     )
     metrics.update(full_batch_metrics)
     return sampling_client, metrics
@@ -2471,7 +2491,7 @@ async def do_train_step_and_get_sampling_client(
     )
     metrics.update(prepare_minibatch_metrics)
 
-    with timed("train", metrics):
+    with timed_phase("train", metrics, i_batch, observer=cfg.phase_timing_observer):
         training_logprobs_D = await train_step(
             data_D=data_D,
             training_client=training_client,
@@ -2480,6 +2500,7 @@ async def do_train_step_and_get_sampling_client(
             loss_fn=cfg.loss_fn,
             loss_fn_config=cfg.loss_fn_config,
             metrics=metrics,
+            adam_config=cfg,
         )
 
     sampling_client, full_batch_metrics = await compute_full_batch_metrics_and_get_sampling_client(
@@ -2493,6 +2514,7 @@ async def do_train_step_and_get_sampling_client(
         cfg.ttl_seconds,
         eval_every=checkpoint_eval_every(cfg),
         loop_state_extra=loop_state_extra,
+        phase_timing_observer=cfg.phase_timing_observer,
     )
     metrics.update(full_batch_metrics)
 
@@ -2528,6 +2550,7 @@ async def do_sync_training(
         start_batch,
         cfg.ttl_seconds,
         eval_every=checkpoint_eval_every(cfg),
+        phase_timing_observer=cfg.phase_timing_observer,
     )
     retry_policy, failure_tracker = _make_rollout_failure_policy(cfg)
 
@@ -2577,7 +2600,7 @@ async def do_sync_training(
             "optim/lr": cfg.learning_rate,
             "progress/done_frac": (i_batch + 1) / num_batches,
         }
-        t_start = time.time()
+        t_start = time.monotonic()
         prefilter_rewards = PrefilterRewardAccumulator()
 
         # Run evaluations
@@ -2587,13 +2610,15 @@ async def do_sync_training(
             step=i_batch,
             is_fresh_run=fresh_run,
         ):
-            with timed("run_evals", metrics):
+            with timed_phase(
+                "run_evals", metrics, i_batch, observer=cfg.phase_timing_observer
+            ):
                 eval_metrics = await run_evaluations_parallel(
                     evaluators, sampling_client, cfg, i_batch
                 )
                 metrics.update(eval_metrics)
 
-        sampling_started_at = time.time()
+        sampling_started_at = time.monotonic()
         if do_refill:
             # Dynamic sampling / refill-on-drop: keep pulling prompt batches and
             # sampling until we have enough surviving groups to fill the batch.
@@ -2814,7 +2839,13 @@ async def do_sync_training(
             if cfg.remove_constant_reward_groups:
                 trajectory_groups_P = remove_constant_reward_groups(trajectory_groups_P)
 
-        metrics["time/sampling"] = time.time() - sampling_started_at
+        record_phase_time(
+            "sampling",
+            metrics,
+            sampling_started_at,
+            i_batch,
+            observer=cfg.phase_timing_observer,
+        )
         metrics.update(prefilter_rewards.metrics())
 
         # Skip training if no valid groups remain (e.g. all were constant-reward)
@@ -2822,7 +2853,9 @@ async def do_sync_training(
             logger.warning(
                 f"Step {i_batch}: no valid trajectory groups after filtering, skipping training step"
             )
-            metrics["time/total"] = time.time() - t_start
+            record_phase_time(
+                "total", metrics, t_start, i_batch, observer=cfg.phase_timing_observer
+            )
             ml_logger.log_metrics(metrics, step=i_batch)
             actual_next_batch = i_batch + 1
             continue
@@ -2863,7 +2896,9 @@ async def do_sync_training(
 
         # Log metrics
         metrics.update(train_step_metrics)
-        metrics["time/total"] = time.time() - t_start
+        record_phase_time(
+            "total", metrics, t_start, i_batch, observer=cfg.phase_timing_observer
+        )
         ml_logger.log_metrics(metrics, step=i_batch)
         actual_next_batch = i_batch + 1
         if train_step_metrics.get("train/skipped_no_valid_groups") != 1:
@@ -2952,6 +2987,7 @@ async def main(
                 observer=cfg.validation_observer,
                 response_format=cfg.response_format,
                 require_full_validation=cfg.require_full_validation,
+                max_concurrent_groups=cfg.max_concurrent_groups,
             )
         )
 
@@ -3051,7 +3087,12 @@ async def main(
     ):
         sampling_client = training_client.create_sampling_client(final_paths["sampler_path"])
         metrics = {}
-        with timed("run_evals", metrics):
+        with timed_phase(
+            "run_evals",
+            metrics,
+            actual_next_batch,
+            observer=cfg.phase_timing_observer,
+        ):
             eval_metrics = await run_evaluations_parallel(
                 evaluators, sampling_client, cfg, actual_next_batch
             )

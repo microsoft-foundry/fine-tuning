@@ -344,12 +344,12 @@
     </span></span></h2><div id="plotOptim" class="plot plot-tall"></div></div>
 
     <div class="card col-6 rl-only"><h2 class="with-info">KL (sample vs train)<span class="info-tip">i<span class="info-bubble">
-      KL divergence between the policy that <em>sampled</em> the rollouts and the policy <em>after</em> the gradient step — the "how big a step did we take" gauge.
+      Numerical consistency between sampler and trainer log probabilities on the same action tokens. This is the primary diagnostic for RL numerics, not a reward or learning score.
       <ul>
-        <li><strong>kl v1</strong> (<code>optim/kl_sample_train_v1</code>) — log-ratio estimator.</li>
-        <li><strong>kl v2</strong> (<code>optim/kl_sample_train_v2</code>) — <code>(r-1) − log r</code>, lower variance, always ≥ 0.</li>
+        <li><strong>kl v1</strong> (<code>optim/kl_sample_train_v1</code>) — mean <code>logp_sampler − logp_trainer</code> over evaluated action tokens; a finite-sample estimate that can be negative.</li>
+        <li><strong>kl v2</strong> (<code>optim/kl_sample_train_v2</code>) — half the mean squared log-probability difference; a nonnegative supporting diagnostic.</li>
       </ul>
-      <span class="hint">Should be small and roughly flat. Spikes typically precede a reward/correctness dip on the next step. Large gap between v1 and v2 ⇒ heavy outlier importance ratios in the batch.</span>
+      <span class="hint">Inspect magnitude and trends alongside token depth and action-token coverage. Missing KL is not zero; no universal passing threshold is imposed.</span>
     </span></span></h2><div id="plotKL" class="plot"></div></div>
 
     <div class="card col-6 rl-only"><h2 class="with-info">Group composition (train)<span class="info-tip">i<span class="info-bubble">
@@ -459,7 +459,9 @@
 
   <p style="color:var(--muted);font-size:11px;margin-top:18px;text-align:center">
     Dashboard is served by <code>dashboard_server.py</code> and reads runs from the configured logs root
-    (default <code>~/interactive-post-training-runs</code>, or <code>$INTERACTIVE_POST_TRAINING_LOGS_ROOT</code>). Recipe type (RL vs SFT) is auto-detected
+    (default <code>~/loom-runs</code> or <code>C:\loom-runs</code>;
+    <code>$INTERACTIVE_POST_TRAINING_LOGS_ROOT</code> takes precedence over <code>$LOOM_LOGS_ROOT</code>).
+    Both legacy and renamed history locations are also scanned unless <code>--root</code> is supplied. Recipe type (RL vs SFT) is auto-detected
     from <code>metrics.jsonl</code>.
   </p>
 </main>
@@ -594,14 +596,27 @@ async function loadMetrics() {
 }
 
 function pick(rows, key) {
-  return rows.map(r => r[key] !== undefined ? r[key] : null);
+  return rows.map(r => r[key]?.__nonfinite__ !== undefined ? null : r[key] !== undefined ? r[key] : null);
 }
 function steps(rows) { return rows.map(r => r.step ?? 0); }
 
 function renderKPIs(rows) {
-  if (rows.length === 0) return;
+  const numerics = RUN_META?.recipe === 'rl_numerics_check'
+    || RUN_META?.component === 'rl_numerics_check'
+    || CURRENT_RUN.split('/').pop() === 'rl_numerics_check';
+  for (const [id, label] of [
+    ['kpiTrainAcc', numerics ? 'Sampler/trainer KL v1 (primary)' : 'Train correct'],
+    ['kpiTestAcc', numerics ? 'Sampler/trainer KL v2' : 'Eval correct'],
+  ]) {
+    const card = document.getElementById(id);
+    card.querySelector('.d').textContent = label;
+    card.classList.toggle('good', !numerics);
+  }
+  const klCard = document.getElementById('plotKL').parentElement;
+  const rewardCard = document.getElementById('plotReward').parentElement;
+  const optimCard = document.getElementById('plotOptim').parentElement;
+  rewardCard.parentElement.insertBefore(klCard, numerics ? rewardCard : optimCard.nextSibling);
   const last = rows[rows.length-1];
-  const prev = rows.length > 1 ? rows[rows.length-2] : null;
   const setKpi = (id, v, d) => {
     const el = document.getElementById(id);
     el.querySelector('.v').textContent = v;
@@ -610,6 +625,16 @@ function renderKPIs(rows) {
       if (dEls.length > 1) dEls[1].textContent = d;
     }
   };
+  if (rows.length === 0) {
+    if (numerics) {
+      for (const id of ['kpiStep','kpiTrainAcc','kpiTestAcc','kpiTime']) {
+        setKpi(id, '–', 'final attempt · no updates recorded');
+      }
+      document.getElementById('kpiProg').style.width = '0%';
+      document.getElementById('kpiProgText').textContent = '';
+    }
+    return;
+  }
   setKpi('kpiStep', String(last.step ?? '–'));
   // Progress: RL writes `progress/done_frac`; SFT writes `progress` (0–1).
   const progFrac = last['progress/done_frac'] ?? last['progress'] ?? 0;
@@ -667,16 +692,42 @@ function renderKPIs(rows) {
       testDelta = 'at step ' + lastTestRow.step;
     }
     setKpi('kpiTestNLL', enll != null ? fmt(enll, 4) : '–', testDelta);
+  } else if (numerics) {
+    for (const [id, key] of [
+      ['kpiTrainAcc', 'optim/kl_sample_train_v1'],
+      ['kpiTestAcc', 'optim/kl_sample_train_v2'],
+    ]) {
+      const recorded = rows.filter(row => row.step === last.step && Object.prototype.hasOwnProperty.call(row, key));
+      const latest = recorded[recorded.length - 1];
+      const finite = latest && typeof latest[key] === 'number' && Number.isFinite(latest[key]);
+      const state = finite ? 'diagnostic only'
+        : latest && latest[key] != null ? 'invalid measurement' : 'not recorded';
+      setKpi(id, finite ? fmt(latest[key], 6) : '–',
+        'step ' + last.step + ' · ' + state);
+    }
   } else {
-    const tc = last['env/all/correct'];
-    const tcPrev = prev ? prev['env/all/correct'] : null;
+    // Train/eval events can be separate rows at the same step. Find each
+    // metric's latest two non-null values independently, just like SFT NLL.
+    const latestRows = key => {
+      const found = [];
+      for (let i = rows.length - 1; i >= 0 && found.length < 2; i--) {
+        if (rows[i][key] != null) found.push(rows[i]);
+      }
+      return found;
+    };
+    const [trainRow, prevTrainRow] = latestRows('env/all/correct');
+    const [trainRewardRow] = latestRows('env/all/reward/total');
+    const tc = trainRow?.['env/all/correct'];
+    const tcPrev = prevTrainRow?.['env/all/correct'];
     setKpi('kpiTrainAcc', tc != null ? (tc*100).toFixed(1) + '%' : '–',
-      (tcPrev != null && tc != null) ? ((tc-tcPrev>=0?'+':'') + ((tc-tcPrev)*100).toFixed(2) + ' pp vs prev') : 'reward ' + fmt(last['env/all/reward/total']));
+      (tcPrev != null && tc != null) ? ((tc-tcPrev>=0?'+':'') + ((tc-tcPrev)*100).toFixed(2) + ' pp vs prev train') : 'reward ' + fmt(trainRewardRow?.['env/all/reward/total']));
 
-    const ec = last['test/env/all/correct'];
-    const ecPrev = prev ? prev['test/env/all/correct'] : null;
+    const [evalRow, prevEvalRow] = latestRows('test/env/all/correct');
+    const [evalRewardRow] = latestRows('test/env/all/reward/total');
+    const ec = evalRow?.['test/env/all/correct'];
+    const ecPrev = prevEvalRow?.['test/env/all/correct'];
     setKpi('kpiTestAcc', ec != null ? (ec*100).toFixed(1) + '%' : '–',
-      (ecPrev != null && ec != null) ? ((ec-ecPrev>=0?'+':'') + ((ec-ecPrev)*100).toFixed(2) + ' pp vs prev') : 'reward ' + fmt(last['test/env/all/reward/total']));
+      (ecPrev != null && ec != null) ? ((ec-ecPrev>=0?'+':'') + ((ec-ecPrev)*100).toFixed(2) + ' pp vs prev eval') : 'reward ' + fmt(evalRewardRow?.['test/env/all/reward/total']));
   }
 
   const totalTime = rows.reduce((s,r)=>s+(r['time/total']||0),0);
@@ -1351,6 +1402,7 @@ async function refresh() {
     // renderers run below.
     if (rows.length > 0) applyMode(detectMode(rows) || MODE || 'rl');
     if (rows.length === 0) {
+      renderKPIs(rows);
       // In-progress run with no metrics yet — don't leave stale charts up.
       ['plotReward','plotOptim','plotKL','plotGroup','plotTokens','plotTime'].forEach(id => {
         const el = document.getElementById(id);

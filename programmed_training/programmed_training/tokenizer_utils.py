@@ -30,6 +30,21 @@ _CUSTOM_TOKENIZER_REGISTRY: dict[str, Callable[[], Tokenizer]] = {}
 GLM5_FLAG_ENV = "INTERACTIVE_POST_TRAINING_ENABLE_GLM5"
 _GLM5_MODEL_NAMES = {"zai-org/GLM-5.2", "zai-org/GLM-5.2-FP8"}
 
+_MODEL_TOKENIZER_NAMES = {
+    "Qwen/Qwen3.8-27B-256K": "Qwen/Qwen3.8-27B",
+    "meta-models/Muse-Glimmer-30B-128K": "meta-models/Muse-Glimmer-30B",
+    "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16-256K": (
+        "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16"
+    ),
+}
+_MODEL_TOKENIZER_REVISIONS = {
+    "Qwen/Qwen3.8-27B-256K": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+    "meta-models/Muse-Glimmer-30B-128K": "a4e59da52a7bc87ae7251dd5545c0dd437c44b68",
+    "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16-256K": (
+        "77df655d5e9f8362164ed14dd8b48f8bce657498"
+    ),
+}
+
 
 def register_tokenizer(
     name: str,
@@ -97,6 +112,17 @@ def _strip_adapter_suffix(model_name: str) -> str:
     if drive.endswith(":"):
         return drive + path.split(":", 1)[0]
     return model_name.split(":", 1)[0]
+
+
+def get_hf_model_name(model_name: str) -> str:
+    """Resolve exact service aliases to public tokenizer and processor repositories."""
+    model_name = _strip_adapter_suffix(model_name)
+    return _MODEL_TOKENIZER_NAMES.get(model_name, model_name)
+
+
+def get_hf_model_revision(model_name: str) -> str | None:
+    """Resolve the pinned asset revision for an exact service alias."""
+    return _MODEL_TOKENIZER_REVISIONS.get(_strip_adapter_suffix(model_name))
 
 
 def _is_glm5_model(model_name: str) -> bool:
@@ -173,14 +199,22 @@ def _load_glm5_tokenizer_from_json(model_name: str) -> Tokenizer:
 def _get_hf_tokenizer(model_name: str) -> Tokenizer:
     from transformers.models.auto.tokenization_auto import AutoTokenizer
 
-    model_name = _strip_adapter_suffix(model_name)
+    revision = get_hf_model_revision(model_name)
+    model_name = get_hf_model_name(model_name)
 
     # Avoid gating of Llama 3 models:
     if model_name.startswith("meta-llama/Llama-3"):
         model_name = "thinkingmachineslabinc/meta-llama-3-instruct-tokenizer"
 
     kwargs: dict[str, Any] = {}
-    if model_name == "prism-ml/Ternary-Bonsai-2-27B-gguf":
+    if revision is not None:
+        if Path(model_name).is_dir():
+            raise ValueError(
+                f"Local directory {model_name!r} shadows the pinned public tokenizer. "
+                "Use an explicit local path or a registered tokenizer instead."
+            )
+        kwargs["revision"] = revision
+    elif model_name == "prism-ml/Ternary-Bonsai-2-27B-gguf":
         # The GGUF repository has no standalone tokenizer; its companion is identical.
         model_name = "prism-ml/Ternary-Bonsai-2-27B-mlx-2bit"
         if Path(model_name).is_dir():

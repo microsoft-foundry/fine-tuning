@@ -4,9 +4,9 @@
     {
       "path": "data/preserved/openr1-math-training-rft-100.jsonl",
       "source": "Demos/RFT_Math_Reasoning/training_rft.jsonl",
-      "bytes": 55253,
+      "bytes": 55613,
       "rows": 100,
-      "sha256": "37e5573f18ea12e4be1d423deabfd4036c282fb935c28e61a29e9f4351f60b02"
+      "sha256": "4e761c767bb01a0929c215476f33853dbfe5e8f097f2a7ecc3211325e501347e"
     },
     {
       "path": "data/preserved/openr1-math-validation-rft-10.jsonl",
@@ -20,8 +20,55 @@
   "source_dataset": "open-r1/OpenR1-Math-220k",
   "source_revision": "e4e141ec9dea9f8326f4d347be56105859b2bd68",
   "license": "Apache-2.0",
+  "source_attribution": "The dataset, revision, license, and source paths identify the source subset, not an assertion that upstream contains the local corrections or adapted prompts. No missing figure or flowchart has been recovered, and no additional upstream license provenance is asserted.",
+  "runtime_preparation": {
+    "helper": "prepare_math_data.py",
+    "policy": "openr1-row1-answer-only-v1",
+    "preserved_artifacts_unchanged": true,
+    "training_rows": 100,
+    "validation_rows": 10,
+    "adapted_source_training_rows": [1],
+    "decision": "Keep the full two-part source prompt and incomplete source answer 9 immutable. At runtime, explicitly adapt row 1 to answer-only part (a), reference (4, 6, 9); do not claim to grade the proof in part (b).",
+    "derivation": "data/README.md#runtime-row-1-curation-and-independent-proof",
+    "runtime_hashes": "Calculated from actual prepared canonical-LF bytes into ignored outputs/prepared-data/preparation-report.json; not substituted for preserved source pins"
+  },
   "corrected_rows": {
-    "training": [2, 3, 8, 17, 23, 25, 27, 32, 33, 35, 58, 60, 64, 69, 71, 77, 78, 80, 81, 83, 90, 92, 99],
+    "training": [2, 3, 8, 14, 17, 23, 25, 27, 32, 33, 34, 35, 55, 58, 60, 64, 68, 69, 71, 74, 76, 77, 78, 79, 80, 81, 83, 90, 92, 96, 99, 100],
     "validation": [1, 5, 6, 7, 8, 9]
+  },
+  "adapted_rows": {
+    "training": [34, 55, 96],
+    "validation": []
+  },
+  "curation": {
+    "training": {
+      "14": {
+        "change": "reference_answer_only",
+        "original_answer": "30",
+        "answer": "(20, 30)",
+        "verification": "In the prompt's order (40-watt, 75-watt), x+y=50 and 40*x+75*y=3050 uniquely give x=20 and y=30."
+      },
+      "34": {
+        "change": "locally_adapted_self_contained_prompt",
+        "reason": "The source refers to an absent Figure 3; the relative sides of AB and CD are unspecified without it.",
+        "original_problem": "8. As shown in Figure $3, A C=$ $B C, A C \\perp B C$ at point $C, A B=A D=B D$, $C D=C E=D E$. If $A B=\\sqrt{2}$, then $B E=$",
+        "answer": "1",
+        "verification": "The added coordinate/orientation choices give D=(t,t), t=(1+sqrt(3))/2, E=(-1/2,1+sqrt(3)/2), and BE^2=1/4+3/4=1. These choices define an adaptation, not the missing source figure."
+      },
+      "55": {
+        "change": "locally_adapted_self_contained_prompt",
+        "reason": "The source's Figure 3 flowchart is absent; neither the transformation nor the probability law is supplied.",
+        "original_problem": "7. The program flowchart is shown in Figure 3. Given that the real number $x \\in [1, 9]$. Then the probability that the output $x$ is not less than 55 is ( ).\n(A) $\\frac{1}{3}$\n(B) $\\frac{2}{3}$\n(C) $\\frac{3}{8}$\n(D) $\\frac{5}{8}$",
+        "answer": "D",
+        "verification": "The newly specified uniform X and program Y=10*X+15 give Y>=55 iff X>=4; probability (9-4)/(9-1)=5/8, option D. This program is authored for the cookbook, not inferred from the missing flowchart."
+      },
+      "96": {
+        "change": "locally_adapted_self_contained_prompt",
+        "reason": "The source says 'As shown' but supplies no figure, ray order, or right-angle vertex.",
+        "original_problem": "$18 \\cdot 110$ As shown, $A B C D$ is an isosceles trapezoid, $A D$ $=B C=5, A B=4, D C=10$, point $C$ is on $D F$, and $B$ is the midpoint of the hypotenuse of the right triangle $\\triangle D E F$. Then $C F$ equals\n(A) 3.25 .\n(B) 3.5 .\n(C) 3.75 .\n(D) 4.0 .\n(E) 4.25 .",
+        "answer": "D",
+        "verification": "Under the added ray and right-angle choices, set D=(0,0), C=(10,0), A=(3,4), B=(7,4). Since B is the midpoint of DE, E=(14,8); the right angle at F forces F=(14,0), so CF=4, option D. These choices are not claimed to reproduce the absent figure."
+      }
+    }
   }
 }

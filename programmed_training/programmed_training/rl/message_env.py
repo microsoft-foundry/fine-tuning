@@ -86,6 +86,7 @@ class EnvFromMessageEnv(types.Env):
         # message_env implementation that reports them unconditionally
         # (e.g. a recipe with no extra metadata). Defaults to {} so existing
         # callers that don't pass this keep their current behavior.
+        # Apply the same outcome zeros when the context budget rejects a step.
         self.parse_failure_metrics = dict(parse_failure_metrics or {})
         self._base_stop_condition = renderer.get_stop_sequences()
 
@@ -126,7 +127,7 @@ class EnvFromMessageEnv(types.Env):
                     episode_done=True,
                     next_observation=ModelInput(chunks=[]),
                     next_stop_condition=self._base_stop_condition,
-                    metrics={**msg_step.metrics, "context_overflow": 1.0},
+                    metrics={**msg_step.metrics, **self.parse_failure_metrics, "context_overflow": 1.0},
                 )
 
         return types.StepResult(

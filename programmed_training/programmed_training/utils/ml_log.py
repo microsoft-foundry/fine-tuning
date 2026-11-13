@@ -2,6 +2,7 @@
 
 import json
 import logging
+import math
 import os
 import threading
 from abc import ABC, abstractmethod
@@ -117,6 +118,18 @@ class _PermissiveJSONEncoder(json.JSONEncoder):
             return str(type(o))
 
 
+def _json_safe_metrics(value: Any, path: str = "") -> Any:
+    if isinstance(value, float) and not math.isfinite(value):
+        label = "NaN" if math.isnan(value) else "Infinity" if value > 0 else "-Infinity"
+        logger.warning("Recording invalid metric %s: %s", path, label)
+        return {"__nonfinite__": label}
+    if isinstance(value, dict):
+        return {key: _json_safe_metrics(item, f"{path}/{key}") for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe_metrics(item, f"{path}/{index}") for index, item in enumerate(value)]
+    return value
+
+
 class JsonLogger(Logger):
     """Logger that writes metrics to a JSONL file."""
 
@@ -144,7 +157,9 @@ class JsonLogger(Logger):
         log_entry = {"step": step} if step is not None else {}
         log_entry.update(metrics)
 
-        line = (json.dumps(log_entry, cls=_PermissiveJSONEncoder) + "\n").encode(
+        line = (json.dumps(
+            _json_safe_metrics(log_entry), cls=_PermissiveJSONEncoder, allow_nan=False,
+        ) + "\n").encode(
             "utf-8"
         )
         with self._write_lock:
@@ -236,11 +251,16 @@ class WandbLogger(Logger):
 
         # Initialize wandb run
         assert wandb is not None  # For type checker
+        from programmed_training.auto_resume import current_attempt
+
+        attempt = current_attempt()
+        recovery_kwargs = {"group": attempt.run_id} if attempt is not None else {}
         self.run = wandb.init(
             project=project,
             config=dump_config(config) if config else None,
             dir=str(log_dir) if log_dir else None,
             name=wandb_name,
+            **recovery_kwargs,
         )
 
     def log_hparams(self, config: Any) -> None:
@@ -257,7 +277,14 @@ class WandbLogger(Logger):
     def close(self) -> None:
         """Close wandb run."""
         if self.run and wandb is not None:
-            wandb.finish()
+            from programmed_training.auto_resume import current_attempt
+
+            attempt = current_attempt()
+            if attempt is None:
+                wandb.finish()
+            else:
+                wandb.finish(exit_code=0 if attempt.status == "completed" else 1)
+            self.run = None
 
     def get_logger_url(self) -> str | None:
         """Get the URL of the wandb run."""
@@ -495,6 +522,14 @@ def setup_logging(
     if do_configure_logging_module:
         configure_logging_module(str(log_dir_path / "logs.log"))
 
+    from programmed_training.auto_resume import current_attempt, defer_close
+
+    if current_attempt() is not None:
+        async def close_attempt_logger() -> None:
+            ml_logger.close()
+
+        defer_close(close_attempt_logger)
+
     logger.info(f"Logging to: {log_dir_path}")
     return ml_logger
 
@@ -539,7 +574,9 @@ def configure_logging_module(path: str, level: int = logging.INFO) -> logging.Lo
     # Force override like basicConfig(..., force=True)
     root = logging.getLogger()
     root.setLevel(level)
-    root.handlers.clear()
+    for handler in root.handlers[:]:
+        root.removeHandler(handler)
+        handler.close()
     root.addHandler(console_handler)
     root.addHandler(file_handler)
 

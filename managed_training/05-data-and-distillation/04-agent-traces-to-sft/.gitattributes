@@ -1,0 +1,4 @@
+# Text fixtures use canonical LF hashes; historical JSONL keeps its inherited
+# raw-byte attributes and is not normalized by this module.
+data/zava_system_prompt.md text eol=lf
+data/zava_tools.json text eol=lf

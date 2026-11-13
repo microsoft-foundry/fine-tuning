@@ -15,6 +15,8 @@ from typing import Any, Literal
 from urllib.parse import urlparse
 
 import chz
+
+from programmed_training import auto_resume
 import httpx
 from azure.ai.finetuningsessions.models import LossFn as LossFnType
 from mcp import ClientSession, StdioServerParameters
@@ -30,6 +32,7 @@ from programmed_training.recipes.mcp_image_tool.training_client import MCPImageT
 from programmed_training.rl.train import Config
 from programmed_training.tokenizer_utils import get_tokenizer
 from programmed_training.tool_use import ToolInput, tools_from_mcp_session
+from programmed_training.optimizers import AdamConfig
 from programmed_training.training_types import (
     TrainingType,
     normalize_training_type,
@@ -43,7 +46,7 @@ MCPTransport = Literal["stdio", "streamable_http"]
 
 
 @chz.chz
-class CLIConfig:
+class CLIConfig(auto_resume.AutoResumeConfig, AdamConfig):
     """Supervised warm-up followed by bounded mixed-task RL."""
 
     project_endpoint: str | None = None
@@ -308,6 +311,7 @@ async def _train_with_mcp(cli_config: CLIConfig) -> None:
         prepared_datasets = await dataset_builder()
         config = Config(
             learning_rate=cli_config.learning_rate,
+            **cli_config.adam_kwargs(),
             dataset_builder=dataset_builder,
             model_name=cli_config.model_name,
             tokenizer_name=tokenizer_name,
@@ -361,10 +365,7 @@ async def _train_with_mcp(cli_config: CLIConfig) -> None:
                 checkpoint_id=checkpoint_id,
             )
 
-        client = FineTuningSessionClient(**client_kwargs)
-        session_id = None
-        try:
-            session_id = await client.create_session(
+        session_kwargs = dict(
                 base_model=cli_config.model_name,
                 lora_config=LoRAConfig(
                     rank=cli_config.lora_rank,
@@ -377,12 +378,17 @@ async def _train_with_mcp(cli_config: CLIConfig) -> None:
                 timeout_sec=cli_config.create_session_timeout_sec,
                 user_metadata=cli_config.user_metadata,
                 training_type=normalize_training_type(cli_config.training_type),
-            )
-            print(f"Session ready: session_id={session_id}")
+        )
+
+        async def workload(attempt_client, attempt_session):
+            attempt_log_path = auto_resume.current_log_path(log_path)
+            attempt_config = auto_resume.attempt_config(config)
             baseline = None
             tokenizer = get_tokenizer(tokenizer_name)
-            training_client = MCPImageTrainingClient(client, session_id, tokenizer)
-            if from_checkpoint is None:
+            training_client = MCPImageTrainingClient(attempt_client, attempt_session, tokenizer)
+            resume = checkpoint_utils.get_last_checkpoint(attempt_log_path)
+            fresh_model = from_checkpoint is None and resume is None
+            if fresh_model:
                 train_dataset, test_dataset = prepared_datasets
                 sampling_client = await training_client.save_weights_and_get_sampling_client_async(
                     "before_warmup"
@@ -390,10 +396,10 @@ async def _train_with_mcp(cli_config: CLIConfig) -> None:
                 baseline = await evaluate_repeated(
                     sampling_client, test_dataset, max_tokens=cli_config.max_tokens,
                     repetitions=cli_config.evaluation_repetitions,
-                    expected_episodes=cli_config.max_test_examples, log_path=log_path,
+                    expected_episodes=cli_config.max_test_examples, log_path=attempt_log_path,
                     stage="before_sft", step=-1, seed=cli_config.seed,
                 )
-                with open(os.path.join(log_path, "baseline_metrics.json"), "w") as output:
+                with open(os.path.join(attempt_log_path, "baseline_metrics.json"), "w") as output:
                     json.dump(baseline, output, indent=2)
                 logger.info("Fresh-model baseline: %s", json.dumps(baseline))
                 if baseline.get("test/env/all/total_episodes") != cli_config.max_test_examples:
@@ -401,15 +407,16 @@ async def _train_with_mcp(cli_config: CLIConfig) -> None:
                 await train_warmup(
                     training_client, train_dataset, epochs=cli_config.warmup_epochs,
                     learning_rate=cli_config.warmup_learning_rate,
-                    seed=cli_config.seed, log_path=log_path,
+                    adam_config=cli_config,
+                    seed=cli_config.seed, log_path=attempt_log_path,
                 )
             rl_report = await train_mixed(
-                config, training_client, tokenizer, *prepared_datasets,
+                attempt_config, training_client, tokenizer, *prepared_datasets,
                 task_count=cli_config.mixed_train_examples,
                 repetitions=cli_config.evaluation_repetitions,
                 expected_episodes=cli_config.max_test_examples,
             )
-            with open(os.path.join(log_path, "evaluations.jsonl")) as metrics_file:
+            with open(os.path.join(attempt_log_path, "evaluations.jsonl")) as metrics_file:
                 metrics = [json.loads(line) for line in metrics_file if line.strip()]
             post_sft = next((row for row in metrics if row.get("stage") != "before_sft"
                              and "test/env/all/correct" in row), None)
@@ -417,23 +424,36 @@ async def _train_with_mcp(cli_config: CLIConfig) -> None:
                 metrics, expected_episodes=cli_config.max_test_examples
             )
             report["warmup_epochs"] = (
-                cli_config.warmup_epochs if from_checkpoint is None else 0
+                cli_config.warmup_epochs if fresh_model else 0
             )
             report["lora_seed"] = cli_config.lora_seed
-            report["fresh_model_baseline"] = selection.checkpoint_path is None
-            if selection.checkpoint_path is not None:
+            report["fresh_model_baseline"] = fresh_model
+            if not fresh_model:
                 report["accepted"] = False
             if baseline is not None and post_sft is not None:
                 report["post_sft_accuracy"] = post_sft["test/env/all/correct"]
                 report["rl_accuracy_gain"] = report.get("final_accuracy", 0.0) - report["post_sft_accuracy"]
             report.update(rl_report)
-            report["final_checkpoint"] = f"{session_id}/final"
-            with open(os.path.join(log_path, "learning_report.json"), "w") as report_file:
+            report["final_checkpoint"] = f"{attempt_session}/final"
+            with open(os.path.join(attempt_log_path, "learning_report.json"), "w") as report_file:
                 json.dump(report, report_file, indent=2)
             logger.info("Learning acceptance: %s", json.dumps(report))
+
+        client = FineTuningSessionClient(**client_kwargs)
+        session_id = None
+        try:
+            session_id = await client.create_session(**session_kwargs)
+            print(f"Session ready: session_id={session_id}")
+            await auto_resume.run(
+                workload, config=cli_config, log_path=log_path,
+                client=client, session_id=session_id,
+                client_factory=lambda: FineTuningSessionClient(**client_kwargs),
+                session_kwargs=session_kwargs,
+                max_wall_clock_seconds=cli_config.max_wall_clock_seconds,
+            )
         finally:
             try:
-                if session_id is not None:
+                if session_id is not None and not cli_config.auto_resume:
                     await client.close_session(session_id)
             finally:
                 await client.close()

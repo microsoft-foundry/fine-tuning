@@ -1,11 +1,11 @@
 [project]
 name = "programmed-training"
-version = "0.2.0"
+version = "0.2.1"
 description = "Programmed Training algorithms using the Azure AI Fine-Tuning Sessions SDK"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "azure-ai-finetuningsessions==1.0.0b1",
+    "azure-ai-finetuningsessions==1.0.0b2",
     "azure-identity",
     "aiohttp",
     "blobfile",
@@ -39,6 +39,7 @@ test = [
     "psutil>=5.9; sys_platform == 'win32'",
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
+    "websockets",
 ]
 notebook = [
     "ipykernel>=6.29",

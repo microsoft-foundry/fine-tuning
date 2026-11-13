@@ -316,6 +316,18 @@ def test_context_length_exceeded_is_not_retryable():
     assert _is_retryable_rollout_error(ContextLengthExceededError("no room")) is False
 
 
+def test_websocket_connection_closed_ok_is_retryable():
+    from websockets.exceptions import ConnectionClosedOK
+
+    assert _is_retryable_rollout_error(ConnectionClosedOK(None, None)) is True
+
+
+def test_websocket_connection_closed_error_is_retryable():
+    from websockets.exceptions import ConnectionClosedError
+
+    assert _is_retryable_rollout_error(ConnectionClosedError(None, None)) is True
+
+
 def test_unrelated_runtimeerror_is_not_retryable():
     # A generic RuntimeError that isn't a wrapped sample-request failure stays
     # non-retryable (we don't want to mask real bugs).

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import ast
+import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -397,13 +399,14 @@ def test_countdown_retries_transient_cli_credential_timeouts() -> None:
     assert '"CredentialUnavailableError"' in source
     assert '"TimeoutExpired"' in source
     assert 'GRADER_MODEL = "gpt-5.4-mini"' in source
-    assert 'MODEL_GRADER["model"] != "gpt-5.4-mini"' in source
+    assert 'MODEL_GRADER.get("model") != GRADER_DEPLOYMENT' in source
     assert 'GRADER_QUOTA_NAME = "OpenAI.DataZoneStandard.gpt-5.4-mini"' in source
     assert 'GRADER_CAPACITY_SETTING = os.getenv("FOUNDRY_GRADER_CAPACITY", "")' in source
     assert 'positive_integer("FOUNDRY_GRADER_MIN_TPM", 100_000)' in source
     assert "validate_existing_grader" in source
     assert "choose_grader_capacity" in source
-    assert "grader_job_is_recorded" in source
+    assert "load_grader_deployment_state" in source
+    assert "record_grader_deployment_operation" in source
     assert "grader_deployment = ensure_grader_deployment()" in source
 
 
@@ -434,6 +437,7 @@ def test_countdown_capacity_selection_and_collision_checks() -> None:
         namespace["choose_grader_capacity"](200, 50, 10, "161")
 
     matching = {
+        "name": "grader",
         "properties": {
             "model": {
                 "format": "OpenAI",
@@ -489,3 +493,111 @@ def test_git_candidates_exclude_runtime_paths() -> None:
         assert not set(relative.parts) & LOCAL_DIRECTORIES, f"Runtime path staged: {relative}"
         assert relative.name != ".env", f"Populated configuration staged: {relative}"
         assert not relative.name.endswith((".pyc", ".log", ".tmp", ".bak", ".executed.ipynb"))
+
+
+def _math_recipe() -> Path:
+    return _root() / "03-core-rft" / "02-rft-math-reasoning"
+
+
+@pytest.fixture
+def math_grader():
+    path = _math_recipe() / "graders" / "boxed_math_grader.py"
+    spec = importlib.util.spec_from_file_location("boxed_math_contract", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.parametrize(
+    "predicted,reference,expected",
+    [
+        ("3, 2, 1", "1, 2, 3", 1.0),
+        ("(1,0),(0,1)", "(0,1),(1,0)", 1.0),
+        ("(1,0)", "(0,1)", 0.0),
+        ("(a,b),(b,a),(0,1),(1,0)", "(a,a),(b,b),(0,1),(1,0)", 0.0),
+        ("((a,b),(b,a),(0,1),(1,0))", "((a,a),(b,b),(0,1),(1,0))", 0.0),
+        ("[1,0]", "[0,1]", 0.0),
+        (r"\frac{1}{2},\sqrt{3}", r"\sqrt{3},\frac{1}{2}", 1.0),
+        ("1,1,2", "1,2,2", 0.0),
+    ],
+)
+def test_math_grader_preserves_coordinate_grouping(math_grader, predicted, reference, expected):
+    assert math_grader.grade(
+        {"output_text": r"\boxed{" + predicted + "}"}, {"answer": reference},
+    ) == expected
+
+
+def test_math_grader_rejects_cross_paired_training_row_60(math_grader) -> None:
+    rows = [json.loads(line) for line in (
+        _math_recipe() / "data/preserved/openr1-math-training-rft-100.jsonl"
+    ).read_text(encoding="utf-8").splitlines()]
+    low = r"\frac{-1 - \sqrt{5}}{2}"
+    high = r"\frac{-1 + \sqrt{5}}{2}"
+    wrong = rf"\left( {low}, {high} \right), \left( {high}, {low} \right), (0, 1), (1, 0)"
+    assert math_grader.grade({"output_text": r"\boxed{" + wrong + "}"}, rows[59]) == 0.0
+    assert math_grader.grade(
+        {"output_text": r"\boxed{" + rows[59]["answer"] + "}"}, rows[59],
+    ) == 1.0
+
+
+@pytest.mark.parametrize(
+    "number,expected",
+    [
+        (68, "-2, -1, 4, 5"),
+        (74, "8, 9, 10, 11, 12, 13, 14, 15"),
+        (76, "729"),
+        (79, "9, 23, 37"),
+        (100, "a=5, b=3, c=7"),
+    ],
+)
+def test_math_reference_answers_are_complete(number: int, expected: str) -> None:
+    recipe = _math_recipe()
+    rows = [json.loads(line) for line in (
+        recipe / "data/preserved/openr1-math-training-rft-100.jsonl"
+    ).read_text(encoding="utf-8").splitlines()]
+    assert rows[number - 1]["answer"] == expected
+    manifest = json.loads((recipe / "data/hashes.json").read_text(encoding="utf-8"))
+    assert number in manifest["corrected_rows"]["training"]
+
+
+def test_math_reference_answer_derivations() -> None:
+    from itertools import permutations, product
+    from math import isqrt
+
+    # |(2x-9)(2x+3)| is prime only if one integer factor has magnitude 1.
+    candidates = {x for x in range(-2, 6) if abs(2 * x - 9) == 1 or abs(2 * x + 3) == 1}
+    assert candidates == {-2, -1, 4, 5}
+    for x in candidates:
+        value = abs(4 * x * x - 12 * x - 27)
+        assert value > 1 and all(value % divisor for divisor in range(2, isqrt(value) + 1))
+    first = (92 - sum(range(8))) // 8
+    assert tuple(range(first, first + 8)) == (8, 9, 10, 11, 12, 13, 14, 15)
+    assert sum(range(first, first + 8)) == 92
+    value = 3 ** 2010
+    for n in range(1, 2013):
+        value = sum(map(int, str(value))) ** (2 if n % 2 else 3)
+    assert value == 729
+    fourth_bun = {
+        abs(sum(sign * raisins for sign, raisins in zip(signs, (7, 7, 23))))
+        for signs in product((-1, 1), repeat=3)
+    }
+    assert fourth_bun == {9, 23, 37}
+    digits = {
+        (a, b, c) for a, b, c in permutations(range(10), 3)
+        if a and b and 1 not in (a, b, c)
+        and (100 * a + 11 * b) * c == 1010 * b + 100 * c + 1
+    }
+    assert digits == {(5, 3, 7)}
+
+
+@pytest.mark.parametrize("relative", ["data/hashes.json", "graders/hashes.json"])
+def test_math_curated_artifact_hashes_remain_pinned(relative: str) -> None:
+    recipe = _math_recipe()
+    manifest = json.loads((recipe / relative).read_text(encoding="utf-8"))
+    base = recipe if relative.startswith("data/") else recipe / "graders"
+    for artifact in manifest["artifacts"]:
+        data = (base / artifact["path"]).read_bytes().replace(b"\r\n", b"\n")
+        assert len(data) == artifact["bytes"]
+        assert hashlib.sha256(data).hexdigest() == artifact["sha256"]
+        if "rows" in artifact:
+            assert len(data.splitlines()) == artifact["rows"]

@@ -235,6 +235,14 @@ In the default importance-sampling path, the mask is **folded into `advantages`*
 
 To weight sampled-token categories differently (e.g. zero out JSON args inside `<tool_call>`), you'd modify the trajectory-to-`Datum` step in [`programmed_training/rl/`](../programmed_training/rl/) to emit a custom `advantages` vector — there's no CLI knob for this.
 
+The shared
+[`trajectory_token_cost_input`](../programmed_training/rl/data_processing.py)
+helper counts sampled action tokens and consumed observation context for
+opt-in reward objectives. It does not enable a penalty by itself. Counts
+respect prefix reuse, explicit new training sequences and image
+`expected_tokens`; an unconsumed final observation is excluded. Generic
+cookbook rewards and training defaults are unchanged.
+
 ## Dynamic sampling (RL-only, experimental)
 
 > **Status:** experimental and **off by default** (`dynamic_sampling=False`) — behavior may change or be removed in future releases. RL-only; currently implemented only for sync RL.
@@ -312,6 +320,16 @@ Every policy factors into two small primitives on `DynamicBatchStrategy`:
 - **`allocate(group) → MORE | DROP | ADMIT`** (the *roll* axis) — grow this group's rollout pool (`MORE`), discard the group (`DROP`), or take it as-is (`ADMIT`). `MORE` re-rolls are opt-in via `max_rolls_per_group`; a dropped group can auto-refill the batch with `refill_on_drop=True` so the batch stays full.
 - **`select(batch) → per-group kept indices + weights + advantages`** (the *train* axis) — keep an informative subset of each group and reweight it.
 
+Initial rollout waves and `MORE` growth waves use the same configured retry
+policy, shared failure-rate tracker, and exhaustion/drop rules. Slot retry
+budgets apply separately to each wave. Both
+`max_retries_per_trajectory` and `max_extra_trajectory_attempts_per_group` must
+allow a retry: the latter caps the total extra slot attempts in that wave,
+not the number of whole-wave replays. To permit every slot to use its full
+retry allowance, set the aggregate budget to the wave size times the
+per-trajectory limit. A circuit-breaker recovery, when enabled, retries only
+the current wave and retains previously completed waves.
+
 ### Built-in strategies
 
 These ship as **example implementations** — a few published algorithms expressed on the two primitives to show the range the API covers. They're a menu to use directly *and* a template for your own; the papers are illustrative, not a fixed set.
@@ -371,7 +389,7 @@ Training type determines the capacity and storage used by the training session. 
 | CLI value | Behavior | Availability |
 | --- | --- | --- |
 | `GlobalStandard` | Uses globally available training capacity and storage. | Available |
-| `DatazoneStandard` | Constrains training to the Foundry account's datazone e.g. Datazone training in EastUS2 Foundry account will use the US datazone and in SwedenCentral Foundry account will use the EU datazone. Current datazones are US, EU, and Asia Pacific. | Unavailable |
+| `DatazoneStandard` | Constrains training to the Foundry account's datazone e.g. Datazone training in EastUS2 Foundry account will use the US datazone and in SwedenCentral Foundry account will use the EU datazone. Current datazones are US, EU, and Asia Pacific. | Available |
 | `DeveloperTier` | Uses development capacity when the session is eligible for the developer tier. | Unavailable |
 
 
@@ -388,16 +406,23 @@ For quieter console output in a programmatic RL launcher, set `num_groups_to_log
 
 ## Resuming after an interruption
 
-If a run dies mid-training — a dropped connection, a Ctrl-C, a preempted box — you can pick up where it left off **by relaunching the exact same command with the same `log_path`**. This is *crash recovery* and is distinct from [continual fine-tuning](./continual-fine-tuning.md): both warm-start the optimizer from the checkpoint, but recovery also restores the **dataset position**, whereas continual FT starts a fresh pass at batch 0.
+For recipes supporting manual log-directory resume, if a run dies mid-training
+you can recover **by relaunching the exact same command with the same `log_path`**.
+This is distinct from both [automatic engine-loss recovery](#automatic-engine-loss-recovery)
+and [continual fine-tuning](./continual-fine-tuning.md): crash recovery restores
+the saved **dataset position**, whereas continual FT starts a fresh pass at batch 0.
+Tool NER still rejects manual in-place resume; use its automatic recovery option
+or a fresh-log warm start instead.
 
 ### How it works
 
-The recipe auto-resumes off the local `<log_path>/checkpoints.jsonl` ledger (see [storage.md](./storage.md#checkpointsjsonl)). On startup it reads the **last** row that has a `state_path` and:
+On manual relaunch, the recipe restores from the local `<log_path>/checkpoints.jsonl` ledger (see [storage.md](./storage.md#checkpointsjsonl)). On startup it reads the **last** row that has a `state_path` and:
 
 1. Reconstructs the LoRA weights **and optimizer state** (Adam moment buffers) from the server-side training checkpoint that `state_path` points to — the same `from_checkpoint` machinery as continual FT.
 2. Restores the **dataset position** (`batch`, and for dynamic sampling the `prompt_cursor`) from that row, so training continues from the next batch rather than restarting at 0. This is the part that's unique to crash recovery.
 
-The directory must first be accepted with `behavior_if_log_dir_exists=resume` (or the interactive prompt). If it has no resumable `state_path`, it does not restore training state. In shared RL checkpoint selection, a resumable local ledger takes precedence over an explicit `load_checkpoint_path`. Tulu3 has a different selection order, so do not combine an unrelated explicit checkpoint with an existing ledger/cursor. Use a new run directory for continual training.
+No `auto_resume` flag is required for this manual relaunch behavior.
+The directory must first be accepted with `behavior_if_log_dir_exists=resume` (or the interactive prompt). If it has no resumable `state_path`, it does not restore training state. In shared RL checkpoint selection, a resumable local ledger takes precedence over an explicit `load_checkpoint_path`. Tulu3 has a different selection order when automatic recovery is disabled, so do not combine an unrelated explicit checkpoint with an existing ledger/cursor. Use a new run directory for continual training.
 
 ### To make a run recoverable
 
@@ -430,7 +455,118 @@ Also preserve dataset revision/order, split, seed, and batch/group configuration
 ### Limitations
 
 - **It needs the local ledger and a retained training checkpoint.** If only a session ID survives, discover the actual saved training name/path ([session management](./session-management.md#list-checkpoints-for-a-session)). A compatible retained checkpoint can initialize a fresh run, but the **dataset cursor restarts at batch 0** without the original local state; storage retention must be verified.
-- **Selection differs by launcher.** Shared RL gives the existing resumable ledger precedence; Tulu3 checks an explicit path first. Avoid mixing unrelated weights/cursors. For continual training, always use a fresh `log_path`.
+- If a resumable ledger is present in `log_path`, **ledger recovery takes precedence** over an explicit `load_checkpoint_path` when automatic recovery is enabled. To continual-fine-tune from an explicit checkpoint, point at a fresh `log_path`. Some recipes also prefer the ledger on manual relaunch; follow their launch guidance.
+- **Manual selection differs by launcher.** Shared RL gives the existing resumable ledger precedence; with automatic recovery disabled, Tulu3 checks an explicit path first. Avoid mixing unrelated weights/cursors.
+
+## Automatic engine-loss recovery
+
+> [!IMPORTANT]
+> Recovery requires the pinned SDK `1.0.0b2` to surface terminal
+> `TrainingEngineError` responses and close failed sessions idempotently.
+> Older SDK `1.0.0b1` retries a polled `engine_dead` response when
+> that response also sets `should_retry=true`, so recovery cannot reliably
+> start in that case. It also exposes an `engine_dead` response while closing
+> the failed session as an HTTP error, so cleanup stops recovery instead of
+> risking overlapping sessions. Reinstall the cookbook to update an older
+> environment. Do not substitute an internal SDK checkout or locally built
+> wheel for the pinned PyPI release.
+
+All public training recipes enable `auto_resume=True` by default, including
+SFT, RL, DPO, distillation, MCP image-tool, and visual-spatial training.
+Set `auto_resume=False` to opt out. Recovery does not enable an unavailable
+training tier; the preview's [training type](#training-type) restrictions remain
+unchanged. Tool NER supports recovery
+in sync, async, and streaming modes, including its real multiturn tool workflow.
+
+> [!IMPORTANT]
+> This is **client-side checkpoint restart**, not backend failover. The launcher
+> must stay alive; each replacement gets a new session ID and separate metrics.
+> It does not provide durable session continuity for RLE/LIME or exactly-once
+> execution of external tool side effects.
+
+When the primary session reports an allowlisted SDK error, the cookbook stops
+and drains the failed attempt, then creates a **new session** from the newest
+usable training checkpoint paired with a committed local ledger row. Weights,
+optimizer state, and that row's progress are restored together. Without any
+committed recovery point, it restarts from the original base model or explicit
+warm-start checkpoint instead. Logs distinguish these two outcomes.
+
+- **Configurable consecutive retries:** `auto_resume_max_retries=3` is the
+  default after the initial attempt; `0` permits no replacement sessions.
+  Basic-tier runs also warn when the limit is zero. The first committed training
+  checkpoint, or a later checkpoint beyond the previous durable high-water mark,
+  resets this counter. Merely advancing optimizer steps, saving sampler-only
+  weights, or replaying work to the same checkpoint position does not reset it.
+  For example: failure -> retry 1; commit a newer checkpoint -> reset; next
+  failure -> retry 1. A run can exceed three total replacements; this is not a
+  lifetime retry limit or a spending cap.
+  Checkpoints must finish saving and their paired local ledger row must be
+  written successfully. Sequential recipe stages share the counter, while total
+  replacements and attempt IDs remain monotonic for provenance.
+- **Cleanup before backoff:** failed local work is drained, resources are closed,
+  and the normal SDK session-close acknowledgement is awaited before waiting
+  roughly 10, 20, then 40 seconds, with +/-20% jitter. Longer retry limits keep
+  the base delay capped at 40 seconds. Durable checkpoint progress resets this
+  backoff too; the original configured overall deadline still applies.
+  Acknowledgement does not confirm completed remote GPU unload; recovery does
+  not wait for that operation, and already accepted remote work may finish.
+- **Exact codes only:** `resumable_error_codes=engine_dead` is the default.
+  Extend explicitly, for example `resumable_error_codes=engine_dead,worker_crashed`;
+  additional codes require their own qualification. `resumable_error_codes=`
+  makes the allowlist empty. Unrelated-session errors, cancellation, and unknown
+  errors are terminal.
+- **No extra saves or training budget:** existing checkpoint cadence, logical
+  step target, and configured overall deadline are retained. Backoff and
+  replacement initialization consume the remaining time; an expired deadline
+  prevents another attempt. Active training keeps its existing loop-boundary
+  stop and final checkpoint/evaluation, rather than being forcibly cancelled
+  at the deadline. Cleanup has a separate finite bound, including after the
+  training deadline expires.
+- **Best effort:** unsaved updates and queued rollouts are discarded. Async
+  ordering, prompts, random streams, and tool side effects may repeat or differ.
+  Streaming rolls back a whole committed iteration, not partial optimizer work.
+- **Real training checkpoints required:** sampler-only checkpoints cannot restore
+  optimizer state. If all committed recovery points are lost, or discovery,
+  authorization, or validation fails, recovery fails explicitly.
+- **Same living process:** this does not recover a killed launcher or cancelled
+  job. One-time setup and initial session provisioning are outside the retry
+  boundary. Recipes own allocated resources until handing them to the
+  supervisor, including during metadata writes and tokenizer/adapter setup.
+  Prepared resources are still closed if supervisor setup fails.
+  If teardown cannot establish local attempt isolation, no replacement starts.
+  An externally attached session cannot cold-restart without a committed
+  training checkpoint.
+
+DPO retains its original frozen reference across replacements. MCP recovery
+preserves completed warmup and mixed-RL progress. Staged visual-spatial retries
+only the failed active stage, not already completed stages.
+
+Each session keeps separate local artifacts. The initial session uses the
+requested log directory; replacements write their own metrics, metadata,
+checkpoint ledger, logs, and timing under its `recovery_attempts/` directory.
+Each attempt's `run_meta.json` retains its own session ID and links to its
+predecessor and recovery source. Metrics are not merged across sessions, and
+resumed training steps retain their original numbering. The existing local
+dashboard discovers replacement directories as separate runs; automatic
+grouping and rollback-aware charts are not yet implemented.
+
+Keep the original directory and all replacement directories. Its append-only
+`recovery.jsonl` records attempt failures, cleanup outcomes, backoff, checkpoint
+lineage, and the final logical-run outcome. `recovery_status.json` contains the
+latest event and total elapsed time, including failed attempts and recovery
+overhead. Each session's normal timing artifact describes that attempt only.
+For manual recovery, use the desired attempt's directory and its checkpoint
+ledger, subject to the recipe's existing manual-resume restrictions.
+Automatic recovery does not bypass log-directory safety checks or change
+`loom-command-job`.
+
+Offline integration tests cover the real SDK, per-attempt output isolation, and
+training flows with a simulated HTTP service. Paid Tool NER qualification passed
+at `d79de7ed7` on 2026-10-22: async baseline, four-loss async recovery, and
+sync-streaming recovery. Later deadline, cancellation, and setup-ownership fixes
+are covered offline, not yet live. Client-local injection does not prove actual
+eviction, checkpoint survival after physical engine loss, or deployed error
+emission; live async-streaming also remains unverified.
 
 
 ## Next

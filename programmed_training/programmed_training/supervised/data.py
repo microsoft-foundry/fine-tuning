@@ -3,14 +3,15 @@ Supervised learning dataset implementations from HuggingFace datasets.
 """
 
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any, cast
 
 import chz
 import datasets
 import fsspec
 from azure.ai.finetuningsessions.models import Datum, ImageChunk, ModelInput, ModelInputChunk
 
-from programmed_training.renderers import Message, Renderer, TrainOnWhat
+from programmed_training.renderers import Message, Renderer, ToolCall, TrainOnWhat
 from programmed_training.supervised.common import datum_from_model_input_weights
 from programmed_training.supervised.types import ChatDatasetBuilder, SupervisedDataset
 
@@ -68,8 +69,25 @@ def conversation_to_datum(
     fail_on_truncation: bool = False,
 ) -> Datum:
     """Common function to process a list of messages into a Datum."""
+    normalized_conversation: list[Message] = []
+    for message in conversation:
+        normalized_message = dict(message)
+        if normalized_message.get("content") is None:
+            normalized_message["content"] = ""
+
+        raw_tool_calls = normalized_message.get("tool_calls")
+        if raw_tool_calls is not None:
+            normalized_message["tool_calls"] = [
+                tool_call
+                if isinstance(tool_call, ToolCall)
+                else ToolCall.model_validate(tool_call)
+                for tool_call in raw_tool_calls
+            ]
+
+        normalized_conversation.append(cast(Message, normalized_message))
+
     model_input, weights = renderer.build_supervised_example(
-        conversation, train_on_what=train_on_what
+        normalized_conversation, train_on_what=train_on_what
     )
     rendered_length = sum(
         len(chunk.tokens) if isinstance(chunk, ModelInputChunk) else chunk.length

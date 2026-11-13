@@ -1,0 +1,14 @@
+# Customer credentials and all identifier-bearing runtime state stay local.
+.env
+.env.*
+!.env.template
+/outputs/
+
+# Private review decisions are not a replacement for the source hash manifest.
+/data/curation-review.json
+
+# Notebook and offline-test caches.
+.ipynb_checkpoints/
+__pycache__/
+.pytest_cache/
+*.py[cod]

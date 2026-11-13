@@ -20,7 +20,7 @@ create a Foundry deployment from it. For sampling without a deployment, see
 
 - For **Fireworks deployment** obtain Fireworks private preview access for model inferencing;
   request it through [Fireworks preview consent](https://aka.ms/fireworks-consent).
-  Programmed training access alone does not grant deployment access.
+  Programmed Training access alone does not grant deployment access.
 
 The helper uses `DefaultAzureCredential` for both the project and Azure Resource
 Manager. Sign in to the intended Azure Subscription before running it using
@@ -72,9 +72,14 @@ deployment = create_deployment(
 print("Deployment succeeded:", deployment["name"])
 ```
 
-`create_deployment()` returns the provisioned ARM deployment object before waiting for the deployment to succeed. If no
-checkpoint exists, access fails, or an existing deployment has incompatible
-settings, it raises an error rather than silently creating another resource.
+`create_deployment()` blocks, polling provisioning state for up to one hour,
+and returns the ARM deployment object only after provisioning succeeds
+(`provisioningState == "Succeeded"`). A failed or canceled deployment raises
+`RuntimeError`; exceeding the polling deadline raises `TimeoutError` without
+canceling or deleting the remote deployment. Inspect its remote state before
+retrying. If no checkpoint exists, access fails, or an existing deployment has
+incompatible settings, it raises an error rather than silently creating another
+resource.
 Keep the deployment name and the chosen checkpoint distinct from the training
 session ID.
 

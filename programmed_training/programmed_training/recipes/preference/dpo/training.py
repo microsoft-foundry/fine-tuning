@@ -10,13 +10,13 @@ import chz
 import torch
 import torch.nn.functional as F
 from azure.ai.finetuningsessions.models import (
-    AdamParams,
     Datum,
     ModelInput,
     ModelInputChunk,
 )
 
-from programmed_training import checkpoint_utils
+from programmed_training import auto_resume, checkpoint_utils
+from programmed_training.optimizers import AdamConfig
 from programmed_training.supervised.nll_evaluator import NLLEvaluator
 from programmed_training.supervised.types import ChatDatasetBuilder
 from programmed_training.utils import ml_log
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 @chz.chz
-class Config:
+class Config(AdamConfig):
     log_path: str = chz.field(munger=lambda _, value: str(Path(value).expanduser()))
     model_name: str
     dataset_builder: ChatDatasetBuilder
@@ -39,9 +39,6 @@ class Config:
     eval_every: int = 10
     reference_concurrency: int = 32
     ttl_seconds: int | None = 604800
-    adam_beta1: float = 0.9
-    adam_beta2: float = 0.95
-    adam_eps: float = 1e-8
     wandb_project: str | None = None
     wandb_name: str | None = None
 
@@ -201,6 +198,7 @@ async def main(
     reference_state_path: str,
     prepared_datasets=None,
 ) -> None:
+    config = auto_resume.attempt_config(config)
     dataset, test_dataset = prepared_datasets or config.dataset_builder.build()
     n_batches = len(dataset)
     full_steps = n_batches * config.num_epochs
@@ -321,12 +319,7 @@ async def main(
                 learning_rate = config.learning_rate * compute_schedule_lr_multiplier(
                     config.lr_schedule, step, total_steps
                 )
-                adam = AdamParams(
-                    learning_rate=learning_rate,
-                    beta1=config.adam_beta1,
-                    beta2=config.adam_beta2,
-                    eps=config.adam_eps,
-                )
+                adam = config.to_adam_params(learning_rate)
                 forward = await training_client.forward_backward_custom_async(
                     data, loss_fn
                 )
@@ -382,4 +375,5 @@ async def main(
         elif completed_updates == 0:
             raise ValueError("No valid preference pairs were available for training")
     finally:
-        ml_logger.close()
+        if auto_resume.current_attempt() is None:
+            ml_logger.close()

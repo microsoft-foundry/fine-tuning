@@ -459,8 +459,10 @@ def ensure_text(content: Content) -> str:
     raise ValueError(f"Expected text content, got multimodal content with {len(content)} parts")
 
 
-def ensure_list(content: Content) -> list[ContentPart]:
-    """Normalize content to list form. Wraps string content in a TextPart."""
+def ensure_list(content: Content | None) -> list[ContentPart]:
+    """Normalize content to list form, treating omitted tool-call content as empty."""
+    if content is None:
+        return []
     if isinstance(content, str):
         return [TextPart(type="text", text=content)]
     return content

@@ -8,7 +8,7 @@ import random
 from pathlib import Path
 
 import chz
-from azure.ai.finetuningsessions.models import AdamParams
+from programmed_training.optimizers import AdamConfig
 
 from programmed_training.recipes.mcp_image_tool.data import AlienColorTask
 from programmed_training.recipes.mcp_image_tool.mcp_env import AlienColorAnswerReward, MCPImageToolDataset
@@ -64,7 +64,10 @@ async def train_warmup(
     learning_rate: float,
     seed: int,
     log_path: str,
+    adam_config: AdamConfig | None = None,
 ) -> None:
+    if adam_config is None:
+        adam_config = AdamConfig()
     demonstrations = []
     for builder in dataset.builders:
         env = (await chz.replace(builder, group_size=1).make_envs())[0]
@@ -78,7 +81,11 @@ async def train_warmup(
             await env.message_env.close()
     generator = random.Random(seed)
     step = 0
-    with (Path(log_path) / "warmup_metrics.jsonl").open("w") as output:
+    from programmed_training import auto_resume, checkpoint_utils
+
+    with (Path(log_path) / "warmup_metrics.jsonl").open(
+        "a" if auto_resume.current_attempt() is not None else "w"
+    ) as output:
         for epoch in range(epochs):
             indices = list(range(len(demonstrations)))
             generator.shuffle(indices)
@@ -86,9 +93,9 @@ async def train_warmup(
                 batch = [demonstrations[index] for index in indices[start:start + dataset.batch_size]]
                 forward = await training_client.forward_backward_async(batch, loss_fn="cross_entropy")
                 result = await forward.result_async()
-                optim = await training_client.optim_step_async(AdamParams(
-                    learning_rate=learning_rate, beta1=0.9, beta2=0.95, eps=1e-8,
-                ))
+                optim = await training_client.optim_step_async(
+                    adam_config.to_adam_params(learning_rate)
+                )
                 await optim.result_async()
                 step += 1
                 metrics = {
@@ -102,5 +109,11 @@ async def train_warmup(
                 output.write(json.dumps(metrics) + "\n")
                 output.flush()
                 logger.info("Supervised warm-up: %s", json.dumps(metrics))
-    checkpoint = await training_client.save_state_async("warmup")
-    await checkpoint.result_async()
+    if auto_resume.current_attempt() is not None:
+        await checkpoint_utils.save_checkpoint_async(
+            training_client, "warmup", log_path,
+            loop_state={"batch": 0, "stage": "rl", "mcp_updates": 0},
+        )
+    else:
+        checkpoint = await training_client.save_state_async("warmup")
+        await checkpoint.result_async()

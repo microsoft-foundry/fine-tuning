@@ -90,7 +90,7 @@ but their managed-identity settings differ:
     AML compute jobs can use an attached user-assigned managed identity (UAMI).
     Set `AZURE_CLIENT_ID` to select a specific UAMI. Local runs can fall back to
     Azure CLI credentials through the normal credential chain.
-- **Code RL, tool RL, search-tool RL, and tool-NER RL** explicitly exclude
+- **Code RL, tool RL, search-tool RL, RL numerics check, and tool-NER RL** explicitly exclude
     managed identity. They still use the remaining `DefaultAzureCredential`
     chain, not an Azure-CLI-only credential: configured environment credentials
     and other supported developer credentials can also be selected.
@@ -138,7 +138,7 @@ To debug auth/wire issues, pass `verbose_http=true` to the recipe; it enables th
 
 ## Notebook endpoint configuration
 
-Shared notebooks accept `AZURE_AI_PROJECT_ENDPOINT`; `FOUNDRY_PROJECT_ENDPOINT`
-and `INTERACTIVE_POST_TRAINING_PROJECT_ENDPOINT` are compatibility aliases. Recipe CLIs still take
+Shared notebooks accept `AZURE_AI_PROJECT_ENDPOINT`, with
+`FOUNDRY_PROJECT_ENDPOINT` as the compatibility alias. Recipe CLIs still take
 the explicit `project_endpoint=...` argument unless their own help documents an
 environment default. Setting a notebook variable does not configure every CLI.

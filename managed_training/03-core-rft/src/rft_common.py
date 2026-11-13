@@ -52,6 +52,11 @@ def sha256_file(path: str | Path) -> str:
     return digest.hexdigest()
 
 
+def canonical_jsonl_bytes(content: bytes) -> bytes:
+    """Match the manifests' CRLF-to-LF rule, leaving JSON string escapes intact."""
+    return content.replace(b"\r\n", b"\n")
+
+
 def load_jsonl(path: str | Path) -> list[dict[str, Any]]:
     records = []
     with Path(path).open(encoding="utf-8") as handle:
@@ -77,7 +82,7 @@ def validate_hash_manifest(manifest_path: str | Path, base_dir: str | Path) -> N
         path = root / artifact["path"]
         content = path.read_bytes()
         if manifest.get("normalization", "").startswith("CRLF-to-LF"):
-            content = content.replace(b"\r\n", b"\n")
+            content = canonical_jsonl_bytes(content)
         actual = hashlib.sha256(content).hexdigest()
         expected = artifact["sha256"]
         if actual != expected:
@@ -93,8 +98,14 @@ def validate_hash_manifest(manifest_path: str | Path, base_dir: str | Path) -> N
 
 def content_addressed_name(prefix: str, path: str | Path) -> str:
     source = Path(path)
+    content = canonical_jsonl_bytes(source.read_bytes())
+    return _content_addressed_name(prefix, source, content)
+
+
+def _content_addressed_name(prefix: str, source: Path, content: bytes) -> str:
     suffix = "".join(source.suffixes) or ".bin"
-    return f"{prefix}-{sha256_file(source)[:12]}{suffix}"
+    digest = hashlib.sha256(content).hexdigest()
+    return f"{prefix}-{digest[:12]}{suffix}"
 
 
 def retry(
@@ -136,37 +147,80 @@ def _is_transient_service_error(exc: Exception) -> bool:
     return type(exc).__name__ in {"APIConnectionError", "APITimeoutError"}
 
 
-def upload_file_once(client: Any, path: str | Path, *, prefix: str, purpose: str) -> Any:
+def upload_file_once(
+    client: Any,
+    path: str | Path,
+    *,
+    prefix: str,
+    purpose: str,
+    existing_file_id: str | None = None,
+    reconcile_only: bool = False,
+    before_create: Callable[[], None] | None = None,
+    on_file: Callable[[Any], None] | None = None,
+) -> Any:
+    """Upload canonical bytes once; checkpoint IDs before processing or other reads.
+
+    A caller recovering an interrupted POST must set ``reconcile_only`` until it
+    has reconciled the outcome. An empty list is not proof that a POST failed.
+    ``before_create`` must durably record intent, and ``on_file`` must durably
+    record the returned ID. Callback failures propagate without another POST.
+    """
     source = Path(path)
-    remote_name = content_addressed_name(prefix, source)
-    existing = retry(
-        lambda: _page_items(client.files.list()),
-        description=f"list files before uploading {remote_name}",
-    )
-    matches = [item for item in existing if item.filename == remote_name]
-    if len(matches) > 1:
-        raise RuntimeError(f"Multiple remote files match {remote_name}")
-    if matches:
-        match = matches[0]
-        retry(
-            lambda: client.files.wait_for_processing(match.id),
-            description=f"process reused {remote_name}",
+    content = canonical_jsonl_bytes(source.read_bytes())
+    if not content:
+        raise ValueError(f"Upload source is empty: {source}")
+    remote_name = _content_addressed_name(prefix, source, content)
+    if existing_file_id:
+        uploaded = retry(
+            lambda: client.files.retrieve(existing_file_id),
+            description="retrieve saved RFT file",
         )
-        print(f"Reusing remote file {remote_name}")
-        return match
-
-    def create() -> Any:
-        with source.open("rb") as handle:
-            return client.files.create(
-                file=(remote_name, handle, "application/jsonl"),
-                purpose=purpose,
+        if getattr(uploaded, "id", None) != existing_file_id:
+            raise RuntimeError("Retrieved file does not match the saved file ID")
+    else:
+        existing = retry(
+            lambda: _page_items(client.files.list()),
+            description=f"list files before uploading {remote_name}",
+        )
+        matches = [item for item in existing if item.filename == remote_name]
+        if len(matches) > 1:
+            raise RuntimeError(f"Multiple remote files match {remote_name}")
+        if matches:
+            uploaded = matches[0]
+        else:
+            if reconcile_only:
+                raise RuntimeError(
+                    "Upload outcome is ambiguous and no unique file is visible. "
+                    "Reconcile in Foundry; no upload POST was repeated."
+                )
+            submission_client = client.with_options(max_retries=0)
+            if before_create is not None:
+                before_create()
+            # Non-idempotent POST: neither this helper nor the SDK may retry it.
+            uploaded = submission_client.files.create(
+                file=(remote_name, content, "application/jsonl"), purpose=purpose,
             )
-
-    uploaded = retry(create, description=f"upload {remote_name}")
+    file_id = getattr(uploaded, "id", None)
+    if not isinstance(file_id, str) or not file_id:
+        raise RuntimeError("Upload response has no file ID; reconcile before resubmitting")
+    if on_file is not None:
+        on_file(uploaded)
     retry(
-        lambda: client.files.wait_for_processing(uploaded.id),
+        lambda: client.files.wait_for_processing(file_id),
         description=f"process {remote_name}",
     )
+    remote = retry(
+        lambda: client.files.content(file_id), description="verify RFT file content",
+    )
+    downloaded = getattr(remote, "content", remote)
+    if not isinstance(downloaded, bytes):
+        raise TypeError("File content must be returned as bytes")
+    if getattr(uploaded, "purpose", None) != purpose:
+        raise RuntimeError("Remote file purpose does not match the requested purpose")
+    if getattr(uploaded, "bytes", None) != len(downloaded):
+        raise RuntimeError("Remote file byte count does not match its downloaded content")
+    if canonical_jsonl_bytes(downloaded) != content:
+        raise RuntimeError("Remote file content does not match the canonical local data")
     return uploaded
 
 

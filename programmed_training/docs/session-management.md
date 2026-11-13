@@ -39,7 +39,7 @@ client = FineTuningSessionClient(endpoint=PROJECT_ENDPOINT, credential=credentia
 ```
 
 > [!TIP]
-> Operation-group methods below have **required keyword-only** `foundry_features=PREVIEW, api_version=API_VERSION` arguments in SDK 1.0.0b1. Omitting them raises a Python argument error; the high-level async convenience methods have different signatures. Close the HTTP client and identity credential when finished ([client cleanup](#close-local-clients)).
+> Operation-group methods below have **required keyword-only** `foundry_features=PREVIEW, api_version=API_VERSION` arguments in SDK 1.0.0b2. Omitting them raises a Python argument error; the high-level async convenience methods have different signatures. Close the HTTP client and identity credential when finished ([client cleanup](#close-local-clients)).
 
 ## List your sessions
 
@@ -94,10 +94,28 @@ ckpts = client.checkpoints.list(
     api_version=API_VERSION,
 )
 for c in ckpts.checkpoints:
-    print(c.checkpoint_id, c.checkpoint_type, c.time)
+    saved_at = c.time.isoformat() if c.time is not None else "not completed"
+    print(c.checkpoint_id, c.checkpoint_type, saved_at)
 ```
 
 `checkpoint_type` distinguishes `"training"` (full state, for `load_checkpoint_path`) from `"sampler"` (persisted sampler-format weights without optimizer state). The separate per-step ephemeral sync is not a persisted sampler save. See [SDK save semantics](./sdk-reference.md#persistent-versus-ephemeral-checkpoints).
+
+### Checkpoint list compatibility
+
+The preview `v1` listing can include protected pending/failed save reservations
+with `time=None`. Keep them visible; guard before formatting, comparing, or
+sorting timestamps. A real completion timestamp describes the save, not safety
+approval. Newer SDKs also expose optional save/publication metadata; absent
+metadata is not deployment approval.
+
+The cookbook pins public preview `1.0.0b2`. Reinstall the cookbook to update an
+older environment, and rebuild client images separately. Source edits do not
+update installed clients or existing images. Optional metadata can be absent
+on older servers; do not infer publication approval from missing fields.
+The [management notebook](../notebooks/manage_sessions.ipynb) handles absent
+timestamps without hiding reservations or inventing completion dates. Its
+latest-training example inspects metadata only; it does not select an approved
+deployment asset or authorize fallback around publication policy.
 
 > [!TIP]
 > If the local ledger is lost, you cannot recover its exact dataset cursor. A retained compatible **training** checkpoint can still initialize a fresh run: pass `load_checkpoint_path=<session_id>/<checkpoint_id>` and use a new `log_path` ([continual training](./continual-fine-tuning.md)). Discovery does not guarantee indefinite checkpoint retention or access from another project.

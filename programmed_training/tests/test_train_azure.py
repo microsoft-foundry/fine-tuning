@@ -9,8 +9,9 @@ Run with:
 """
 
 import asyncio
+import json
 from dataclasses import FrozenInstanceError
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
@@ -28,7 +29,9 @@ from azure.ai.finetuningsessions.models import (
     OptimStepOperationResult,
     TensorData,
 )
+from azure.core.exceptions import HttpResponseError
 
+from programmed_training import checkpoint_utils
 from programmed_training.rl.train_azure import (
     _FwdBwdResult,
     _LogprobsEntry,
@@ -101,6 +104,109 @@ def _make_tokenizer():
     tok.encode = MagicMock(return_value=[1, 2, 3])
     tok.decode = MagicMock(return_value="hello")
     return tok
+
+
+class TestLazyTokenizer:
+    def test_loads_once_when_text_api_is_used(self):
+        from programmed_training.rl import train_azure
+
+        actual = _make_tokenizer()
+        actual.eos_token_id = 42
+        actual.__len__.return_value = 100
+        actual.return_value = {"input_ids": [1, 2, 3]}
+        with patch.object(train_azure, "get_tokenizer", return_value=actual) as load:
+            tokenizer = train_azure._LazyTokenizer("MAI/MAI-Code-1.1-Flash")
+            load.assert_not_called()
+            assert tokenizer.decode([1, 2, 3]) == "hello"
+            assert tokenizer.encode("hello") == [1, 2, 3]
+            assert tokenizer.eos_token_id == 42
+            assert len(tokenizer) == 100
+            assert tokenizer("hello") == {"input_ids": [1, 2, 3]}
+            load.assert_called_once_with("MAI/MAI-Code-1.1-Flash")
+
+    @pytest.mark.parametrize("error_type", [RuntimeError, AttributeError])
+    def test_preserves_lookup_errors_and_allows_retry(self, error_type):
+        from programmed_training.rl import train_azure
+
+        error = error_type("tokenizer unavailable")
+        actual = _make_tokenizer()
+        with patch.object(train_azure, "get_tokenizer", side_effect=[error, actual]) as load:
+            tokenizer = train_azure._LazyTokenizer("private/tokenizer")
+            with pytest.raises(error_type) as caught:
+                tokenizer.decode([1])
+            assert caught.value is error
+            assert tokenizer.decode([1]) == "hello"
+            assert load.call_count == 2
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("defer", [False, True])
+    @pytest.mark.parametrize("tokenizer_name", [None, "private/tokenizer"])
+    @pytest.mark.parametrize("use_factory", [False, True])
+    async def test_main_with_unavailable_local_tokenizer(
+        self, tmp_path, defer, tokenizer_name, use_factory
+    ):
+        from programmed_training.rl import train_azure
+
+        cfg = MagicMock()
+        cfg.log_path = str(tmp_path)
+        cfg.wandb_project = None
+        cfg.wandb_name = None
+        cfg.enable_trace = False
+        cfg.tokenizer_name = tokenizer_name
+        cfg.model_name = "MAI/MAI-Code-1.1-Flash"
+        cfg.kl_penalty_coef = 0
+        cfg.async_config = None
+        cfg.stream_minibatch_config = None
+        cfg.eval_every = 0
+        cfg.ttl_seconds = None
+        cfg.evaluator_builders = []
+        cfg.max_steps = 1
+        cfg.max_wall_clock_seconds = None
+        dataset = MagicMock()
+        dataset.__len__.return_value = 1
+        cfg.dataset_builder = AsyncMock(return_value=(dataset, None))
+        client = _make_mock_client()
+        client.close = AsyncMock()
+        captured = {}
+
+        async def training(**kwargs):
+            captured.update(kwargs)
+            assert kwargs["training_client"].get_tokenizer() is kwargs["tokenizer"]
+            return 1, 0
+
+        factory = MagicMock(side_effect=train_azure.AzureSDKTrainingClient)
+        options = {"defer_tokenizer_loading": True} if defer else {}
+        if use_factory:
+            options["training_client_factory"] = factory
+        error = RuntimeError("MAI training tokenizer is not registered")
+        with (
+            patch.object(train_azure, "ml_log") as ml_mock,
+            patch.object(train_azure, "get_tokenizer", side_effect=error) as load,
+            patch.object(train_azure.checkpoint_utils, "get_last_checkpoint", return_value=None),
+            patch.object(
+                train_azure.checkpoint_utils, "save_checkpoint_async",
+                new=AsyncMock(return_value={}),
+            ),
+            patch.object(train_azure, "do_sync_training", new=training),
+        ):
+            ml_mock.setup_logging.return_value = MagicMock()
+            if defer:
+                await train_azure.main(cfg, client, "session_mai", **options)
+                load.assert_not_called()
+                assert captured["cfg"].model_name == cfg.model_name
+                if use_factory:
+                    factory.assert_called_once_with(
+                        client, "session_mai", captured["tokenizer"]
+                    )
+                with pytest.raises(RuntimeError) as caught:
+                    captured["tokenizer"].decode([1])
+                assert caught.value is error
+            else:
+                with pytest.raises(RuntimeError) as caught:
+                    await train_azure.main(cfg, client, "session_mai", **options)
+                assert caught.value is error
+                assert not captured
+            load.assert_called_once_with(tokenizer_name or cfg.model_name)
 
 
 # ---------------------------------------------------------------------------
@@ -200,31 +306,58 @@ class TestCheckpointResult:
         sdk_result = MagicMock()
         sdk_result.path = "my_checkpoint"
         sdk_result.checkpoint_id = "ckpt_1"
-        adapted = _CheckpointResult(sdk_result)
+        adapted = _CheckpointResult(sdk_result, "session_source")
         assert adapted.path == "my_checkpoint"
 
     def test_path_fallback_to_checkpoint_id(self):
         sdk_result = MagicMock()
         sdk_result.path = None
         sdk_result.checkpoint_id = "ckpt_1"
-        adapted = _CheckpointResult(sdk_result)
-        assert adapted.path == "ckpt_1"
+        adapted = _CheckpointResult(sdk_result, "session_source")
+        assert adapted.path == "session_source/ckpt_1"
+
+    def test_qualified_path_passed_through(self):
+        sdk_result = MagicMock()
+        sdk_result.path = "session_existing/ckpt_1"
+        sdk_result.checkpoint_id = "ckpt_1"
+        adapted = _CheckpointResult(sdk_result, "session_source")
+        assert adapted.path == "session_existing/ckpt_1"
+
+    @pytest.mark.parametrize("checkpoint_id", [
+        "session_existing/ckpt_1",
+        "service://model_abc123/weights/5",
+        "loom://model_abc123/weights/5",
+    ])
+    def test_qualified_fallback_passed_through(self, checkpoint_id):
+        sdk_result = MagicMock()
+        sdk_result.path = None
+        sdk_result.checkpoint_id = checkpoint_id
+        adapted = _CheckpointResult(sdk_result, "session_source")
+        assert adapted.path == checkpoint_id
 
     def test_programmed_training_uri_passed_through(self):
         """The SDK adapter preserves service paths until checkpoint logging."""
         sdk_result = MagicMock()
         sdk_result.path = "service://model_abc123/weights/5"
         sdk_result.checkpoint_id = "ckpt_1"
-        adapted = _CheckpointResult(sdk_result)
+        adapted = _CheckpointResult(sdk_result, "session_source")
         assert adapted.path == "service://model_abc123/weights/5"
 
+    def test_loom_uri_passed_through(self):
+        """The adapter also preserves the engine's legacy checkpoint URI."""
+        sdk_result = MagicMock()
+        sdk_result.path = "loom://model_abc123/weights/5"
+        sdk_result.checkpoint_id = "ckpt_1"
+        adapted = _CheckpointResult(sdk_result, "session_source")
+        assert adapted.path == "loom://model_abc123/weights/5"
+
     def test_empty_path_falls_back(self):
-        """Empty string path falls back to checkpoint_id."""
+        """Empty string path falls back to a session-qualified checkpoint ID."""
         sdk_result = MagicMock()
         sdk_result.path = ""
         sdk_result.checkpoint_id = "ckpt_fallback"
-        adapted = _CheckpointResult(sdk_result)
-        assert adapted.path == "ckpt_fallback"
+        adapted = _CheckpointResult(sdk_result, "session_source")
+        assert adapted.path == "session_source/ckpt_fallback"
 
 
 # ---------------------------------------------------------------------------
@@ -406,6 +539,10 @@ class TestAzureSDKTrainingClient:
         assert call_args[0][0] == "model_abc"
         adam = call_args[0][1]
         assert isinstance(adam, AdamParams)
+        assert adam.as_dict() == {
+            "learning_rate": 3e-4, "beta1": 0.9, "beta2": 0.999,
+            "eps": 1e-8, "weight_decay": 0.0,
+        }
         assert isinstance(result, _OptimResult)
 
     @pytest.mark.asyncio
@@ -541,6 +678,57 @@ class TestAzureSDKTrainingClient:
         assert result.path == "step10"
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "response_path",
+        [{}, {"path": None}, {"path": ""}],
+        ids=["missing-path", "null-path", "empty-path"],
+    )
+    async def test_save_checkpoint_with_missing_or_empty_path_persists_resumable_ledger(
+        self, tmp_path, response_path
+    ):
+        client = _make_mock_client()
+        state_result = SaveCheckpointOperationResult({
+            "operation_id": "req_state",
+            "status": "succeeded",
+            "checkpoint_id": "ckpt_state",
+            **response_path,
+        })
+        sampler_result = SaveSamplerWeightsOperationResult({
+            "operation_id": "req_sampler",
+            "status": "succeeded",
+            "checkpoint_id": "ckpt_sampler",
+            "sampling_session_id": "sampler_source",
+        })
+        client.save_weights_async.return_value = _awaitable(state_result)
+        client.save_weights_for_sampler_async.return_value = _awaitable(sampler_result)
+        tc = AzureSDKTrainingClient(client, "session_source", _make_tokenizer())
+        metrics = {"test/reward": 1.0}
+
+        paths = await checkpoint_utils.save_checkpoint_async(
+            training_client=tc,
+            name="final",
+            log_path=str(tmp_path),
+            loop_state={"epoch": 0, "batch": 4},
+            kind="both",
+            step_number=3,
+            metrics=metrics,
+        )
+
+        assert paths == {
+            "state_path": "session_source/ckpt_state",
+            "sampler_path": "ckpt_sampler",
+        }
+        row = json.loads((tmp_path / "checkpoints.jsonl").read_text(encoding="utf-8"))
+        assert row == {"name": "final", "epoch": 0, "batch": 4, "step": 3, **paths}
+        assert checkpoint_utils.get_last_checkpoint(str(tmp_path)) == row
+        client.save_weights_async.assert_awaited_once_with(
+            "session_source", "final", step_number=3, metrics=metrics
+        )
+        client.save_weights_for_sampler_async.assert_awaited_once_with(
+            "session_source", "final"
+        )
+
+    @pytest.mark.asyncio
     async def test_save_weights_for_sampler_async(self):
         """save_weights_for_sampler_async delegates to client.save_weights_for_sampler_async."""
         client = _make_mock_client()
@@ -574,6 +762,79 @@ class TestAzureSDKTrainingClient:
         assert isinstance(sampling_client, AzureSDKSamplingClient)
         assert sampling_client._checkpoint_id == "ss1_seq1"
         assert sampling_client._session_id == "model_abc"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("concurrent", [False, True])
+    async def test_sampler_refreshes_without_optimizer_progress_have_unique_names(self, concurrent):
+        client = _make_mock_client()
+
+        async def save(session_id, name):
+            result = MagicMock()
+            result.checkpoint_id = name
+            return _awaitable(result)
+
+        client.save_weights_and_get_sampling_client_async.side_effect = save
+        tc = AzureSDKTrainingClient(client, "session_abc", _make_tokenizer())
+        if concurrent:
+            samplers = await asyncio.gather(*[
+                tc.save_weights_and_get_sampling_client_async() for _ in range(5)
+            ])
+        else:
+            samplers = [
+                await tc.save_weights_and_get_sampling_client_async() for _ in range(5)
+            ]
+        names = [
+            item.args[1]
+            for item in client.save_weights_and_get_sampling_client_async.await_args_list
+        ]
+        assert len(set(names)) == 5
+        assert all(name.startswith("step0") for name in names)
+        assert {sampler._checkpoint_id for sampler in samplers} == set(names)
+        assert tc._step == 0
+        client.optim_step_async.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_explicit_sampler_refresh_name_is_preserved(self):
+        client = _make_mock_client()
+        result = MagicMock()
+        result.checkpoint_id = "explicit-snapshot"
+        client.save_weights_and_get_sampling_client_async.return_value = _awaitable(result)
+        tc = AzureSDKTrainingClient(client, "model_abc", _make_tokenizer())
+
+        sampler = await tc.save_weights_and_get_sampling_client_async("explicit-snapshot")
+
+        client.save_weights_and_get_sampling_client_async.assert_awaited_once_with(
+            "model_abc", "explicit-snapshot"
+        )
+        assert sampler._checkpoint_id == "explicit-snapshot"
+
+    @pytest.mark.asyncio
+    async def test_save_weights_and_get_sampling_client_recovers_existing_checkpoint(self):
+        """A duplicate POST triggers a new sync that is polled to completion."""
+        client = _make_mock_client()
+        response = MagicMock()
+        response.status_code = 409
+        duplicate = HttpResponseError(
+            message="Checkpoint 'step1' already exists for model 'session_abc'",
+            response=response,
+        )
+        sampler_ckpt = MagicMock()
+        sampler_ckpt.checkpoint_id = "step1-retry1"
+        client.save_weights_and_get_sampling_client_async.side_effect = [
+            duplicate,
+            _awaitable(sampler_ckpt),
+        ]
+
+        tc = AzureSDKTrainingClient(client, "session_abc", _make_tokenizer())
+        tc._step = 1
+        sampling_client = await tc.save_weights_and_get_sampling_client_async("step1")
+
+        assert sampling_client._checkpoint_id == "step1-retry1"
+        assert sampling_client._session_id == "session_abc"
+        assert client.save_weights_and_get_sampling_client_async.await_args_list == [
+            call("session_abc", "step1"),
+            call("session_abc", "step1-retry1"),
+        ]
 
     def test_create_sampling_client(self):
         """create_sampling_client returns AzureSDKSamplingClient with given path."""
@@ -1635,6 +1896,22 @@ from programmed_training.recipes.math_rl.train_azure import (
 class TestParseCheckpointPath:
     """Tests for checkpoint path parsing used by --load_checkpoint_path."""
 
+    def test_loom_uri(self):
+        """Legacy service URIs resolve to the same canonical session ID."""
+        session, name = _parse_checkpoint_path("loom://model_abc123/weights/5")
+        assert session == "session_abc123"
+        assert name == "5"
+
+    def test_loom_uri_adds_session_prefix(self):
+        session, name = _parse_checkpoint_path("loom://abc123/weights/final")
+        assert session == "session_abc123"
+        assert name == "final"
+
+    def test_loom_uri_with_integer_name(self):
+        session, name = _parse_checkpoint_path("loom://model_sess1/weights/12")
+        assert session == "session_sess1"
+        assert name == "12"
+
     def test_programmed_training_uri(self):
         """A model ID and checkpoint name resolve to a canonical session ID."""
         session, name = _parse_checkpoint_path("model_abc123/5")
@@ -1689,7 +1966,7 @@ class TestParseReferenceCheckpointPath:
             ("session_deadbeef/final", ("session_deadbeef", "final")),
             ("model_deadbeef/final", ("session_deadbeef", "final")),
             ("deadbeef/final", ("session_deadbeef", "final")),
-            ("model_deadbeef/final", ("session_deadbeef", "final")),
+            ("loom://model_deadbeef/weights/final", ("session_deadbeef", "final")),
         ],
     )
     def test_normalizes_public_session_id(self, path, expected):
@@ -1722,16 +1999,33 @@ class TestTulu3SftForwardsFromCheckpoint:
         close_error=None,
         training_type=None,
         user_metadata=None,
+        auto_resume=None,
+        use_api_key=True,
     ):
         """Invoke tulu3_sft.cli_main with the SDK + training loop mocked.
 
-        Returns the session arguments captured at ``FineTuningSession.create(...)``.
+        Capture create arguments and assert cleanup of every owned resource,
+        including when training or the owning session's close method fails.
         """
         from types import SimpleNamespace
 
         from programmed_training.recipes.tulu3_sft.train_azure import CLIConfig, cli_main
 
         captured: dict[str, object] = {}
+        close_calls: list[str] = []
+        expected_closes = [
+            "poller.close", "session.close", "async_client.close", "sync_client.close",
+        ]
+        if not use_api_key:
+            expected_closes.extend(["async_credential.close", "sync_credential.close"])
+
+        class _DummySession:
+            session_id = "session_new_sft"
+
+            def close(self):
+                close_calls.append("session.close")
+                if close_error is not None:
+                    raise close_error
 
         def _fake_create(
             client,
@@ -1747,31 +2041,44 @@ class TestTulu3SftForwardsFromCheckpoint:
             captured["from_checkpoint"] = from_checkpoint
             captured["user_metadata"] = user_metadata
             captured["training_type"] = training_type
-            return SimpleNamespace(session_id="session_new_sft")
+            return _DummySession()
 
         class _DummyClient:
             def __init__(self, **kwargs):
                 pass
 
+            def close(self):
+                close_calls.append("sync_client.close")
+
         class _DummyAsyncClient:
             def __init__(self, **kwargs):
                 pass
 
-            async def close_session(self, *a, **k):
-                if close_error is not None:
-                    raise close_error
-
             async def close(self, *a, **k):
-                pass
+                close_calls.append("async_client.close")
 
         class _DummyTrainingClient:
             def __init__(self, *a, **k):
                 pass
 
             async def close_poller(self, *a, **k):
-                pass
+                close_calls.append("poller.close")
 
-        monkeypatch.setenv("AZURE_AI_API_KEY", "test-key")
+        class _DummyCredential:
+            def close(self):
+                close_calls.append("sync_credential.close")
+
+        class _DummyAsyncCredential:
+            async def close(self):
+                close_calls.append("async_credential.close")
+
+        monkeypatch.delenv("LOOM_API_ENDPOINT", raising=False)
+        if use_api_key:
+            monkeypatch.setenv("AZURE_AI_API_KEY", "test-key")
+        else:
+            monkeypatch.delenv("AZURE_AI_API_KEY", raising=False)
+        monkeypatch.setattr("azure.identity.DefaultAzureCredential", _DummyCredential)
+        monkeypatch.setattr("azure.identity.aio.DefaultAzureCredential", _DummyAsyncCredential)
         monkeypatch.setattr(
             "azure.ai.finetuningsessions.FineTuningSession",
             SimpleNamespace(create=_fake_create),
@@ -1807,17 +2114,24 @@ class TestTulu3SftForwardsFromCheckpoint:
             behavior_if_log_dir_exists="delete",
             training_type=training_type,
             user_metadata=user_metadata,
+            **({} if auto_resume is None else {"auto_resume": auto_resume}),
         )
-        asyncio.run(cli_main(cfg))
+        try:
+            asyncio.run(cli_main(cfg))
+        finally:
+            assert close_calls == expected_closes
         assert "from_checkpoint" in captured, "FineTuningSession.create was never called"
         return captured
 
-    def test_continual_ft_passes_from_checkpoint(self, monkeypatch, tmp_path):
+    @pytest.mark.parametrize("checkpoint_path", [
+        "model_rl123/5", "loom://model_rl123/weights/5",
+    ])
+    def test_continual_ft_passes_from_checkpoint(self, monkeypatch, tmp_path, checkpoint_path):
         """An explicit --load_checkpoint_path (RL→SFT) is forwarded to create()."""
         create_args = self._run_cli_main(
             monkeypatch,
             tmp_path,
-            load_checkpoint_path="model_rl123/5",
+            load_checkpoint_path=checkpoint_path,
             last_checkpoint=None,
         )
         from_ckpt = create_args["from_checkpoint"]
@@ -1841,18 +2155,26 @@ class TestTulu3SftForwardsFromCheckpoint:
         assert from_ckpt.source_session_id == "session_sft9"
         assert from_ckpt.checkpoint_id == "3"
 
-    def test_explicit_path_wins_over_autoresume(self, monkeypatch, tmp_path):
-        """Explicit --load_checkpoint_path takes precedence over auto-resume."""
+    @pytest.mark.parametrize("auto_resume", [None, False])
+    def test_checkpoint_precedence_respects_recovery_opt_out(
+        self, monkeypatch, tmp_path, auto_resume
+    ):
+        """Default recovery pairs ledger weights/progress; opt-out keeps legacy precedence."""
         create_args = self._run_cli_main(
             monkeypatch,
             tmp_path,
             load_checkpoint_path="model_explicit/final",
             last_checkpoint={"state_path": "model_autoresume/9", "batch": 9},
+            auto_resume=auto_resume,
         )
         from_ckpt = create_args["from_checkpoint"]
         assert from_ckpt is not None
-        assert from_ckpt.source_session_id == "session_explicit"
-        assert from_ckpt.checkpoint_id == "final"
+        if auto_resume is False:
+            assert from_ckpt.source_session_id == "session_explicit"
+            assert from_ckpt.checkpoint_id == "final"
+        else:
+            assert from_ckpt.source_session_id == "session_autoresume"
+            assert from_ckpt.checkpoint_id == "9"
 
     def test_cold_start_passes_none(self, monkeypatch, tmp_path):
         """No checkpoint anywhere → from_checkpoint is None (base-model start)."""
@@ -1870,6 +2192,8 @@ class TestTulu3SftForwardsFromCheckpoint:
         [
             (None, None),
             ("GlobalStandard", "GlobalStandard"),
+            ("globalstandard", "GlobalStandard"),
+            ("GLOBALSTANDARD", "GlobalStandard"),
         ],
     )
     def test_training_type_is_forwarded_with_checkpoint(
@@ -1891,7 +2215,11 @@ class TestTulu3SftForwardsFromCheckpoint:
         assert from_ckpt.source_session_id == "session_sft9"
         assert from_ckpt.checkpoint_id == "3"
 
-    def test_close_failure_does_not_mask_workload_failure(self, monkeypatch, tmp_path):
+    @pytest.mark.parametrize("use_api_key", [False, True], ids=["identity", "api-key"])
+    @pytest.mark.parametrize("close_error_type", [RuntimeError, asyncio.CancelledError])
+    def test_close_failure_does_not_mask_workload_failure(
+        self, monkeypatch, tmp_path, use_api_key, close_error_type,
+    ):
         workload_error = RuntimeError("save sampler failed")
 
         with pytest.raises(RuntimeError, match="save sampler failed") as raised:
@@ -1901,10 +2229,32 @@ class TestTulu3SftForwardsFromCheckpoint:
                 load_checkpoint_path=None,
                 last_checkpoint=None,
                 train_error=workload_error,
-                close_error=RuntimeError("close returned 404"),
+                close_error=close_error_type("close returned 404"),
+                use_api_key=use_api_key,
             )
 
         assert raised.value is workload_error
+
+    @pytest.mark.parametrize("use_api_key", [False, True], ids=["identity", "api-key"])
+    @pytest.mark.parametrize("close_error_type", [RuntimeError, asyncio.CancelledError])
+    @pytest.mark.parametrize("auto_resume", [False, True])
+    def test_session_close_failure_propagates_after_local_cleanup(
+        self, monkeypatch, tmp_path, use_api_key, close_error_type, auto_resume,
+    ):
+        close_error = close_error_type("owning session close failed")
+
+        with pytest.raises(close_error_type) as raised:
+            self._run_cli_main(
+                monkeypatch,
+                tmp_path,
+                load_checkpoint_path=None,
+                last_checkpoint=None,
+                close_error=close_error,
+                use_api_key=use_api_key,
+                auto_resume=auto_resume,
+            )
+
+        assert raised.value is close_error
 
 
 @pytest.mark.parametrize(
@@ -1913,6 +2263,7 @@ class TestTulu3SftForwardsFromCheckpoint:
         (None, None),
         ("GlobalStandard", "GlobalStandard"),
         ("globalstandard", "GlobalStandard"),
+        ("GLOBALSTANDARD", "GlobalStandard"),
     ],
 )
 def test_tulu3_sft_cli_training_type(training_type, expected_training_type):

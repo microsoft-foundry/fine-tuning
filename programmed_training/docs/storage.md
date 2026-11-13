@@ -4,7 +4,18 @@ Find a run's local artifacts, interpret its metrics/checkpoint ledger, and disti
 
 ## Logs root
 
-When `log_path` is not supplied, launchers normally choose `<logs-root>/<recipe>/<run_name>/`. An explicit `log_path`, such as the quickstart's `./runs/first-math-check`, is the run directory itself. Relative paths are resolved from the **cookbook working directory**. The default `<logs-root>` is per-platform:
+When `log_path` is not supplied, launchers normally choose `<logs-root>/<recipe>/<run_name>/`. An explicit `log_path`, such as the quickstart's `./runs/first-math-check`, is the run directory itself and overrides the logs-root environment settings. Relative paths are resolved from the **cookbook working directory**.
+
+`default_logs_root()` chooses the first nonempty environment value in this order:
+
+1. `INTERACTIVE_POST_TRAINING_LOGS_ROOT` (the public cookbook setting).
+2. `LOOM_LOGS_ROOT` (the legacy/internal fallback).
+3. The unchanged preview platform default below, when neither variable is nonempty.
+
+Both environment settings expand `~`; an empty value falls through to the next
+choice. If only `LOOM_LOGS_ROOT` is set, recipes continue writing there. If both
+are set, `INTERACTIVE_POST_TRAINING_LOGS_ROOT` wins. This selects one write root;
+logs are not duplicated into the other location.
 
 | Platform | Default logs root |
 |---|---|
@@ -13,7 +24,19 @@ When `log_path` is not supplied, launchers normally choose `<logs-root>/<recipe>
 
 Override per-run with `log_path=/full/path/to/run-dir`, or globally with the `INTERACTIVE_POST_TRAINING_LOGS_ROOT` environment variable (e.g. `export INTERACTIVE_POST_TRAINING_LOGS_ROOT=/data/interactive-post-training-runs`).
 
-**Rename compatibility:** the outer cookbook and inner Python package now both use `programmed_training`, and the cookbook distribution is `programmed-training`. The legacy `INTERACTIVE_POST_TRAINING_LOGS_ROOT` environment variable and default `interactive-post-training-runs` directories remain unchanged so existing run history stays discoverable. The package rename does not move or rename existing logs.
+**Rename compatibility:** the outer cookbook and inner Python package now both
+use `programmed_training`, and the cookbook distribution is
+`programmed-training`. The public logs-root variable retains its earlier
+spelling. The package rename does not move or rename existing logs.
+
+Without `--root`, the dashboard scans the selected write root plus any existing
+platform history directories (`~/loom-runs` and
+`~/interactive-post-training-runs`, or their native Windows `C:\` equivalents),
+`/tmp/loom-examples`, and `/tmp/interactive-post-training-examples`. Thus older
+Loom runs and runs from the renamed public defaults remain visible. Paths are
+deduplicated, and multiple roots get distinct run IDs. These additional scans
+do not change where recipes write. Explicit dashboard `--root` flags replace
+the automatic scan; include custom historical roots explicitly when needed.
 
 ## Run directory layout
 

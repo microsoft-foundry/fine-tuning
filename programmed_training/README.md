@@ -5,7 +5,7 @@
 Examples and reusable training loops for the **Azure AI Fine-Tuning Sessions public preview**. For ML practitioners who can run Python and want to control their data, rewards, and evaluation without managing service-side GPU topology or sharding. Training is driven by a local Python process; the model runs on Azure, not on your laptop.
 
 > [!IMPORTANT]
-> Programmed training requires explicit access approval. Request access through the [preview sign-up form](https://aka.ms/foundry-interactive-training-signup) and wait for approval before creating a training session.
+> Programmed Training requires explicit access approval. Request access through the [preview sign-up form](https://aka.ms/foundry-interactive-training-signup) and wait for approval before creating a training session.
 
 ## How to use this repo
 
@@ -16,6 +16,7 @@ Examples and reusable training loops for the **Azure AI Fine-Tuning Sessions pub
 | First end-to-end workflow check | [Quickstart](./docs/quickstart.md) | Python 3.11+, project access, model capacity, and configured run limits |
 | Teach a model from good example responses (SFT) | [Tulu3 recipe](./programmed_training/recipes/tulu3_sft/README.md), then [your own data](./docs/custom-data.md#supervised-chat-data) | Labeled conversations and a separate evaluation set |
 | Optimize a measurable task reward (RL) | [Recipe chooser](./docs/recipes.md#choose-a-path), then [custom rewards](./docs/custom-data.md#reinforcement-learning-data-and-rewards) | Prompts, a trustworthy grader, and held-out tasks |
+| Optimize semantic quality with an external judge | [BillSum LLM-as-judge](./programmed_training/recipes/llm_judge_rl/README.md) | A structured-output judge endpoint, explicit rubric, and fixed validation set |
 | Learn from preferred/rejected responses | [DPO recipe](./programmed_training/recipes/preference/dpo/README.md) | Preference pairs |
 | Distill a teacher into a student | [Distillation recipe](./programmed_training/recipes/distillation/README.md) | Compatible tokenization and capacity for two sessions |
 | Measure improvement and sample the saved model | [Evaluation and sampling](./docs/evaluation-and-sampling.md) | A completed run or a saved training checkpoint |
@@ -35,8 +36,141 @@ not a different model or a deployment configuration.
 The automatic Qwen3.8 renderer is **`qwen3_8_low_reasoning`**, with thinking
 enabled at low effort. Explicit `qwen3_8` still selects `xhigh`; specialized
 recipes that explicitly prefer non-thinking keep that behavior.
+The RL numerics check is a deliberate exception: it defaults to the separate
+experimental 256K identity and the smaller `xhigh` thinking experiment described
+below, not the general-purpose model or renderer defaults.
 Image recipes default to **`meta-models/Muse-Glimmer-30B`**.
 Recorded benchmarks retain their original model names.
+
+The separate experimental identity `meta-models/Muse-Glimmer-30B-128K` supports
+text and image workloads with a 131072-token total budget once its matching trainer
+and sampler are deployed. Use that identity as `model_name` and `tokenizer_name`;
+tokenizer lookup reuses the original Muse checkpoint at pinned revision
+`a4e59da52a7bc87ae7251dd5545c0dd437c44b68`, and rendering uses the same Muse text
+template. Images retain the 4096-token per-image limit and require image
+fine-tuning access for the project. Image-only and mixed text/image tool results,
+including MCP image results, use the same 131072-token context window as user
+images. Conversation text, tool wrappers, image tokens, and generated output all
+share that window; training also reserves its next-token target position.
+Enable vision-tower or projector LoRA with
+`freeze_vision_tower=false` or `freeze_multi_modal_projector=false`, respectively;
+both default to frozen, and base weights remain frozen. The original
+Muse entry remains 32K and vision-capable. Registration and offline checks do
+not announce hosted availability or qualify full-context multimodal GPU execution.
+
+For API routing aliases, keep the alias as `model_name` and set the canonical
+`tokenizer_name` and an explicit renderer. Chat SFT uses the dataset builder's
+configured tokenizer for both rendering and local training-log display; it
+does not send the API alias to Hugging Face.
+
+### Long-context RL numerics check
+
+The [RL numerics check guide](./programmed_training/recipes/rl_numerics_check/README.md)
+covers multi-turn document counting, hidden page counts and hidden target words.
+The Qwen3.8 thinking stress commands explicitly use the native `qwen3_8`
+renderer, which preserves reasoning and selects `xhigh` effort, with
+`max_tokens=8192` per turn. The guide separates a bounded 32K wiring check
+from the experimental `Qwen/Qwen3.8-27B-256K` workflow, which requires the
+canonical `Qwen/Qwen3.8-27B` tokenizer and qualified sampling/training routes.
+Its CLI defaults to four rollouts per update, ten updates and eight hidden
+108,800-character pages (public range 7-9), with a checkpoint after each update.
+The guide retains the original 64-rollout, 32-page, 26-update settings as an
+opt-in historical comparison. It also explains local KL reports, checkpoint
+recovery and validation status.
+A configured 256K budget is not evidence that 256K training completed.
+
+Full validation preserves a first-action `ContextLengthExceededError` as the
+cause of an incomplete-validation failure, after all groups finish cleanup.
+This lets managed callers report an actionable context-window user error without
+publishing partial validation metrics. Default best-effort evaluation still
+drops failed groups, and later-turn context exhaustion still ends a partial
+trajectory gracefully.
+
+### Nemotron Ultra rendering
+
+For `nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16`, recipes automatically
+select `nemotron3_ultra` (full reasoning). Override `renderer_name` to choose:
+
+| Renderer | Behavior |
+|---|---|
+| `nemotron3_ultra` | Full reasoning; remove reasoning from assistant turns before the last user message |
+| `nemotron3_ultra_medium_thinking` | Medium reasoning via `{reasoning effort: efficient}` on the last user message |
+| `nemotron3_ultra_disable_thinking` | Prefill an empty, closed thinking block for direct answers |
+| `nemotron3_ultra_preserve_thinking` | Full reasoning while retaining prior turns' reasoning |
+
+The `nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16-256K` identity uses the
+same renderers and the canonical Ultra tokenizer. See
+[supported models](./docs/supported_models.md) for its context ceiling and
+unverified hosted availability.
+
+For example, add these arguments to a text recipe:
+
+```bash
+model_name="nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16" \
+renderer_name=nemotron3_ultra_medium_thinking
+```
+
+These are text-only renderers for Ultra, not Nano/Super or vision models.
+Reasoning effort and history preservation are independent: Python callers can
+combine medium effort with preserved history using
+`Nemotron3UltraRenderer(tokenizer, reasoning_effort="medium", strip_thinking_from_history=False)`
+from `programmed_training.renderers.nemotron3`. Preserving history does not
+guarantee token-prefix identity, so the renderer does not enable the
+sequence-extension optimization.
+
+For SFT, renderers format supplied reasoning rather than generating or removing
+the current answer's reasoning traces. Disabling thinking changes the sampling
+prefix, not the supplied SFT answer. Keep training data consistent with the
+intended inference mode.
+
+Renderer availability does not enable a model, region, capacity pool, or larger
+context on the service. Existing `role_colon` benchmark commands are unchanged.
+
+### Automatic recovery after engine loss
+
+Every public training recipe enables `auto_resume=True` by default.
+On an eligible primary-session `engine_dead`, it resumes from the latest usable
+training checkpoint and paired progress, or restarts from the original input if
+none was committed. `auto_resume_max_retries=3` permits three retries without
+new durable checkpoint progress; a committed checkpoint beyond the previous
+high-water mark resets that budget without extending the training budget.
+Async/streaming recovery is best effort; it is not exact
+replay or recovery of a killed launcher.
+Each replacement gets a new session ID and separate artifacts/metrics; this is
+not backend failover or durable session continuity.
+See [automatic engine-loss recovery](./docs/training.md#automatic-engine-loss-recovery)
+for configuration, recipe-specific behavior, and current qualification limits.
+Set `auto_resume=False` to opt out. The preview's training-tier restrictions
+remain unchanged.
+
+## Adam optimizer defaults
+
+Shared SFT, RL (synchronous, asynchronous, and streaming), DPO, and image-tool
+warm-up training use betas `(0.9, 0.999)`, epsilon `1e-8`, and weight decay `0`.
+These match the **effective historical settings of Loom's canonical trainers**.
+Previously the client requested `beta2=0.95`, but the backend ignored it and
+used `0.999`. The defaults preserve effective training settings when the backend
+starts honoring all five Adam request parameters; adopting Tinker-cookbook
+defaults is a separate change.
+
+The Azure SDK's `AdamParams` model does not supply numeric defaults. Shared
+loops send all five values explicitly; learning rates and their schedules are
+unchanged.
+
+The shared [AdamConfig](programmed_training/optimizers.py) defines these
+defaults once. All training recipe CLIs and shared SFT, RL, and DPO configs
+inherit `adam_beta1`, `adam_beta2`, `adam_eps`, and `adam_weight_decay`.
+Recipes can override any of them, for example `adam_beta2=0.98` and
+`adam_weight_decay=0.01`; otherwise the historical effective settings above are
+preserved. Existing SFT/DPO beta and epsilon configuration names are unchanged.
+The image-tool warm-up and both stages of the visual-spatial workflow use the
+same resolved Adam settings while retaining their separate learning rates.
+
+Command-job SFT, RFT, and RLE-harness recipes inherit these shared settings.
+Publish and select rebuilt client environments before rolling out the backend
+fix. Existing images or external clients explicitly requesting other settings
+will have those requests honored after the fix; updating source does not update
+already-built environments.
 
 ## Supported models & regions
 
@@ -47,7 +181,7 @@ for project authorization, model capacity, and quota before running a recipe.
 
 ## Install
 
-The cookbook uses **`azure-ai-finetuningsessions==1.0.0b1` from [PyPI](https://pypi.org/project/azure-ai-finetuningsessions/)**.
+The cookbook uses **`azure-ai-finetuningsessions==1.0.0b2` from [PyPI](https://pypi.org/project/azure-ai-finetuningsessions/)**.
 Python imports use `azure.ai.finetuningsessions`, including the `aio` namespace.
 No local fine-tuning SDK build, sibling source checkout, or bundled SDK wheel is required.
 
@@ -89,7 +223,7 @@ python -m pip install -e '.[image]' --index-url https://pypi.org/simple --extra-
 ## Updating
 
 The cookbook pins a tested published SDK release in `pyproject.toml` (currently
-`azure-ai-finetuningsessions==1.0.0b1`). New betas use new version numbers; each cookbook sync
+`azure-ai-finetuningsessions==1.0.0b2`). New betas use new version numbers; each cookbook sync
 selects and validates its SDK release explicitly instead of rebuilding a wheel.
 
 ```bash

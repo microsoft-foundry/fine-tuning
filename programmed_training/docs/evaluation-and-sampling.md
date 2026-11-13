@@ -327,10 +327,10 @@ or evaluation pattern.
 The SDK operations above provide **sampling within Fine-Tuning Sessions**;
 they do not themselves create a serving deployment. For the separately
 access-controlled Fireworks deployment path using a saved checkpoint, see
-[deployment and inference](./deployment-and-inference.md). Neither path
-documents an adapter-download route, GGUF/GPTQ conversion, or local
-Transformers/vLLM serving workflow; do not infer those from `state_path` or
-`sampler_path`.
+[deployment and inference](./deployment-and-inference.md). These workflows keep
+checkpoints in the service; they do not provide model conversion or a local
+Transformers/vLLM serving workflow. Do not treat `state_path` or `sampler_path`
+as local filesystem paths.
 
 ### Application handoff boundary
 
@@ -339,9 +339,8 @@ Transformers/vLLM serving workflow; do not infer those from `state_path` or
 | Inspect a generated response | Compatible session restore, sampler sync, and SDK sampling above | Project access, capacity, prompt privacy, and owned-session cleanup |
 | Evaluate a task | Existing NER evaluation CLI, RL/SFT evaluator APIs, and the comparison contract | Task-specific generation/grading, complete coverage, and sufficient held-out evidence |
 | Run application inference | Separate [Fireworks deployment helper](./deployment-and-inference.md) for saved checkpoints | Preview access, serving auth/API contract, capacity, price, and deletion plan |
-| Export weights or run locally | No verified export/download/conversion recipe in the pinned public workflow | A supported export route, model/data/license rights, format compatibility, and separately validated conversion/runtime |
 
-Programmed training access does not imply serving-preview access. Ask the service or
+Programmed Training access does not imply serving-preview access. Ask the service or
 serving owner for the supported handoff **before** promising an application
 endpoint; do not call session sampling an OpenAI-compatible deployment. Keep
 training, sampler, and deployed-resource identifiers distinct in the handoff.

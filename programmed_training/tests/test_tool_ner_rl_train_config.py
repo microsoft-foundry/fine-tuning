@@ -120,6 +120,10 @@ def test_training_checkpoint_path_parsing():
         "model_abc",
         "final",
     )
+    assert _parse_checkpoint_path("loom://model_abc/weights/final") == (
+        "model_abc",
+        "final",
+    )
     assert _parse_checkpoint_path("abc/210") == ("model_abc", "210")
 
 
@@ -165,16 +169,23 @@ def mocked_training(monkeypatch):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("auto_resume", [False, True])
+@pytest.mark.parametrize("minibatches", [None, 2])
 @pytest.mark.parametrize("off_policy", [None, 1])
 @pytest.mark.parametrize("pods_keep", [2, 4])
-async def test_training_modes_and_fresh_checkpoint_forwarding(tmp_path, mocked_training, off_policy, pods_keep):
+@pytest.mark.parametrize("checkpoint_path", ["model_prior/15", "loom://model_prior/weights/15"])
+async def test_training_modes_and_fresh_checkpoint_forwarding(
+    tmp_path, mocked_training, off_policy, pods_keep, minibatches, auto_resume, checkpoint_path
+):
     mocked = mocked_training
     config = CLIConfig(
         project_endpoint="https://example.invalid",
         log_path=str(tmp_path / "run"),
         max_steps_off_policy=off_policy,
+        stream_num_minibatches=minibatches,
         pods_keep=pods_keep,
-        load_checkpoint_path="model_prior/15",
+        load_checkpoint_path=checkpoint_path,
+        **({} if auto_resume else {"auto_resume": False}),
     )
     await mocked.recipe.cli_main(config)
     training = mocked.main.await_args.args[0]
@@ -185,7 +196,7 @@ async def test_training_modes_and_fresh_checkpoint_forwarding(tmp_path, mocked_t
     assert not training.refill_on_drop
     assert training.strategy.keep == pods_keep
     if off_policy is None:
-        assert training.dynamic_sampling
+        assert training.dynamic_sampling == (minibatches is None)
         assert training.async_config is None
         assert training.max_concurrent_groups == config.max_concurrent_groups
     else:
@@ -193,30 +204,45 @@ async def test_training_modes_and_fresh_checkpoint_forwarding(tmp_path, mocked_t
         assert training.async_config.max_steps_off_policy == off_policy
         assert training.async_config.groups_per_batch == config.groups_per_batch
         assert training.max_concurrent_groups is None
+    if minibatches is None:
+        assert training.stream_minibatch_config is None
+    else:
+        assert training.stream_minibatch_config.num_minibatches == minibatches
+        assert training.stream_minibatch_config.groups_per_batch == config.groups_per_batch
     metadata = json.loads((tmp_path / "run/run_meta.json").read_text())
     assert metadata["batching"]["strategy"] == "pods"
     assert metadata["batching"]["pods_keep"] == pods_keep
-    assert metadata["batching"]["dynamic_sampling"] == (off_policy is None)
+    assert metadata["batching"]["dynamic_sampling"] == (off_policy is None and minibatches is None)
     assert metadata["batching"]["max_steps_off_policy"] == off_policy
-    mocked.client.close.assert_awaited_once()
+    assert metadata["batching"]["stream_num_minibatches"] == minibatches
+    # The supervisor closes its attempt; the launcher retains its idempotent backstop.
+    assert mocked.client.close.await_count == (2 if auto_resume else 1)
+    assert mocked.client.close_session.await_count == int(auto_resume)
     assert mocked.factory.call_count == 1
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("auto_resume", [False, True])
 @pytest.mark.parametrize("failure", [RuntimeError("initialization failed"), asyncio.CancelledError()])
 @pytest.mark.parametrize("cleanup_fails", [False, True])
-async def test_failure_closes_remote_session_and_preserves_error(tmp_path, mocked_training, failure, cleanup_fails):
+async def test_failure_closes_remote_session_and_preserves_error(
+    tmp_path, mocked_training, failure, cleanup_fails, auto_resume
+):
     mocked = mocked_training
     mocked.main.side_effect = failure
     if cleanup_fails:
         mocked.cleanup.close_session.side_effect = RuntimeError("cleanup failed")
-    config = CLIConfig(project_endpoint="https://example.invalid", log_path=str(tmp_path / "run"))
+    config = CLIConfig(
+        project_endpoint="https://example.invalid", log_path=str(tmp_path / "run"),
+        **({} if auto_resume else {"auto_resume": False}),
+    )
     with pytest.raises(type(failure)) as caught:
         await mocked.recipe.cli_main(config)
     assert caught.value is failure
     mocked.cleanup.close_session.assert_awaited_once_with("session_test")
     mocked.cleanup.__aexit__.assert_awaited_once()
-    mocked.client.close.assert_awaited_once()
+    assert mocked.client.close.await_count == (2 if auto_resume else 1)
+    assert mocked.client.close_session.await_count == int(auto_resume)
 
 
 @pytest.mark.asyncio
@@ -232,11 +258,12 @@ async def test_create_failure_does_not_attempt_unknown_session_cleanup(tmp_path,
 
 
 @pytest.mark.asyncio
-async def test_resume_is_rejected_before_overwriting_artifacts(tmp_path, monkeypatch, mocked_training):
+@pytest.mark.parametrize("checkpoint_path", ["model_prior/15", "loom://model_prior/weights/15"])
+async def test_resume_is_rejected_before_overwriting_artifacts(tmp_path, monkeypatch, mocked_training, checkpoint_path):
     with pytest.raises(ValueError, match="In-place resume"):
         CLIConfig(project_endpoint="https://example.invalid", behavior_if_log_dir_exists="resume")
     ledger = tmp_path / "checkpoints.jsonl"
-    original = '{"batch":15,"state_path":"model_prior/15"}\n'
+    original = json.dumps({"batch": 15, "state_path": checkpoint_path}) + "\n"
     ledger.write_text(original)
     monkeypatch.setattr("builtins.input", lambda _: "resume")
     with pytest.raises(ValueError, match="fresh log_path"):

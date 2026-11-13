@@ -86,6 +86,47 @@ def test_http_tool_top_k_precedence(
     assert len(json.loads(payload["output"])["items"]) == expected_count
 
 
+@pytest.mark.parametrize("header_name", ["Authorization", "X-Functions-Key"])
+def test_protected_catalog_accepts_supported_authentication(
+    header_name: str, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    token = "offline-only-catalog-credential"
+    monkeypatch.setenv("FOUNDRY_TOOL_AUTH_TOKEN", token)
+    value = f"Bearer {token}" if header_name == "Authorization" else token
+    with TestClient(app) as client:
+        response = client.post(
+            "/tool/search_catalog",
+            headers={header_name: value},
+            json={
+                "id": "fc_protected", "call_id": "call_protected",
+                "arguments": json.dumps({"query": "Urban Puffer", "top_k": 1}),
+            },
+        )
+    assert response.status_code == 200
+    assert response.json() == {
+        "type": "function_call_output", "id": "fc_protected", "call_id": "call_protected",
+        "output": json.dumps(execute_search_catalog("Urban Puffer", top_k=1)),
+    }
+    assert token not in response.text
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [{}, {"Authorization": "Bearer incorrect"}, {"X-Functions-Key": "incorrect"}],
+)
+def test_protected_catalog_rejects_missing_or_wrong_credentials(
+    headers: dict[str, str], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FOUNDRY_TOOL_AUTH_TOKEN", "offline-only-catalog-credential")
+    with TestClient(app) as client:
+        response = client.post(
+            "/tool/search_catalog", headers=headers,
+            json={"arguments": json.dumps({"query": "Urban Puffer", "top_k": 1})},
+        )
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Unauthorized"}
+
+
 def test_grader_is_strict_about_output_format() -> None:
     assert grade_sku_answer("JKT-URB-009", "JKT-URB-009")["score"] == 1.0
     assert grade_sku_answer("JKT-ALP-001", "JKT-URB-009")["score"] < 0.1

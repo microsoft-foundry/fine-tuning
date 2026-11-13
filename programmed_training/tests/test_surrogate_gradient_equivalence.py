@@ -94,7 +94,7 @@ def _per_token_target_logprobs(
 #
 # Load-bearing anchor: the ``forward_backward_async`` body below is a
 # one-line reimplementation of the real training-backend kernel at
-# ``interactive-post-training_skyrl/skyrl/backends/skyrl_train/utils/ppo_utils.py`` (search for
+# ``loom_skyrl/skyrl/backends/skyrl_train/utils/ppo_utils.py`` (search for
 # ``cross_entropy_loss``; the formula is literally
 # ``loss = (-log_probs * loss_mask).sum()``).  We can't import that kernel
 # here because the cookbook venv is a thin CPU client and the worker venv
@@ -102,7 +102,7 @@ def _per_token_target_logprobs(
 # (sign, reduction, masking, clamping), this mock and the surrogate-gradient
 # identity it certifies both go stale -- update both call sites together.
 # An end-to-end equivalence test against the real mock-backend stack
-# belongs in ``interactive-post-training_tests/`` (the cross-service e2e suite), not here.
+# belongs in ``loom_tests/`` (the cross-service e2e suite), not here.
 # ---------------------------------------------------------------------------
 
 

@@ -121,4 +121,4 @@ RFT works best when:
 | Dataset | Description | Grader Type | Records |
 |---------|-------------|-------------|---------|
 | [ClauseMatching](./ClauseMatching/) | Legal contract clause identification | multi_grader | ~500 |
-| [MedMCQ](./MedMCQ/) | Medical entrance exam questions | string_check | ~1,000 |
+| [MedMCQ](./MedMCQ/) | Medical entrance exam questions; bundled validation is blocked by missing labels | string_check | See dataset notice and offline label preflight |

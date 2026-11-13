@@ -14,9 +14,10 @@ from dataclasses import dataclass
 from typing import Literal
 
 import chz
-from azure.ai.finetuningsessions.models import AdamParams, TensorData
+from azure.ai.finetuningsessions.models import TensorData
 
-from programmed_training import checkpoint_utils
+from programmed_training import auto_resume, checkpoint_utils
+from programmed_training.optimizers import AdamConfig
 from programmed_training.display import colorize_example
 from programmed_training.eval.evaluators import (
     Evaluator,
@@ -26,7 +27,7 @@ from programmed_training.eval.evaluators import (
 )
 from programmed_training.supervised.common import _chunk_len, compute_mean_nll
 from programmed_training.supervised.nll_evaluator import NLLEvaluator
-from programmed_training.supervised.types import SupervisedDataset, SupervisedDatasetBuilder
+from programmed_training.supervised.types import ChatDatasetBuilder, SupervisedDataset, SupervisedDatasetBuilder
 from programmed_training.tokenizer_utils import get_tokenizer
 from programmed_training.utils import ml_log
 from programmed_training.utils.lr_scheduling import compute_schedule_lr_multiplier, LRSchedule
@@ -39,7 +40,7 @@ EvaluationStrategy = Literal["steps", "epoch"]
 
 
 @chz.chz
-class Config:
+class Config(AdamConfig):
     """Configuration for supervised fine-tuning."""
 
     # Required parameters
@@ -81,11 +82,6 @@ class Config:
     eval_every: int = 10
     infrequent_eval_every: int = 100
     ttl_seconds: int | None = 604800  # 7 days
-
-    # Adam optimizer parameters
-    adam_beta1: float = 0.9
-    adam_beta2: float = 0.95
-    adam_eps: float = 1e-8
 
     # Logging parameters
     wandb_project: str | None = None
@@ -357,6 +353,7 @@ async def main(
     Training and evaluation metrics share the same ``step`` index to keep dashboards easy
     to read.
     """
+    config = auto_resume.attempt_config(config)
     e2e_start_time = time.time()
     resume_info = checkpoint_utils.get_last_checkpoint(config.log_path)
     is_fresh_run = resume_info is None
@@ -401,7 +398,11 @@ async def main(
     else:
         planned_steps = total_steps
     progress_denominator = planned_steps if planned_steps > 0 else 1
-    tokenizer = get_tokenizer(config.model_name)
+    tokenizer = (
+        config.dataset_builder.tokenizer
+        if isinstance(config.dataset_builder, ChatDatasetBuilder)
+        else get_tokenizer(config.model_name)
+    )
 
     evaluators = [evaluator() for evaluator in config.evaluator_builders]
     if maybe_test_dataset is not None:
@@ -443,12 +444,7 @@ async def main(
         )
         metrics["learning_rate"] = learning_rate
 
-        adam_params = AdamParams(
-            learning_rate=learning_rate,
-            beta1=config.adam_beta1,
-            beta2=config.adam_beta2,
-            eps=config.adam_eps,
-        )
+        adam_params = config.to_adam_params(learning_rate)
 
         try:
             with timed("get_batch", metrics):
@@ -618,6 +614,9 @@ async def main(
             f"max_wall_clock_seconds={config.max_wall_clock_seconds} — will stop at "
             f"the next batch boundary after the budget elapses"
         )
+    from programmed_training.auto_resume import current_deadline
+
+    wall_clock_deadline = current_deadline(wall_clock_deadline)
     for epoch_idx in range(start_epoch, config.num_epochs):
         if stop_early:
             break
@@ -795,7 +794,8 @@ async def main(
     except OSError as exc:
         logger.warning("Failed to write SFT timing artifact %s: %s", timing_path, exc)
 
-    ml_logger.close()
+    if auto_resume.current_attempt() is None:
+        ml_logger.close()
     logger.info("Training completed successfully")
 
 

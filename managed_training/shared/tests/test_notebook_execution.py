@@ -68,4 +68,4 @@ def test_retail_remote_tools_still_require_sandbox() -> None:
     )
     call = SimpleNamespace(function=SimpleNamespace(name="get_order_details"))
     with pytest.raises(RuntimeError, match="acknowledged isolated sandbox"):
-        namespace["execute_remote_tool"](call)
+        namespace["execute_remote_tool"](call, trace_id="retail-offline-sandbox-test")

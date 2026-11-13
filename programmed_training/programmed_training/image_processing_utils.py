@@ -8,6 +8,7 @@ Avoid importing AutoImageProcessor and BaseImageProcessor until runtime, because
 from __future__ import annotations
 
 from functools import cache
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeAlias
 
 if TYPE_CHECKING:
@@ -24,11 +25,22 @@ else:
 
 @cache
 def get_image_processor(model_name: str) -> ImageProcessor:
-    model_name = model_name.split(":")[0]
+    from programmed_training.tokenizer_utils import get_hf_model_name, get_hf_model_revision
+
+    revision = get_hf_model_revision(model_name)
+    model_name = get_hf_model_name(model_name)
 
     from transformers.models.auto.image_processing_auto import AutoImageProcessor
 
     kwargs: dict[str, Any] = {}
+    if revision is not None:
+        if Path(model_name).is_dir():
+            raise ValueError(
+                f"Local directory {model_name!r} shadows the pinned public image processor. "
+                "Use an explicit local path instead."
+            )
+        kwargs["revision"] = revision
+
     processor = AutoImageProcessor.from_pretrained(model_name, use_fast=True, **kwargs)
     return processor
 

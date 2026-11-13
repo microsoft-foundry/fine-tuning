@@ -3,7 +3,7 @@ from collections import defaultdict
 import pytest
 from azure.ai.finetuningsessions.models import ModelInput, ModelInputChunk
 
-from programmed_training.completers import TokenCompleter, TokensWithLogprobs
+from programmed_training.completers import ContextLengthExceededError, TokenCompleter, TokensWithLogprobs
 from programmed_training.rl.metric_util import RLTestSetEvaluator, ValidationRecord, ValidationSkipped
 from programmed_training.rl.rollouts import AuthoritativeGroupGradingError
 from programmed_training.rl.types import Env, EnvGroupBuilder, RLDataset, StepResult
@@ -344,6 +344,15 @@ async def test_validation_publication_requires_step_before_sampling():
     assert policy.calls == []
 
 
+def test_validation_rejects_zero_concurrency():
+    with pytest.raises(ValueError, match="max_concurrent_groups must be at least 1"):
+        RLTestSetEvaluator(
+            _Dataset([_Builder([[_Env(1)]], "healthy")]),
+            max_tokens=8,
+            max_concurrent_groups=0,
+        )
+
+
 @pytest.mark.parametrize("require_full_validation", [False, True])
 async def test_metrics_only_validation_samples_each_trajectory_once(require_full_validation):
     policy = _Policy()
@@ -390,6 +399,40 @@ async def test_full_validation_rejects_dropped_group_before_publication(
     assert healthy.reward_calls == 1
     assert failed.reward_calls == 0
     assert all(env.closed for builder in (healthy, failed) for env in builder.created_envs)
+
+
+@pytest.mark.parametrize("with_observer", [False, True])
+@pytest.mark.parametrize("strict", [False, True])
+async def test_validation_retains_context_failure_after_all_envs_close(with_observer, strict):
+    builders = [_Builder([[_Env(9)]], "oversized"), _Builder([[_Env(1)]], "healthy")]
+    emitted = []
+    evaluator = RLTestSetEvaluator(
+        _Dataset(builders),
+        max_tokens=8,
+        observer=_Observer(emitted.append) if with_observer else None,
+        require_full_validation=strict,
+    )
+    overflow = ContextLengthExceededError("prompt tokens (37325) exceed context length (32768)")
+
+    class Policy(_Policy):
+        async def __call__(self, model_input, stop, max_tokens=None):
+            if model_input.chunks[0].tokens[0] == 9:
+                raise overflow
+            return await super().__call__(model_input, stop, max_tokens)
+
+    if strict:
+        with pytest.raises(ValueError, match="1 of 2 validation groups were dropped") as caught:
+            await evaluator.eval_token_completer(Policy(), step=13)
+        assert caught.value.__cause__ is overflow
+        assert emitted == []
+    else:
+        metrics = await evaluator.eval_token_completer(Policy(), step=13)
+        assert metrics["test/env/all/total_episodes"] == 1
+        assert len(emitted) == (1 if with_observer else 0)
+
+    assert all(env.closed for builder in builders for env in builder.created_envs)
+    assert builders[0].reward_calls == 0
+    assert builders[1].reward_calls == 1
 
 
 @pytest.mark.parametrize("with_observer", [False, True])

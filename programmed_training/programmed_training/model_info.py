@@ -81,6 +81,9 @@ def get_meta_models_info() -> dict[str, ModelAttributes]:
         "Muse-Glimmer-30B": ModelAttributes(
             org, "1", "30B", True, is_vl=True, max_context_length=32_768
         ),
+        "Muse-Glimmer-30B-128K": ModelAttributes(
+            org, "1", "30B", True, is_vl=True, max_context_length=131_072
+        ),
     }
 
 
@@ -142,6 +145,9 @@ def get_qwen_info() -> dict[str, ModelAttributes]:
         "Qwen3.5-9B": ModelAttributes(org, "3.5", "9B", True),
         "Qwen3.6-35B-A3B": ModelAttributes(org, "3.6", "35B-A3B", True),
         "Qwen3.8-27B": ModelAttributes(org, "3.8", "27B", True),
+        "Qwen3.8-27B-256K": ModelAttributes(
+            org, "3.8", "27B", True, max_context_length=262_144
+        ),
     }
 
 
@@ -192,6 +198,19 @@ def get_glm_info() -> dict[str, ModelAttributes]:
 
 
 @cache
+def get_nvidia_info() -> dict[str, ModelAttributes]:
+    org = "nvidia"
+    return {
+        "NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16": ModelAttributes(
+            org, "3-Ultra", "550B-A55B", True
+        ),
+        "NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16-256K": ModelAttributes(
+            org, "3-Ultra", "550B-A55B", True, max_context_length=262_144
+        ),
+    }
+
+
+@cache
 def get_prism_info() -> dict[str, ModelAttributes]:
     org = "prism-ml"
     return {
@@ -222,6 +241,7 @@ def get_model_attributes(model_name: str) -> ModelAttributes:
         get_deepseek_info(),
         get_gpt_oss_info(),
         get_glm_info(),
+        get_nvidia_info(),
         get_prism_info(),
     ]
     org_for_table = {
@@ -231,6 +251,7 @@ def get_model_attributes(model_name: str) -> ModelAttributes:
         id(get_deepseek_info()): "deepseek-ai",
         id(get_gpt_oss_info()): "openai",
         id(get_glm_info()): "zai-org",
+        id(get_nvidia_info()): "nvidia",
         id(get_prism_info()): "prism-ml",
     }
 
@@ -329,6 +350,13 @@ def get_recommended_renderer_names(model_name: str) -> list[str]:
                 f"Set {GLM5_FLAG_ENV}=1 to enable it."
             )
         return ["glm5", "glm5_disable_thinking"]
+    elif attributes.organization == "nvidia" and attributes.version_str == "3-Ultra":
+        return [
+            "nemotron3_ultra",
+            "nemotron3_ultra_medium_thinking",
+            "nemotron3_ultra_disable_thinking",
+            "nemotron3_ultra_preserve_thinking",
+        ]
     else:
         raise ValueError(f"Unknown model: {model_name}")
 

@@ -65,7 +65,7 @@ python -m pip install -e . --index-url https://pypi.org/simple --extra-index-url
 
 On macOS, omit the extra index and use PyPI's platform Torch build. The extra index offers CPU Torch wheels for driver-side utilities; pip searches both indexes, so check the selected build if local GPU dependencies are unexpectedly large. See [Torch troubleshooting](./troubleshooting.md#torch-install-picks-the-wrong-wheel).
 
-The install brings in the pinned SDK, **`azure-ai-finetuningsessions==1.0.0b1`**. No SDK source checkout or bundled fine-tuning wheel is needed. Existing preview users should follow the one-time [migration instructions](../README.md#install).
+The install brings in the pinned SDK, **`azure-ai-finetuningsessions==1.0.0b2`**. No SDK source checkout or bundled fine-tuning wheel is needed. Existing preview users should follow the one-time [migration instructions](../README.md#install).
 
 These checks do **not** create a remote session or train a model:
 
@@ -173,6 +173,10 @@ Look in **`./runs/first-math-check/`**, relative to the cookbook directory:
 | Loop running | `config.json`, `metrics.jsonl`, training metrics, and trajectory HTML | Sampling, grading, and update operations are progressing |
 | Saved state | `checkpoints.jsonl` has saved `state_path`/`sampler_path` entries | Save operations completed; do not rely on a checkpoint name printed before the save finishes |
 | Normal completion | `final` ledger row after trained batches, final held-out metrics, and successful process exit | Bounded workflow completed; inspect warnings and verify cleanup separately |
+
+This local checkpoint ledger is not the remote checkpoint-list response.
+Remote listings can also contain unfinished protected reservations with
+`time=None`; see [checkpoint list compatibility](./session-management.md#checkpoint-list-compatibility).
 
 For this fresh synchronous GSM8K run, the initial evaluation occurs before the first update; the final evaluation follows the final save. Check `test/env/all/correct` and `test/env/all/total_episodes`; inspect any dropped-evaluation warnings. A zero score can be a real failure of formatting or token budget even when infrastructure works. Missing metrics are not a zero score.
 

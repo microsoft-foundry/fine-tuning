@@ -86,6 +86,33 @@ def _flatten_chunks(chunks: list[ModelInputChunk]) -> FlatOb:
     return out
 
 
+def trajectory_token_cost_input(trajectory: Trajectory) -> dict[str, int]:
+    """Count sampled tokens and consumed context without recounting prefix history."""
+    total_tokens = 0
+    on_policy_tokens = 0
+    prompt_tokens = 0
+    current_sequence: FlatOb = []
+    for index, transition in enumerate(trajectory.transitions):
+        observation = _flatten_chunks(transition.ob.chunks)
+        if index == 0:
+            prompt_tokens = _flat_ob_token_len(observation)
+        if current_sequence and (
+            transition.force_new_training_sequence
+            or not _is_prefix(current_sequence, observation)
+        ):
+            total_tokens += _flat_ob_token_len(current_sequence)
+            current_sequence = []
+        current_sequence.extend(observation[len(current_sequence):])
+        current_sequence.extend(transition.ac.tokens)
+        on_policy_tokens += len(transition.ac.tokens)
+    total_tokens += _flat_ob_token_len(current_sequence)
+    return {
+        "total_tokens": total_tokens,
+        "on_policy_tokens": on_policy_tokens,
+        "prompt_tokens": prompt_tokens,
+    }
+
+
 def trajectory_to_data(
     traj: Trajectory,
     traj_advantage: float,
