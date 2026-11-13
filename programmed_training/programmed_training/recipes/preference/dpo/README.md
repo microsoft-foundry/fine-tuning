@@ -62,10 +62,10 @@ python -m programmed_training.recipes.preference.dpo.train_azure \
 ```
 
 This checks reference scoring, custom-loss gradients, optimizer steps,
-evaluation, periodic saves, and final checkpoint export. It is not a quality
+evaluation, periodic saves, and a final service-side checkpoint save. It is not a quality
 benchmark. Use a fresh log directory for each new run.
 The historical Qwen3-32B variant passed on 2026-09-22 with bounded reference
-scoring and resume guards enabled, including final checkpoint export. The
+scoring and resume guards enabled, including a final service-side checkpoint save. The
 updated Qwen3.8 command has not been run against the service here.
 
 ## Full measured example
@@ -139,7 +139,7 @@ the smaller of the update cap (if set) and the raw batch count across epochs,
 so skipped batches can leave a decaying schedule unfinished.
 
 A separate 400-row, 50-update pipeline run and a one-update checkpoint resume
-also completed, including final state and sampler checkpoint export:
+also completed, including final service-side training and sampler checkpoint saves:
 
 ```bash
 python -m programmed_training.recipes.preference.dpo.train_azure \
@@ -151,7 +151,7 @@ python -m programmed_training.recipes.preference.dpo.train_azure \
   log_path=./logs/dpo-hhh-test behavior_if_log_dir_exists=raise
 ```
 
-That run consumed 396 valid pairs and exported a final checkpoint.
+That run consumed 396 valid pairs and saved a final checkpoint in the service.
 To reproduce the one-update continuation,
 repeat the command with `num_epochs=2 max_steps=51` and
 `behavior_if_log_dir_exists=resume`. Held-out NLL was essentially flat during

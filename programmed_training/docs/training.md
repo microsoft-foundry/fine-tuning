@@ -525,7 +525,7 @@ warm-start checkpoint instead. Logs distinguish these two outcomes.
 - **Best effort:** unsaved updates and queued rollouts are discarded. Async
   ordering, prompts, random streams, and tool side effects may repeat or differ.
   Streaming rolls back a whole committed iteration, not partial optimizer work.
-- **Real training checkpoints required:** sampler exports alone cannot restore
+- **Real training checkpoints required:** sampler-only checkpoints cannot restore
   optimizer state. If all committed recovery points are lost, or discovery,
   authorization, or validation fails, recovery fails explicitly.
 - **Same living process:** this does not recover a killed launcher or cancelled

@@ -151,6 +151,17 @@ def test_public_setup_does_not_reference_unavailable_helpers():
         assert not re.search(r"\binternal\s+(?:training\s+)?monorepo\b", source, re.IGNORECASE), path
 
 
+def test_checkpoint_guidance_does_not_promote_weight_downloads():
+    for path in MARKDOWN + NOTEBOOKS:
+        for source in _markdown_sources(path):
+            assert not re.search(r"\bdownload_weights\s*\(", source), path
+            assert not re.search(
+                r"\bcheckpoint export\b|\bexported a (?:final )?checkpoint\b",
+                source,
+                re.IGNORECASE,
+            ), path
+
+
 def test_cookbook_and_sdk_migrations_are_separate():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     for anchor in ("updating-an-older-cookbook-checkout", "replacing-an-older-sdk-preview"):

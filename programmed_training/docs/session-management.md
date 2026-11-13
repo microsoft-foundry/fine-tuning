@@ -39,7 +39,7 @@ client = FineTuningSessionClient(endpoint=PROJECT_ENDPOINT, credential=credentia
 ```
 
 > [!TIP]
-> Operation-group methods below have **required keyword-only** `foundry_features=PREVIEW, api_version=API_VERSION` arguments in SDK 1.0.0b1. Omitting them raises a Python argument error; the high-level async convenience methods have different signatures. Close the HTTP client and identity credential when finished ([client cleanup](#close-local-clients)).
+> Operation-group methods below have **required keyword-only** `foundry_features=PREVIEW, api_version=API_VERSION` arguments in SDK 1.0.0b2. Omitting them raises a Python argument error; the high-level async convenience methods have different signatures. Close the HTTP client and identity credential when finished ([client cleanup](#close-local-clients)).
 
 ## List your sessions
 
@@ -108,10 +108,10 @@ sorting timestamps. A real completion timestamp describes the save, not safety
 approval. Newer SDKs also expose optional save/publication metadata; absent
 metadata is not deployment approval.
 
-The cookbook remains pinned to public preview `1.0.0b1`. Source changes do not
-update that published wheel, installed clients, or existing images. Coordinate
-a nullable-aware SDK/application update before rolling out a service that
-returns these rows; do not assume new metadata exists on the pinned SDK.
+The cookbook pins public preview `1.0.0b2`. Reinstall the cookbook to update an
+older environment, and rebuild client images separately. Source edits do not
+update installed clients or existing images. Optional metadata can be absent
+on older servers; do not infer publication approval from missing fields.
 The [management notebook](../notebooks/manage_sessions.ipynb) handles absent
 timestamps without hiding reservations or inventing completion dates. Its
 latest-training example inspects metadata only; it does not select an approved
