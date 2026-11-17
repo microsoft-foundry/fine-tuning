@@ -1221,6 +1221,29 @@ class TestAzureSDKSamplingClient:
         with pytest.raises(FrozenInstanceError):
             sc.sampling_checkpoint.session_id = "other"
 
+    def test_policy_step_updates_replace_the_immutable_checkpoint(self):
+        sc = AzureSDKSamplingClient(
+            _make_mock_client(), "model_abc", "ckpt_1", _make_tokenizer()
+        )
+        original = sc.sampling_checkpoint
+        sc.set_sampling_checkpoint_step(0)
+        first = sc.sampling_checkpoint
+        sc.set_sampling_checkpoint_step(4)
+
+        assert original == SamplingCheckpoint("model_abc", "ckpt_1")
+        assert first == SamplingCheckpoint("model_abc", "ckpt_1", 0)
+        assert sc.sampling_checkpoint == SamplingCheckpoint("model_abc", "ckpt_1", 4)
+        sc.set_sampling_checkpoint_step(None)
+        assert sc.sampling_checkpoint.policy_step is None
+
+    @pytest.mark.parametrize("step", [-1, True, 1.5, "1"])
+    def test_policy_step_rejects_invalid_values(self, step):
+        sc = AzureSDKSamplingClient(
+            _make_mock_client(), "model_abc", "ckpt_1", _make_tokenizer()
+        )
+        with pytest.raises(ValueError, match="non-negative integer"):
+            sc.set_sampling_checkpoint_step(step)
+
     @pytest.mark.asyncio
     async def test_sample_async(self):
         """sample_async preserves structured prompts for the SDK."""

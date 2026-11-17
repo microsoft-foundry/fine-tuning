@@ -22,6 +22,16 @@ The PPO minimum is taken **after multiplying each branch by the signed advantage
 
 > **Sign convention.** Programmed Training reports the **minimization** objective: every formula above is what the backend `.backward()`-s. For RL, advantages enter with their natural sign — positive $A_t$ pushes $\log p_\theta(y_t)$ up.
 
+### CISPO clip parameters
+
+For `loss_fn="cispo"`, `clip_low_threshold` and `clip_high_threshold` are
+absolute ratio bounds, not epsilon offsets. For example,
+`loss_fn_config={"clip_low_threshold": 0.0, "clip_high_threshold": 2.0}` gives
+upper-only clipping at 2. The backend translates these to nested CISPO offsets
+`1 - lower` and `upper - 1`; an omitted bound retains its engine setting.
+Per-request overrides do not mutate that engine configuration. CISPO retains
+its configured normalization.
+
 ### Mixing loss functions within one optimizer step
 
 Reduction affects both loss scale and accumulated gradients. The sum-reduced losses above differ from the configured normalized losses; service training configurations can normalize these groups differently:
@@ -32,13 +42,13 @@ Reduction affects both loss scale and accumulated gradients. The sum-reduced los
 | **configured normalization** | `ppo`, `cispo`, `sapo` | normalizes by the applicable token/sequence rule; not necessarily the same scalar denominator for every backend |
 
 > [!IMPORTANT]
-> **For compatibility across Programmed Training models, calls accumulated before one `optim_step` should use the same reduction group.** Sessions that normalize the groups differently reject crossing groups without an intervening `optim_step`:
+> **For compatibility across Programmed Training models, calls accumulated before one `optim_step` should use the same reduction group.** Sessions that normalize the groups differently reject crossing groups without an intervening `optim_step`. Example message (loss lists abbreviated):
 >
 > ```
 > Cannot accumulate a mean-reduced loss because sum-reduced gradients are already
 > pending in this optimizer step. This session normalizes the two reduction
 > groups differently. Call optim_step() before switching between sum-reduced
-> losses (cross_entropy, importance_sampling) and mean-reduced losses
+> losses (cross_entropy, importance_sampling, ...) and mean-reduced losses
 > (ppo, cispo, sapo).
 > ```
 >

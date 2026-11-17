@@ -65,7 +65,7 @@ python -m pip install -e . --index-url https://pypi.org/simple --extra-index-url
 
 On macOS, omit the extra index and use PyPI's platform Torch build. The extra index offers CPU Torch wheels for driver-side utilities; pip searches both indexes, so check the selected build if local GPU dependencies are unexpectedly large. See [Torch troubleshooting](./troubleshooting.md#torch-install-picks-the-wrong-wheel).
 
-The install brings in the pinned SDK, **`azure-ai-finetuningsessions==1.0.0b2`**. No SDK source checkout or bundled fine-tuning wheel is needed. Existing preview users should follow the one-time [migration instructions](../README.md#install).
+The install brings in the pinned SDK, **`azure-ai-finetuningsessions==1.0.0b3`**. If beta3 is not published yet, wait for that release before installing. No SDK source checkout or bundled fine-tuning wheel is needed. Existing preview users should follow the one-time [migration instructions](../README.md#install).
 
 These checks do **not** create a remote session or train a model:
 
@@ -75,7 +75,7 @@ python -c "import sys, importlib.metadata as m; import programmed_training as c;
 python -m programmed_training.recipes.math_rl.train_azure --help
 ```
 
-Expected: no broken dependencies, the cookbook import points at this checkout, SDK version `1.0.0b1`, and help lists `max_steps`, `max_train_examples`, and `project_endpoint`. Import location/version checks do not by themselves prove package-download provenance.
+Expected: no broken dependencies, the cookbook import points at this checkout, SDK version `1.0.0b3`, and help lists `max_steps`, `max_train_examples`, and `project_endpoint`. Import location/version checks do not by themselves prove package-download provenance.
 
 **Optional tokenizer/renderer check:** this may download public tokenizer files from Hugging Face, but does not call Azure:
 

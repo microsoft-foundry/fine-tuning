@@ -9,6 +9,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from typing import Any, TypeVar, overload
 
 from azure.core.exceptions import HttpResponseError, ServiceRequestError, ServiceResponseError
+from azure.ai.finetuningsessions import RequestRetryableError
 from azure.ai.finetuningsessions.models import ModelInput, ModelInputChunk
 
 from programmed_training.completers import ContextLengthExceededError, TokenCompleter
@@ -194,6 +195,7 @@ def _is_retryable_rollout_error(error: BaseException) -> bool:
     if isinstance(
         error,
         (
+            RequestRetryableError,
             TimeoutError,
             ConnectionError,
             OSError,

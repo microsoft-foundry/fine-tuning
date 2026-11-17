@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import re
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
@@ -70,7 +71,13 @@ class Service:
         )
 
     def reply(self, request):
-        path = urlsplit(request.url).path.split("/fine_tuning/sessions", 1)[-1]
+        route = re.split(
+            r"/fine_tuning(?:/sessions|_sessions)(?=/|$)",
+            urlsplit(request.url).path,
+            maxsplit=1,
+        )
+        assert len(route) == 2, request.url
+        path = route[1]
         parts = path.strip("/").split("/") if path.strip("/") else []
         body = json.loads(request.content) if request.content else {}
         method = request.method

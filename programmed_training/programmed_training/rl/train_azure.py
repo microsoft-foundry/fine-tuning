@@ -37,6 +37,7 @@ import time
 import uuid
 from collections import deque
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Any
 
 import torch
@@ -57,6 +58,8 @@ from programmed_training.rl.train import (
     Config,
     _config_for_logging,
     _effective_num_groups_to_log,
+    _resumed_sampling_policy_step,
+    _set_sampling_checkpoint_step,
     compute_effective_end,
     do_async_training,
     do_sync_training,
@@ -237,6 +240,9 @@ class AzureSDKSamplingClient:
     def sampling_checkpoint(self) -> SamplingCheckpoint:
         """The immutable session and checkpoint binding used for sampling."""
         return self._sampling_checkpoint
+
+    def set_sampling_checkpoint_step(self, step: int | None) -> None:
+        self._sampling_checkpoint = replace(self._sampling_checkpoint, policy_step=step)
 
     @auto_resume.session_errors
     async def sample_async(
@@ -1133,6 +1139,10 @@ async def main(
             training_kwargs["resume_prompt_cursor"] = resume_info.get(
                 "prompt_cursor"
             )
+            training_kwargs["resume_sampling_policy_step"] = _resumed_sampling_policy_step(
+                resume_info
+            )
+            training_kwargs["has_resume_checkpoint"] = True
         final_loop_state: dict[str, Any] = {}
         if training_func is do_async_training and resume_info is not None:
             training_kwargs["resume_group_ordinal"] = resume_info.get("async_group_ordinal")
@@ -1168,6 +1178,8 @@ async def main(
             sampling_client = training_client.create_sampling_client(
                 final_paths["sampler_path"]
             )
+            if training_func is do_sync_training:
+                _set_sampling_checkpoint_step(sampling_client, final_loop_state.get("policy_step"))
             metrics: dict[str, Any] = {}
             with timed_phase(
                 "run_evals",

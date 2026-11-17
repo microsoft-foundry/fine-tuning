@@ -25,6 +25,29 @@ from tests.test_dynamic_sampling import (
 )
 
 
+@pytest.mark.parametrize("route", ["fine_tuning/sessions", "fine_tuning_sessions"])
+def test_sdk_recovery_fixture_lists_checkpoints_for_both_routes(route):
+    service = Service()
+    request = SimpleNamespace(
+        url=f"https://unit.invalid/api/projects/recovery/{route}/session_0/checkpoints",
+        method="GET",
+        content=None,
+    )
+    assert service.reply(request).json() == {"checkpoints": []}
+    assert service.trace == [("GET", ("session_0", "checkpoints"))]
+
+
+@pytest.mark.parametrize("route", ["fine_tuning/sessions_extra", "fine_tuning_sessions_extra"])
+def test_sdk_recovery_fixture_rejects_unrecognized_routes(route):
+    request = SimpleNamespace(
+        url=f"https://unit.invalid/api/projects/recovery/{route}/session_0/checkpoints",
+        method="GET",
+        content=None,
+    )
+    with pytest.raises(AssertionError, match="unit.invalid"):
+        Service().reply(request)
+
+
 @pytest.fixture
 def fast_backoff(monkeypatch):
     monkeypatch.setattr(auto_resume.random, "uniform", lambda *_: 0)

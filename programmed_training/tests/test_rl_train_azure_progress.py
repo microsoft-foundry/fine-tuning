@@ -26,6 +26,51 @@ def test_rl_train_azure_final_checkpoint_uses_actual_progress(tmp_path):
     assert ml_logger.log_metrics.call_args.kwargs["step"] == 3
 
 
+@pytest.mark.parametrize("policy_step", [0, 2, None])
+def test_rl_train_azure_final_eval_uses_policy_counter(tmp_path, policy_step):
+    sampling_client = train_azure.AzureSDKSamplingClient(
+        MagicMock(), "session", "final", MagicMock()
+    )
+    save_checkpoint = AsyncMock(return_value={"sampler_path": "final"})
+    evaluator = AsyncMock(return_value={})
+    cfg = _main_cfg(tmp_path, num_batches=10, evaluators=[lambda: evaluator], eval_every=1)
+
+    async def fake_training_func(**kwargs):
+        kwargs["final_loop_state"]["policy_step"] = policy_step
+        return 7, 5
+
+    _run_main(cfg, save_checkpoint, fake_training_func, sampling_client=sampling_client)
+
+    assert sampling_client.sampling_checkpoint.checkpoint_id == "final"
+    assert sampling_client.sampling_checkpoint.policy_step == policy_step
+    assert save_checkpoint.await_args.kwargs["loop_state"]["policy_step"] == policy_step
+    evaluator.assert_awaited_once_with(sampling_client, step=7)
+
+
+@pytest.mark.parametrize(
+    "resume_info,expected_step",
+    [
+        ({"batch": 5, "step": 4, "policy_step": 2, "state_path": "model/state"}, 2),
+        ({"batch": 5, "step": 1, "state_path": "model/state"}, None),
+        ({"batch": 5, "state_path": "model/state"}, None),
+        ({"batch": 0, "state_path": "model/state"}, None),
+    ],
+)
+def test_rl_train_azure_forwards_resume_policy_context(tmp_path, resume_info, expected_step):
+    received = {}
+    cfg = _main_cfg(tmp_path, num_batches=10)
+
+    async def fake_training_func(**kwargs):
+        received.update(kwargs)
+        return kwargs["start_batch"], None
+
+    _run_main(cfg, AsyncMock(), fake_training_func, resume_info=resume_info)
+
+    assert received["resume_sampling_policy_step"] == expected_step
+    assert received["has_resume_checkpoint"] is True
+    assert "is_fresh_run" not in received
+
+
 def test_rl_train_azure_final_checkpoint_preserves_prompt_cursor(tmp_path):
     save_checkpoint = AsyncMock(return_value={"sampler_path": "sampler"})
     cfg = _main_cfg(tmp_path, num_batches=10)
@@ -142,6 +187,7 @@ def _run_main(
     *,
     training_type=None,
     reference_factory=None,
+    sampling_client="sampling-client",
 ):
     client = MagicMock()
     client.create_lora_training_client_async = AsyncMock(return_value="training-client")
@@ -150,7 +196,7 @@ def _run_main(
     client.close = AsyncMock()
     training_client = MagicMock()
     training_client.get_tokenizer.return_value = MagicMock()
-    training_client.create_sampling_client = MagicMock(return_value="sampling-client")
+    training_client.create_sampling_client = MagicMock(return_value=sampling_client)
 
     async def create_lora_training_client_async(*_args, **_kwargs):
         return training_client

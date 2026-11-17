@@ -181,9 +181,15 @@ for project authorization, model capacity, and quota before running a recipe.
 
 ## Install
 
-The cookbook uses **`azure-ai-finetuningsessions==1.0.0b2` from [PyPI](https://pypi.org/project/azure-ai-finetuningsessions/)**.
+The cookbook targets **`azure-ai-finetuningsessions==1.0.0b3` from [PyPI](https://pypi.org/project/azure-ai-finetuningsessions/)**.
 Python imports use `azure.ai.finetuningsessions`, including the `aio` namespace.
 No local fine-tuning SDK build, sibling source checkout, or bundled SDK wheel is required.
+
+> [!IMPORTANT]
+> Until beta3 is published on PyPI, installation and hosted dependency-install
+> checks cannot complete. Wait for the release rather than substituting a local
+> SDK wheel. Source-only validation does not qualify the published package;
+> rerun compatibility and recovery checks against the released artifact.
 
 ```bash
 git clone https://github.com/microsoft-foundry/fine-tuning.git
@@ -222,9 +228,10 @@ python -m pip install -e '.[image]' --index-url https://pypi.org/simple --extra-
 
 ## Updating
 
-The cookbook pins a tested published SDK release in `pyproject.toml` (currently
-`azure-ai-finetuningsessions==1.0.0b2`). New betas use new version numbers; each cookbook sync
-selects and validates its SDK release explicitly instead of rebuilding a wheel.
+The cookbook pins its target SDK release in `pyproject.toml` (currently
+`azure-ai-finetuningsessions==1.0.0b3`). New betas use new version numbers; each cookbook sync
+selects its SDK release explicitly and requires validation against the published
+artifact instead of rebuilding a wheel.
 
 ```bash
 git pull
@@ -289,6 +296,26 @@ strict metrics-only evaluation uses the same completeness checks. The default
 is `False`, preserving best-effort evaluation that drops failed groups. The math
 Azure CLI does not expose `require_full_validation`; do not append it to the
 quickstart command.
+
+For autonomous rollouts, the synchronous loop's immutable `SamplingCheckpoint`
+includes an optional `policy_step`: 0 for fresh weights, incremented by 1 after
+each successful batch update. Skipped updates and evaluations retain the prior
+value, so policy versions stay consecutive even when batch indices have gaps.
+Checkpoints persist this counter separately from the metrics `step` and dataset
+`batch` cursor. Resume restores only the explicit `policy_step`; legacy metadata
+without it stays unknown, even after subsequent updates. Asynchronous and custom
+loops may also leave it unset. This does not change `checkpoint_id` or the SDK's
+sampler-weight save sequence.
+
+The standard synchronous fixed-batch loop also accepts an optional
+`rollout_batch_recovery(sample, batch_builders)` callback around sampling,
+before any policy update, with the actual builders for that batch.
+Autonomous recipes own replay safety and must retain completed successes.
+Repeating sampling keeps the same policy checkpoint and resets pre-filter
+reward accumulation, rather than counting recovered groups twice. This hook
+does not support dynamic/refill sampling, batching strategies, async training,
+or streaming minibatches; those combinations fail configuration validation.
+It is unset by default and does not change standard recipe retry behavior.
 
 The full implementation lives in [`programmed_training/rl/train_azure.py`](./programmed_training/rl/train_azure.py). The following is **pseudocode inside an async function**; dataset, grading, and batch construction are recipe-specific:
 

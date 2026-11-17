@@ -13,6 +13,7 @@ import os
 import secrets
 import time
 import warnings
+from collections.abc import Awaitable
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from typing import Any, Callable, Coroutine, Iterable, Iterator, List, Literal, Sequence, TypeVar
@@ -462,6 +463,11 @@ class Config(AdamConfig):
     validation_observer: ValidationObserver | None = None
     # Optional interval observer used by command-job telemetry.
     phase_timing_observer: PhaseTimingObserver | None = None
+    # Optional fixed-batch sampler wrapper; autonomous builders own replay safety.
+    rollout_batch_recovery: Callable[
+        [Callable[[], Awaitable[list[TrajectoryGroup | None]]], Sequence[EnvGroupBuilder]],
+        Awaitable[list[TrajectoryGroup | None]],
+    ] | None = None
     # Reject empty/incomplete built-in validation passes and observer failures.
     require_full_validation: bool = False
     # Start training from weights at this checkpoint (fresh optimizer state).
@@ -655,6 +661,19 @@ class Config(AdamConfig):
     # marker). Set to 0 for unlimited / full transcripts. Note: this only bounds the
     # console log, not training data or logtree HTML logging.
     max_console_lines_per_datum: int = 200
+
+    @chz.validate
+    def _validate_rollout_batch_recovery(self):
+        if self.rollout_batch_recovery is not None and (
+            self.dynamic_sampling or self.refill_on_drop
+            or self.async_config is not None or self.stream_minibatch_config is not None
+            or self.strategy is not None
+        ):
+            raise ValueError(
+                "rollout_batch_recovery requires fixed-batch synchronous training "
+                "without dynamic_sampling, refill_on_drop, async_config, "
+                "stream_minibatch_config, or a dynamic batching strategy."
+            )
 
     @chz.validate
     def _validate_dynamic_sampling(self):
@@ -2012,6 +2031,21 @@ async def do_group_rollout_and_filter_constant_reward(
     return trajectory_group
 
 
+def _set_sampling_checkpoint_step(sampling_client: Any, step: int | None) -> None:
+    setter = getattr(sampling_client, "set_sampling_checkpoint_step", None)
+    if callable(setter):
+        setter(step)
+
+
+def _resumed_sampling_policy_step(resume_info: dict[str, Any]) -> int | None:
+    step = resume_info.get("policy_step")
+    if step is None:
+        return None
+    if type(step) is not int or step < 0:
+        raise ValueError("The resumed checkpoint policy_step must be a non-negative integer.")
+    return step
+
+
 @scope
 async def save_checkpoint_and_get_sampling_client(
     training_client: FineTuningSession,
@@ -2473,6 +2507,7 @@ async def do_train_step_and_get_sampling_client(
     env_group_builders_P: Sequence[EnvGroupBuilder],
     trajectory_groups_P: list[TrajectoryGroup],
     loop_state_extra: dict[str, Any] | None = None,
+    current_sampling_client: FineTuningSession | None = None,
 ) -> tuple[FineTuningSession, dict[str, Any]]:
     update_scope_context({"step": i_batch})
 
@@ -2490,6 +2525,10 @@ async def do_train_step_and_get_sampling_client(
         strategy=cfg.strategy,
     )
     metrics.update(prepare_minibatch_metrics)
+    if not data_D and current_sampling_client is not None:
+        logger.warning("Step %d: no trainable data after minibatch preparation; skipping", i_batch)
+        metrics["train/skipped_no_valid_groups"] = 1
+        return current_sampling_client, metrics
 
     with timed_phase("train", metrics, i_batch, observer=cfg.phase_timing_observer):
         training_logprobs_D = await train_step(
@@ -2537,6 +2576,8 @@ async def do_sync_training(
     final_loop_state: dict[str, Any] | None = None,
     deadline: float | None = None,
     is_fresh_run: bool | None = None,
+    resume_sampling_policy_step: int | None = None,
+    has_resume_checkpoint: bool = False,
 ):
     """Implements fully synchronous on-policy training"""
     fresh_run = start_batch == 0 if is_fresh_run is None else is_fresh_run
@@ -2552,6 +2593,14 @@ async def do_sync_training(
         eval_every=checkpoint_eval_every(cfg),
         phase_timing_observer=cfg.phase_timing_observer,
     )
+    policy_step = (
+        resume_sampling_policy_step if has_resume_checkpoint or not fresh_run else 0
+    )
+    _set_sampling_checkpoint_step(sampling_client, policy_step)
+    if policy_step is None:
+        logger.warning(
+            "Resumed sampling policy has no successful-update counter; policy_step remains unknown."
+        )
     retry_policy, failure_tracker = _make_rollout_failure_policy(cfg)
 
     # Refill-on-drop: run the batch-refill loop when either dynamic_sampling is
@@ -2777,37 +2826,50 @@ async def do_sync_training(
             ):
                 # Note: do_remove_constant_reward_groups=False here because we remove
                 # constant reward groups after all rollouts are collected (below)
-                trajectory_groups_P = await gather_with_progress(
-                    (
-                        do_group_rollout_and_filter_constant_reward(
-                            sampling_client,
-                            builder,
-                            max_tokens=cfg.max_tokens,
-                            temperature=cfg.temperature,
-                            do_remove_constant_reward_groups=False,
-                            enable_logging=i < _effective_num_groups_to_log(cfg),
-                            top_p=cfg.top_p,
-                            top_k=cfg.top_k,
-                            response_format=cfg.response_format,
-                            seed=_derive_group_seed(cfg.sampling_seed, i_batch, i),
-                            strategy=cfg.strategy,
-                            max_rolls_per_group=cfg.max_rolls_per_group,
-                            sample_timeout_sec=cfg.sample_timeout_sec,
-                            retry_policy=retry_policy,
-                            failure_tracker=failure_tracker,
-                            allow_incomplete_grading_group_drop=cfg.allow_incomplete_grading_group_drop,
-                            on_group_drop=cfg.on_group_drop,
-                            training_step=i_batch,
-                            training_group_index=i,
-                            replenish_exhausted_group=not isinstance(
-                                builder, AutonomousRolloutGroupBuilder
-                            ),
-                            on_prefilter_group=prefilter_rewards.add,
-                        )
-                        for i, builder in enumerate(env_group_builders_P)
-                    ),
-                    desc=f"Sampling batch {i_batch}",
-                    max_concurrency=cfg.max_concurrent_groups,
+                async def sample_batch(
+                    sampling_client: FineTuningSession = sampling_client,
+                    i_batch: int = i_batch,
+                    env_group_builders_P: Sequence[EnvGroupBuilder] = env_group_builders_P,
+                ) -> list[TrajectoryGroup | None]:
+                    nonlocal prefilter_rewards
+                    prefilter_rewards = PrefilterRewardAccumulator()
+                    return await gather_with_progress(
+                        (
+                            do_group_rollout_and_filter_constant_reward(
+                                sampling_client,
+                                builder,
+                                max_tokens=cfg.max_tokens,
+                                temperature=cfg.temperature,
+                                do_remove_constant_reward_groups=False,
+                                enable_logging=i < _effective_num_groups_to_log(cfg),
+                                top_p=cfg.top_p,
+                                top_k=cfg.top_k,
+                                response_format=cfg.response_format,
+                                seed=_derive_group_seed(cfg.sampling_seed, i_batch, i),
+                                strategy=cfg.strategy,
+                                max_rolls_per_group=cfg.max_rolls_per_group,
+                                sample_timeout_sec=cfg.sample_timeout_sec,
+                                retry_policy=retry_policy,
+                                failure_tracker=failure_tracker,
+                                allow_incomplete_grading_group_drop=cfg.allow_incomplete_grading_group_drop,
+                                on_group_drop=cfg.on_group_drop,
+                                training_step=i_batch,
+                                training_group_index=i,
+                                replenish_exhausted_group=not isinstance(
+                                    builder, AutonomousRolloutGroupBuilder
+                                ),
+                                on_prefilter_group=prefilter_rewards.add,
+                            )
+                            for i, builder in enumerate(env_group_builders_P)
+                        ),
+                        desc=f"Sampling batch {i_batch}",
+                        max_concurrency=cfg.max_concurrent_groups,
+                    )
+
+                trajectory_groups_P = (
+                    await cfg.rollout_batch_recovery(sample_batch, env_group_builders_P)
+                    if cfg.rollout_batch_recovery is not None
+                    else await sample_batch()
                 )
 
             # A-axis DROP (strategy) and/or an exhausted retry budget may have
@@ -2878,11 +2940,10 @@ async def do_sync_training(
         # Gated on `do_refill` (not just dynamic_sampling): refill_on_drop
         # advances prompt_cursor the same way, so its cursor must be
         # checkpointed too or a resumed run re-reads already-consumed prompts.
-        loop_state_extra = (
-            {"prompt_cursor": prompt_cursor - (1 if carryover_builders else 0)}
-            if do_refill
-            else None
-        )
+        next_policy_step = policy_step + 1 if policy_step is not None else None
+        loop_state_extra = {"policy_step": next_policy_step}
+        if do_refill:
+            loop_state_extra["prompt_cursor"] = prompt_cursor - (1 if carryover_builders else 0)
         sampling_client, train_step_metrics = await do_train_step_and_get_sampling_client(
             cfg,
             i_batch,
@@ -2892,6 +2953,7 @@ async def do_sync_training(
             env_group_builders_P,
             trajectory_groups_P,
             loop_state_extra=loop_state_extra,
+            current_sampling_client=sampling_client,
         )
 
         # Log metrics
@@ -2902,12 +2964,16 @@ async def do_sync_training(
         ml_logger.log_metrics(metrics, step=i_batch)
         actual_next_batch = i_batch + 1
         if train_step_metrics.get("train/skipped_no_valid_groups") != 1:
+            policy_step = next_policy_step
+            _set_sampling_checkpoint_step(sampling_client, policy_step)
             last_completed_step = i_batch
 
-    if final_loop_state is not None and do_refill:
-        final_loop_state["prompt_cursor"] = prompt_cursor - (
-            1 if carryover_builders else 0
-        )
+    if final_loop_state is not None:
+        final_loop_state["policy_step"] = policy_step
+        if do_refill:
+            final_loop_state["prompt_cursor"] = prompt_cursor - (
+                1 if carryover_builders else 0
+            )
     return actual_next_batch, last_completed_step
 
 
@@ -3039,6 +3105,10 @@ async def main(
     # Pass prompt_cursor resume state only for sync training
     if training_func is do_sync_training and resume_info:
         training_kwargs["resume_prompt_cursor"] = resume_info.get("prompt_cursor")
+        training_kwargs["resume_sampling_policy_step"] = _resumed_sampling_policy_step(
+            resume_info
+        )
+        training_kwargs["has_resume_checkpoint"] = True
     if training_func is do_async_training and resume_info:
         training_kwargs["resume_group_ordinal"] = resume_info.get("async_group_ordinal")
     final_loop_state: dict[str, Any] = {}
@@ -3086,6 +3156,8 @@ async def main(
         )
     ):
         sampling_client = training_client.create_sampling_client(final_paths["sampler_path"])
+        if training_func is do_sync_training:
+            _set_sampling_checkpoint_step(sampling_client, final_loop_state.get("policy_step"))
         metrics = {}
         with timed_phase(
             "run_evals",

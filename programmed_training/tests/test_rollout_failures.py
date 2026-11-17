@@ -12,6 +12,14 @@ Covers:
 import asyncio
 
 import pytest
+from azure.ai.finetuningsessions import (
+    MalformedResponseError,
+    OperationResultUnavailableError,
+    RequestRetryableError,
+    RequestValidationError,
+    TrainingEngineError,
+)
+from azure.ai.finetuningsessions._exceptions import _classify_poll_failure
 from azure.ai.finetuningsessions.models import ImageChunk, ModelInput, ModelInputChunk
 
 from programmed_training.completers import (
@@ -79,6 +87,102 @@ class _Builder(EnvGroupBuilder):
 
     async def compute_group_rewards(self, trajectory_group, env_group):
         return [(float(env.slot), {}) for env in env_group]
+
+
+def _polled_retryable_error() -> RequestRetryableError:
+    error = _classify_poll_failure({
+        "status": "failed",
+        "error": "Sampler endpoint is temporarily unavailable; please retry.",
+        "error_code": "sampler_call_retryable",
+        "should_retry": True,
+        "retry_after_sec": 30,
+    })
+    assert isinstance(error, RequestRetryableError)
+    assert error.status_code is None
+    return error
+
+
+class _SamplingBuilder(_Builder):
+    async def make_envs(self):
+        envs = [_Env(0), _Env(1)]
+        self.batches.append(envs)
+        return envs
+
+
+class _FailingSamplingPolicy(_Policy):
+    def __init__(self, error: Exception, *, failures: int):
+        self.error = error
+        self.failures = failures
+        self.calls: dict[int, int] = {}
+
+    async def __call__(self, model_input, stop, max_tokens=None):
+        slot = model_input.chunks[0].tokens[0]
+        self.calls[slot] = self.calls.get(slot, 0) + 1
+        if slot == 1 and self.calls[slot] <= self.failures:
+            raise self.error
+        return await super().__call__(model_input, stop, max_tokens)
+
+
+def test_polled_retryable_sampling_failure_retains_successful_slots():
+    builder = _SamplingBuilder()
+    policy = _FailingSamplingPolicy(_polled_retryable_error(), failures=1)
+    group = asyncio.run(do_group_rollout(
+        builder, policy,
+        retry_policy=RolloutRetryPolicy(
+            max_retries_per_trajectory=1,
+            max_extra_attempts_per_group=1,
+        ),
+    ))
+
+    assert len(group.trajectories_G) == 2
+    assert group.final_rewards_G == [0.0, 1.0]
+    assert policy.calls == {0: 1, 1: 2}
+    assert len(builder.batches) == 2
+    assert all(env.closed >= 1 for batch in builder.batches for env in batch)
+
+
+@pytest.mark.parametrize("slot_budget,group_budget", [(1, 3), (3, 1)])
+def test_polled_retryable_sampling_failure_respects_both_budgets(slot_budget, group_budget):
+    error = _polled_retryable_error()
+    builder = _SamplingBuilder()
+    policy = _FailingSamplingPolicy(error, failures=10)
+
+    with pytest.raises(RolloutGroupExhausted) as caught:
+        asyncio.run(do_group_rollout(
+            builder, policy,
+            retry_policy=RolloutRetryPolicy(
+                max_retries_per_trajectory=slot_budget,
+                max_extra_attempts_per_group=group_budget,
+            ),
+        ))
+
+    assert caught.value.__cause__ is error
+    assert policy.calls == {0: 1, 1: 2}
+    assert len(builder.batches) == 2
+    assert all(env.closed >= 1 for batch in builder.batches for env in batch)
+
+
+def test_polled_retryable_sampling_failure_without_policy_preserves_exception():
+    error = _polled_retryable_error()
+    builder = _SamplingBuilder()
+    policy = _FailingSamplingPolicy(error, failures=1)
+
+    with pytest.raises(RequestRetryableError) as caught:
+        asyncio.run(do_group_rollout(builder, policy))
+
+    assert caught.value is error
+    assert policy.calls == {0: 1, 1: 1}
+    assert len(builder.batches) == 1
+
+
+@pytest.mark.parametrize("error", [
+    MalformedResponseError("invalid sampler response"),
+    RequestValidationError("invalid sampling request", error_code="invalid_request"),
+    TrainingEngineError("engine stopped", error_code="engine_dead", session_id="session_test"),
+    OperationResultUnavailableError("result already consumed", operation_completed=True),
+])
+def test_terminal_sdk_errors_are_not_retried_as_rollout_slots(error):
+    assert _is_retryable_rollout_error(error) is False
 
 
 def test_group_retry_preserves_full_size_and_cleans_up():

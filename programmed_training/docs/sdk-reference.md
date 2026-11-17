@@ -2,7 +2,7 @@
 
 A focused reference for the slice of the `azure-ai-finetuningsessions` SDK the cookbook exercises, plus the cookbook wrappers that bridge from raw HTTP-style calls to the train loop in [training.md](./training.md).
 
-This is **not** the full SDK reference. Examples target the pinned public preview, `azure-ai-finetuningsessions==1.0.0b2`; see the [published package and its documentation links](https://pypi.org/project/azure-ai-finetuningsessions/). For rendered custom data, start with [custom-data.md](./custom-data.md); for checkpoint use after training, see [evaluation and sampling](./evaluation-and-sampling.md).
+This is **not** the full SDK reference. Examples target the pinned preview, `azure-ai-finetuningsessions==1.0.0b3`; see the [package and its documentation links](https://pypi.org/project/azure-ai-finetuningsessions/). Installation requires that exact release to be published. For rendered custom data, start with [custom-data.md](./custom-data.md); for checkpoint use after training, see [evaluation and sampling](./evaluation-and-sampling.md).
 
 For the **management** half of the SDK (`client.sessions.list / get / begin_unload / heartbeat`, `client.checkpoints.list / get`) — which the recipe does not exercise but you'll want for discovery, inspection, and cleanup — see [session-management.md](./session-management.md) and the companion [`notebooks/manage_sessions.ipynb`](../notebooks/manage_sessions.ipynb).
 

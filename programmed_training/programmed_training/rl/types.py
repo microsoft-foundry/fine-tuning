@@ -20,10 +20,20 @@ Logs: TypeAlias = dict[str, str | int | float]
 
 @dataclass(frozen=True)
 class SamplingCheckpoint:
-    """An immutable binding to the session and checkpoint used for sampling."""
+    """Sampling binding and, when known, its successful synchronous update count.
+
+    The policy step describes the weights, not the SDK's sampler sequence ID.
+    """
 
     session_id: str
     checkpoint_id: str
+    policy_step: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.policy_step is not None and (
+            type(self.policy_step) is not int or self.policy_step < 0
+        ):
+            raise ValueError("The sampling checkpoint policy step must be a non-negative integer.")
 
 
 @dataclass(frozen=True)

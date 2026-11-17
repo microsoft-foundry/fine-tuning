@@ -167,8 +167,7 @@ def test_refill_on_drop_checkpoints_prompt_cursor(tmp_path, monkeypatch):
 
 
 def test_no_refill_does_not_checkpoint_prompt_cursor(tmp_path, monkeypatch):
-    """Default (no refill): prompt_cursor is not decoupled, so loop_state_extra
-    stays None (byte-identical to the pre-refill path)."""
+    """Without refill, checkpoint only the policy counter, not a prompt cursor."""
     import programmed_training.rl.train as T
 
     captured: dict = {}
@@ -185,7 +184,7 @@ def test_no_refill_does_not_checkpoint_prompt_cursor(tmp_path, monkeypatch):
     cfg = _make_config(dataset, tmp_path, strategy=DapoStrategy())  # refill_on_drop=False
     _run_sync(cfg, dataset, session, tmp_path, start=0, end=1, num_batches=1)
 
-    assert captured["loop_state_extra"] is None
+    assert captured["loop_state_extra"] == {"policy_step": 1}
 
 
 def test_refill_on_drop_resumes_from_prompt_cursor(tmp_path):
@@ -227,4 +226,4 @@ def test_refill_on_drop_returns_final_prompt_cursor(tmp_path):
         final_loop_state=final_loop_state,
     )
 
-    assert final_loop_state == {"prompt_cursor": 1}
+    assert final_loop_state == {"prompt_cursor": 1, "policy_step": 1}
