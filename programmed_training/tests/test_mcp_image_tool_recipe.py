@@ -20,6 +20,7 @@ from programmed_training.recipes.mcp_image_tool.data import (
 from programmed_training.recipes.mcp_image_tool import train_azure
 from programmed_training.recipes.mcp_image_tool import mcp_env
 from programmed_training.recipes.mcp_image_tool import warmup
+from programmed_training.optimizers import AdamConfig
 from programmed_training.recipes.mcp_image_tool.training_client import MCPImageTrainingClient, split_image_batches
 from programmed_training.recipes.mcp_image_tool.learning_report import build_learning_report
 from programmed_training.recipes.mcp_image_tool.warmup import demonstrate_task
@@ -202,7 +203,13 @@ async def test_demonstrations_execute_each_requested_tool_and_pass_exact_grader(
 
 
 @pytest.mark.asyncio
-async def test_warmup_uses_only_training_builders_and_awaits_each_update(monkeypatch, tmp_path):
+@pytest.mark.parametrize("overrides", [{}, {
+    "adam_beta1": 0.6, "adam_beta2": 0.8, "adam_eps": 1e-4,
+    "adam_weight_decay": 0.15,
+}])
+async def test_warmup_uses_only_training_builders_and_awaits_each_update(
+    monkeypatch, tmp_path, overrides,
+):
     from unittest.mock import AsyncMock
     from azure.ai.finetuningsessions.models import Datum, TensorData
 
@@ -230,7 +237,13 @@ async def test_warmup_uses_only_training_builders_and_awaits_each_update(monkeyp
             return SimpleNamespace(result_async=complete)
 
         async def optim_step_async(self, params):
-            assert params.learning_rate == 2e-4
+            assert params.as_dict() == {
+                "learning_rate": 2e-4,
+                "beta1": overrides.get("adam_beta1", 0.9),
+                "beta2": overrides.get("adam_beta2", 0.999),
+                "eps": overrides.get("adam_eps", 1e-8),
+                "weight_decay": overrides.get("adam_weight_decay", 0.0),
+            }
             events.append("optim")
             async def complete():
                 events.append("optim_complete")
@@ -241,7 +254,10 @@ async def test_warmup_uses_only_training_builders_and_awaits_each_update(monkeyp
             events.append("checkpoint")
             return SimpleNamespace(result_async=AsyncMock())
 
-    await warmup.train_warmup(TrainingClient(), dataset, epochs=2, learning_rate=2e-4, seed=0, log_path=str(tmp_path))
+    await warmup.train_warmup(
+        TrainingClient(), dataset, epochs=2, learning_rate=2e-4,
+        seed=0, log_path=str(tmp_path), adam_config=AdamConfig(**overrides),
+    )
     assert events == ["forward", "forward_complete", "optim", "optim_complete"] * 2 + ["checkpoint"]
     demonstrate.assert_awaited_once_with(task, env.message_env)
     env.message_env.close.assert_awaited_once()
@@ -288,14 +304,16 @@ def test_multimodal_prompt_token_count_includes_image_tokens():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("recovery", [False, True])
 @pytest.mark.parametrize("rewards,updates", [
     ([[1.0, 1.0]], 0), ([[0.0, 0.0]], 0), ([[0.0, 1.0]], 1),
     ([[0.3, 0.3], [0.2, 0.5]], 1),
     ([[0.2, 0.5], [0.3, 0.3], [0.25, 0.5]], 2),
 ])
-async def test_mixed_rl_gates_updates_without_changing_original_datasets(monkeypatch, tmp_path, rewards, updates):
+async def test_mixed_rl_gates_updates_without_changing_original_datasets(monkeypatch, tmp_path, rewards, updates, recovery):
     import json
     from unittest.mock import AsyncMock
+    from programmed_training import auto_resume, checkpoint_utils
     from programmed_training.recipes.mcp_image_tool import mixed_rl
 
     dataset_builder = MCPImageToolDatasetBuilder(
@@ -318,7 +336,7 @@ async def test_mixed_rl_gates_updates_without_changing_original_datasets(monkeyp
     monkeypatch.setattr(mixed_rl, "do_group_rollout_and_filter_constant_reward", rollout)
     monkeypatch.setattr(mixed_rl, "do_train_step_and_get_sampling_client", update)
     monkeypatch.setattr(mixed_rl.RLTestSetEvaluator, "__call__", evaluation)
-    checkpoint = AsyncMock()
+    checkpoint = AsyncMock(return_value=SimpleNamespace(path="loom://model_fixture/weights/saved"))
     client = SimpleNamespace(
         save_weights_and_get_sampling_client_async=AsyncMock(return_value="before"),
         save_state_async=AsyncMock(return_value=SimpleNamespace(result_async=checkpoint)),
@@ -327,6 +345,9 @@ async def test_mixed_rl_gates_updates_without_changing_original_datasets(monkeyp
         model_name="base-model", dataset_builder=dataset_builder, log_path=str(tmp_path),
         learning_rate=5e-5, max_tokens=2048, sampling_seed=0, max_steps=len(rewards),
     )
+    if recovery:
+        attempt = auto_resume.Attempt(str(tmp_path), "session_fixture", frozenset({"engine_dead"}), None)
+        monkeypatch.setattr(auto_resume, "current_attempt", lambda: attempt)
     report = await mixed_rl.train_mixed(
         config, client, None, train, test, task_count=30, repetitions=3, expected_episodes=30,
     )
@@ -346,6 +367,13 @@ async def test_mixed_rl_gates_updates_without_changing_original_datasets(monkeyp
         *[f"rl_step_{step}" for step in range(1, updates + 1)], "final",
     ]
     assert checkpoint.await_count == updates + 1
+    if recovery:
+        rows = checkpoint_utils.load_checkpoints_file(str(tmp_path))
+        assert len(rows) == updates + 1
+        assert rows[-1]["stage"] == "rl"
+        assert rows[-1]["batch"] == len(rewards)
+        assert rows[-1]["mcp_updates"] == updates
+        assert rows[-1]["mcp_skipped_batches"] == len(rewards) - updates
     assert report["before_rl_tool_calls"] == report["after_rl_tool_calls"] == 7.0
     assert report["rl_tool_calls_change"] == 0.0
     assert not report["rl_efficiency_improved"]

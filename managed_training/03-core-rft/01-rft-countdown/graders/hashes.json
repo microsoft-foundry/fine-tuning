@@ -3,15 +3,16 @@
   "artifacts": [
     {
       "path": "countdown_python_grader.py",
-      "origin": "Consolidated from the source Python grader and exact validator",
-      "bytes": 1780,
-      "sha256": "780729d3e92de8fb531bf159dafcfc4dc7f9ff0e617447fe7210d3ebfa0cc5ad"
+      "origin": "Consolidated from the source Python grader and exact validator; rejects nonfinite arithmetic and bounds expression length, AST size, and AST depth",
+      "verification_status": "Byte count and SHA-256 recomputed from the reviewed source after CRLF-to-LF normalization",
+      "bytes": 3065,
+      "sha256": "cd0158cdb77e50e8dff29e5cb83be538f903c3ac229ee22ec5300c2c46fbb9fd"
     },
     {
       "path": "preserved/countdown-model-score-grader.json",
       "source": "Demos/RFT_Countdown/data/grader_config_aoai.json",
-      "bytes": 1726,
-      "sha256": "3fa8537941817977c6d0d4a2087e83332ad2d34169b983f800aab892d3e2e5e0"
+      "bytes": 1731,
+      "sha256": "3d6e6983a70b7861ae7603f5f3d679ff83598134513685064ae065cc2d396794"
     },
     {
       "path": "preserved/countdown-model-score-grader-prompt.txt",

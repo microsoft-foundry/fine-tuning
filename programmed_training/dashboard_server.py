@@ -7,12 +7,18 @@ Usage:
     python dashboard_server.py --root A --root B     # multiple roots
     python dashboard_server.py --port 9000
 
-Default logs roots scanned (any that exist):
-    1. $INTERACTIVE_POST_TRAINING_LOGS_ROOT (if set), else ~/interactive-post-training-runs (Linux/macOS) / C:\\interactive-post-training-runs (Windows)
-    2. /tmp/interactive-post-training-examples (legacy path used by some recipes)
+Automatic scan roots (the selected write root, plus existing history):
+    1. $INTERACTIVE_POST_TRAINING_LOGS_ROOT, then $LOOM_LOGS_ROOT, then the
+       unchanged ~/interactive-post-training-runs (Linux/macOS/WSL) /
+       C:\\interactive-post-training-runs (Windows) default.
+    2. Both platform history directories: loom-runs and interactive-post-training-runs.
+    3. /tmp/loom-examples and /tmp/interactive-post-training-examples.
+
+Empty environment values are ignored. Explicit --root flags replace this
+automatic scan; they do not change where recipes write logs.
 
 When runs come from multiple roots, IDs are prefixed by the root's directory
-name (e.g. ``interactive-post-training-runs/math_rl/<run>`` vs ``interactive-post-training-examples/<run>``) to keep
+name (e.g. ``loom-runs/math_rl/<run>`` vs ``loom-examples/<run>``) to keep
 them unique.
 
 The dashboard auto-detects the recipe type (RL vs SFT) from each run's
@@ -34,11 +40,40 @@ from urllib.parse import unquote, urlparse
 
 HERE = Path(__file__).resolve().parent
 DASHBOARD_HTML = HERE / "dashboard.html"
-LEGACY_TMP_ROOT = Path("/tmp/interactive-post-training-examples")
+LEGACY_TMP_ROOT = Path("/tmp/loom-examples")
+RENAMED_TMP_ROOT = Path("/tmp/interactive-post-training-examples")
 
 # Files we'll let the dashboard fetch from a run directory. Keep this strict.
 ALLOWED_RUN_FILES = {"metrics.jsonl", "config.json", "logs.log", "run_meta.json"}
 ALLOWED_RUN_PREFIXES = ("train_iteration_", "eval_test_iteration_", "eval_")
+
+
+def default_scan_roots() -> list[Path]:
+    """Scan the write root plus existing history locations, without moving logs."""
+    if sys.platform.startswith("win"):
+        platform_roots = [Path(r"C:\loom-runs"), Path(r"C:\interactive-post-training-runs")]
+    else:
+        home = Path.home()
+        platform_roots = [home / "loom-runs", home / "interactive-post-training-runs"]
+
+    # Keep --help usable without the installed cookbook package. The fallback
+    # must obey the same environment precedence and defaults as the helper.
+    try:
+        from programmed_training.utils.file_utils import default_logs_root
+    except ImportError:
+        env = os.environ.get("INTERACTIVE_POST_TRAINING_LOGS_ROOT") or os.environ.get(
+            "LOOM_LOGS_ROOT"
+        )
+        default_root = Path(env).expanduser() if env else platform_roots[1]
+    else:
+        default_root = default_logs_root()
+
+    roots = [default_root.resolve()]
+    for root in [*platform_roots, LEGACY_TMP_ROOT, RENAMED_TMP_ROOT]:
+        resolved = root.resolve()
+        if resolved not in roots and resolved.exists():
+            roots.append(resolved)
+    return roots
 
 
 def _root_prefixes(roots: list[Path]) -> dict[Path, str]:
@@ -121,7 +156,7 @@ def safe_join(root: Path, *parts: str) -> Path | None:
 
 class Handler(BaseHTTPRequestHandler):
     # set on the class by main()
-    runs_roots: list[Path] = [Path("/tmp/interactive-post-training-examples")]
+    runs_roots: list[Path] = [LEGACY_TMP_ROOT, RENAMED_TMP_ROOT]
     dashboard_html: Path = DASHBOARD_HTML
 
     def log_message(self, fmt: str, *args) -> None:  # quieter
@@ -235,17 +270,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    # Late import so `--help` works even if programmed_training isn't on sys.path.
-    # default_logs_root() already honors $INTERACTIVE_POST_TRAINING_LOGS_ROOT, so we don't need to
-    # re-check it in the argparse default (doing so would also bypass ~ expansion).
-    try:
-        from programmed_training.utils.file_utils import default_logs_root
-        default_root = str(default_logs_root())
-    except ImportError:
-        if os.name == "nt":
-            default_root = r"C:\interactive-post-training-runs"
-        else:
-            default_root = str(Path.home() / "interactive-post-training-runs")
+    default_roots = default_scan_roots()
 
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument(
@@ -254,8 +279,8 @@ def main() -> None:
         default=None,
         help=(
             "Directory to scan for run folders. Pass multiple times to scan "
-            f"several roots. Default: {default_root} (plus {LEGACY_TMP_ROOT} "
-            "if it exists)."
+            f"several roots. Replaces the automatic scan of {default_roots[0]} "
+            "and existing platform/temporary history locations."
         ),
     )
     ap.add_argument("--port", type=int, default=8000)
@@ -275,13 +300,9 @@ def main() -> None:
         )
 
     if args.root:
-        roots = [Path(r).resolve() for r in args.root]
+        roots = [Path(r).expanduser().resolve() for r in args.root]
     else:
-        roots = [Path(default_root).resolve()]
-        # Auto-include the legacy /tmp/interactive-post-training-examples location if it has
-        # anything in it, so older runs are still visible without flags.
-        if LEGACY_TMP_ROOT.exists() and LEGACY_TMP_ROOT.resolve() not in roots:
-            roots.append(LEGACY_TMP_ROOT.resolve())
+        roots = default_roots
 
     # De-dupe while preserving order.
     seen: set[Path] = set()

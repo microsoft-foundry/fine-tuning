@@ -94,9 +94,12 @@
     {
       "path": "configs/retail-openapi-with-policy.json",
       "source": "Demos/ZavaRetailAgent/data/openapi_with_policy.json",
-      "role": "Original tool server API schema",
-      "bytes": 32503,
-      "sha256": "9505557674961aaf01b2eb509d469a46e60760d61c78df141ddfb23f0253d167"
+      "role": "Active API contract extended with the two dataset-declared RFT operations and bearer security",
+      "bytes": 38391,
+      "sha256": "fadbf333d5389caaac8880672a454dbe34b53a77e3bfe75c85b9cb62ef25c3c6",
+      "source_bytes": 32503,
+      "source_sha256": "9505557674961aaf01b2eb509d469a46e60760d61c78df141ddfb23f0253d167",
+      "derivation": "Only list_user_orders, policy_verify_return, root bearer security, and the bearer security scheme are added. Removing those additions and serializing with two-space indentation and no final newline reconstructs the original source bytes."
     },
     {
       "path": "data/synthetic-source-train.jsonl",

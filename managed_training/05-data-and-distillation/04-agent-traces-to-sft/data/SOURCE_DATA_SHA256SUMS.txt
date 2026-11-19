@@ -1,8 +1,13 @@
-# SHA-256 hashes for byte-for-byte preserved source assets and customer trace data.
+# SHA-256 hashes for preserved source assets and customer trace data.
+# Text fixtures normalize physical CRLF to LF; JSONL retains exact archive bytes.
+# Original CRLF fixture archive hashes: prompt 618efb4f2320a62641ee763e45bb795e5f37533dac78bd09d6cce349b693bab7;
+# tools f87922fa85b1ea278a1c73855f084f140c86b579b8e0ad83fef681bcc1c57579.
+# Historical inputs only: row-level splits and exchange-only policy are not corrected artifacts.
+# Prepared outputs receive their own generated preparation-manifest.json.
 # Original checkout paths are omitted; digests identify the preserved source content.
 # Format: sha256  migrated_path  source_description
-618efb4f2320a62641ee763e45bb795e5f37533dac78bd09d6cce349b693bab7  zava_system_prompt.md  original-system-prompt-fixture
-f87922fa85b1ea278a1c73855f084f140c86b579b8e0ad83fef681bcc1c57579  zava_tools.json  original-tool-catalog-fixture
+4fc14242b344839f6673d44c429b9bafb2a19536028d61b93aa83f413a024a10  zava_system_prompt.md  original-system-prompt-fixture-LF
+2493bb2265e1d59e3e9023204a87f10fda916507dbc6b6cb453f54bb671f347c  zava_tools.json  original-tool-catalog-fixture-LF
 81083aadd6464293b6acfc9356216c6c685a1ba99ae3f6fe34ba9d7b5b864d71  traces-clean.jsonl  original-transformed-agent-traces
 1371b81c70d7f8c20f8eff604932670a3eda8ca9437759264dcfce4c06aeeae3  train.jsonl  original-seed-42-training-split
 865ab59e51c81a29ecc89a0bde347a22d0929630f7cd3db1ffb12f1d406034fa  val.jsonl  original-seed-42-validation-split

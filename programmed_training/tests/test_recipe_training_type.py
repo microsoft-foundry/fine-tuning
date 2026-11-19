@@ -33,7 +33,9 @@ def _internal_training_entrypoints(recipes_dir):
 
 ASYNC_ENTRYPOINTS = (
     "code_rl.train_azure",
+    "llm_judge_rl.train_azure",
     "math_rl.train_azure",
+    "rl_numerics_check.train_azure",
     "mcp_image_tool.train_azure",
     "search_tool.train_azure",
     "tool_rl.train_azure",
@@ -192,6 +194,14 @@ async def test_recipe_forwards_training_type(
             recipe.train if supervised else recipe.rl_azure, "main", training_main
         )
     extra_config = dict(training_overrides)
+    if entrypoint == "rl_numerics_check.train_azure":
+        monkeypatch.setattr(
+            recipe.CountingDatasetBuilder, "__call__",
+            AsyncMock(return_value=(MagicMock(), None)),
+        )
+    if entrypoint == "llm_judge_rl.train_azure":
+        extra_config["judge_endpoint"] = "https://judge.example"
+        extra_config["judge_deployment"] = "judge"
     if entrypoint.startswith("visual_spatial."):
         _mock_visual_preflight(monkeypatch, recipe, supervised=supervised)
         extra_config["model_context_length"] = 4096

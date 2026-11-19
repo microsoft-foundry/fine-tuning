@@ -1,6 +1,6 @@
 # Concepts
 
-Read this once to understand what an programmed training recipe does. For executable steps, use the [quickstart](./quickstart.md); for tuning, use [training.md](./training.md).
+Read this once to understand what a Programmed Training recipe does. For executable steps, use the [quickstart](./quickstart.md); for tuning, use [training.md](./training.md).
 
 ## Choose the learning signal
 
@@ -36,7 +36,7 @@ Example: eight prompt groups with four completions each produce up to 32 trainin
 
 ## What you control vs. what the service controls
 
-An programmed training job is a **client-side recipe** (the Python code in this repo) driving a **service-side engine** (the Azure AI Fine-Tuning Session) via the `azure-ai-finetuningsessions` SDK. The split is sharp:
+A Programmed Training job is a **client-side recipe** (the Python code in this repo) driving a **service-side engine** (the Azure AI Fine-Tuning Session) via the `azure-ai-finetuningsessions` SDK. The split is sharp:
 
 | **You decide (client-side)**         | **Service decides (engine-side)**         |
 |--------------------------------------|-------------------------------------------|

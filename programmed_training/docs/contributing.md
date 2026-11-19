@@ -40,6 +40,21 @@ Conventions:
 - **Log to `<logs-root>/<recipe>/<run_name>/`** using the helpers in `programmed_training/utils/`. The default logs root is resolved via `default_logs_root()` — don't hard-code paths.
 - **Write `run_meta.json`** at launch so the dashboard's Run Overview card has something to show.
 - **Save checkpoints to `checkpoints.jsonl`** via `programmed_training.checkpoint_utils.save_checkpoint_async` inside async launchers (`save_checkpoint` is the synchronous wrapper). Await all requested saves; preserve the complete resume cursor and returned paths. Only training state is resumable; distinguish persistent sampler saves from ephemeral refreshes ([SDK boundary](./sdk-reference.md#persistent-versus-ephemeral-checkpoints)).
+- **Expose shared automatic recovery on public training entrypoints.** Inherit
+  `auto_resume.AutoResumeConfig` and use `auto_resume.run_rl`,
+  `run_supervised`, or `run` around the attempt workload after one-time setup.
+  Preserve original session/factory options; custom loops must journal progress
+  with their existing training saves and own attempt-local tasks/resources.
+  Sequential stages use `shared_run` so changing stages alone does not reset
+  the retry budget. Forward `auto_resume_max_retries` to child launchers;
+  committed checkpoint progress resets the shared consecutive-retry counter.
+  With recovery enabled, the launcher owns allocated resources until supervisor
+  handoff; the supervisor owns them afterward. Do not add broad exception
+  retries or replay failed SDK mutations. Preserve original step/deadline limits
+  and separate per-session artifacts.
+  Keep recovery enabled by default, preserve `auto_resume=False` as an opt-out,
+  and test both paths offline. Preserve the preview's training-tier restrictions. See
+  [automatic engine-loss recovery](./training.md#automatic-engine-loss-recovery).
 - **Add the recipe to [recipes.md](./recipes.md)** with a one-line description.
 
 ## Adding a docs page
@@ -59,7 +74,7 @@ From the cookbook root, use an isolated environment and the published SDK
 from the [installation guide](../README.md#install):
 
 ```bash
-python -m pip install -e '.[test]' --index-url https://pypi.org/simple --extra-index-url https://download.pytorch.org/whl/cpu
+python -m pip install -e '.[test,deployment]' --index-url https://pypi.org/simple --extra-index-url https://download.pytorch.org/whl/cpu
 python -m pip check
 python -m programmed_training.recipes.math_rl.train_azure --help
 python -m pytest -q tests/test_public_documentation.py --tb=short

@@ -25,13 +25,57 @@ def _write_json_atomic(path: Path, payload: dict[str, Any]) -> Path:
     )
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-            json.dump(payload, stream, indent=2, sort_keys=True)
+            json.dump(payload, stream, indent=2, sort_keys=True, allow_nan=False)
             stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
         os.replace(temporary, path)
-    except Exception:
+        if os.name != "nt":
+            directory = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+    finally:
         Path(temporary).unlink(missing_ok=True)
-        raise
     return path
+
+
+def runtime_output_path(
+    path: str | Path, *, outputs_root: str | Path | None = None,
+) -> Path:
+    """Resolve an identifier-bearing destination inside its intended outputs root.
+
+    Existing callers may omit the root when there is one unambiguous lexical
+    ``outputs`` ancestor, not whichever ``outputs`` survives traversal.
+    New callers should pass their demo's explicit, ignored ``outputs`` directory.
+    A redirected root itself, an escaping descendant symlink, and traversal out
+    of that boundary are rejected before directories or temporary files exist.
+    """
+    selected = Path(path)
+    if not selected.is_absolute():
+        selected = Path.cwd() / selected
+    if outputs_root is None:
+        positions = [index for index, part in enumerate(selected.parts) if part == "outputs"]
+        if len(positions) != 1:
+            raise ValueError("Runtime state requires an unambiguous ignored outputs/ root")
+        root = Path(*selected.parts[: positions[0] + 1])
+    else:
+        root = Path(outputs_root)
+        if not root.is_absolute():
+            root = Path.cwd() / root
+    if root.name != "outputs" or ".." in root.parts:
+        raise ValueError("The intended ignored outputs/ root must be explicit and unambiguous")
+    try:
+        intended_root = root.parent.resolve() / root.name
+        resolved = selected.resolve()
+        if root.resolve() != intended_root:
+            raise ValueError("The outputs/ root must not be redirected by a symlink")
+        if resolved == intended_root or not resolved.is_relative_to(intended_root):
+            raise ValueError("Runtime state must remain inside the intended ignored outputs/ root")
+    except (OSError, RuntimeError) as error:
+        raise ValueError("Cannot resolve the intended ignored outputs/ boundary") from error
+    return resolved
 
 
 @dataclass(slots=True)
@@ -68,11 +112,8 @@ class RuntimeManifest:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
-    def write(self, path: str | Path) -> Path:
-        selected = Path(path)
-        if "outputs" not in {part.casefold() for part in selected.parts}:
-            raise ValueError(
-                "Runtime manifests can contain service identifiers and must be "
-                "written below an ignored outputs/ directory"
-            )
+    def write(
+        self, path: str | Path, *, outputs_root: str | Path | None = None,
+    ) -> Path:
+        selected = runtime_output_path(path, outputs_root=outputs_root)
         return _write_json_atomic(selected, self.to_dict())

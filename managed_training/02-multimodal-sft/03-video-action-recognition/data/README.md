@@ -1,10 +1,23 @@
 # UCF101 data
 
-The notebook retrieves the UCF101 Kaggle dataset used by the source demo and
-starts from its official `train.csv` and `val.csv` partitions. It selects the
+The notebook retrieves immutable Kaggle dataset
+`matthewjansen/ucf101-action-recognition/versions/4` and verifies the SHA-256
+hashes of its official `train.csv` and `val.csv` before parsing either CSV.
+It selects the
 three most common training classes and samples 12 training and 4 validation
 clips per class with seed 0. The source test partition is not used by this
 training-only cookbook.
+
+The pinned source CSV hashes are:
+
+| Source | SHA-256 |
+|---|---|
+| `train.csv` | `e67f43569701064a568a1e56bcfb2cce5646caa017c1f45171bcb347aeed6ea4` |
+| `val.csv` | `df8125e4170c3567ee89db96a860be524c6e031fb35aa7c96925e3dd8f4fcabf` |
+
+The generated `lineage.json` records the requested version and handle, verified
+CSV hashes, and selected relative clip paths and labels for each split. It does
+not infer a source version from the mirror's mutable latest download.
 
 All frames from a source clip stay in one split. Frame positions exactly match
 the source helper: three indices are selected with

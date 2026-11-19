@@ -216,6 +216,7 @@ def test_prompt_only_dataset_builds_groups():
         (None, None),
         ("GlobalStandard", "GlobalStandard"),
         ("globalstandard", "GlobalStandard"),
+        ("GLOBALSTANDARD", "GlobalStandard"),
     ],
 )
 def test_create_kl_reference_client_creates_independent_session(
@@ -270,6 +271,7 @@ async def test_distillation_records_student_and_teacher_sessions(tmp_path, monke
     monkeypatch.setenv("AZURE_AI_API_KEY", "test-key")
     client = MagicMock()
     client.create_session = AsyncMock(return_value="session_student")
+    client.close_session = AsyncMock()
     client.close = AsyncMock()
 
     async def fake_training(config, training_client, session_id, **kwargs):
@@ -289,6 +291,7 @@ async def test_distillation_records_student_and_teacher_sessions(tmp_path, monke
     metadata = json.loads((tmp_path / "distillation" / "run_meta.json").read_text())
     assert metadata["azure"]["session_id"] == "session_student"
     assert metadata["azure"]["reference_session_id"] == "session_teacher"
+    client.close_session.assert_awaited_once_with("session_student")
 
 
 def test_distillation_kl_loop_runs(tmp_path):

@@ -76,7 +76,7 @@ class _DeepSeekV3BaseRenderer(Renderer):
         # Check if this assistant message follows a tool response
         follows_tool = ctx.prev_message is not None and ctx.prev_message["role"] == "tool"
 
-        content = message["content"]
+        content = message["content"] or ""
 
         if message["role"] == "system":
             # HF template collects all system messages at the start without role tokens

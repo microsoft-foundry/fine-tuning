@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from types import SimpleNamespace
 from typing import get_type_hints
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from azure.ai.finetuningsessions.models import ModelInput, ModelInputChunk
@@ -210,6 +212,178 @@ def test_autonomous_rollout_keeps_constant_reward_filter_and_rejects_reroll_sett
         )
     )
     assert retry_compatible_result is builder.group
+
+
+@pytest.mark.parametrize("skip_after_preparation", [True, False])
+@pytest.mark.parametrize("resample", [True, False])
+def test_sync_rollouts_and_evaluations_keep_the_sampled_policy_step(
+    tmp_path, monkeypatch, skip_after_preparation, resample,
+):
+    class SamplingClient:
+        def __init__(self, checkpoint_id):
+            self.sampling_checkpoint = SamplingCheckpoint("session", checkpoint_id)
+
+        def set_sampling_checkpoint_step(self, step):
+            self.sampling_checkpoint = replace(self.sampling_checkpoint, policy_step=step)
+
+    builders = [_AutonomousBuilder(_trajectory_group([0.0, 1.0])) for _ in range(4)]
+    if not skip_after_preparation:
+        builders[1].group = _trajectory_group([1.0, 1.0])
+    dataset = SimpleNamespace(get_batch=lambda index: [builders[index]])
+
+    async def recover(sample, batch_builders):
+        assert len(batch_builders) == 1
+        await sample()
+        return await sample()
+
+    config = train_module.Config(
+        learning_rate=1e-4,
+        dataset_builder=lambda: None,
+        model_name="model",
+        max_tokens=8,
+        log_path=str(tmp_path),
+        eval_every=1,
+        save_every=0,
+        num_groups_to_log=0,
+        remove_constant_reward_groups=True,
+        rollout_batch_recovery=recover if resample else None,
+    )
+    initial = SamplingClient("step0")
+    saved_initial = initial.sampling_checkpoint
+    evaluations = []
+    saved_policy_steps = []
+    final_loop_state = {}
+    ml_logger = MagicMock()
+
+    async def evaluate(_evaluators, sampling_client, _cfg, step):
+        evaluations.append((step, sampling_client.sampling_checkpoint))
+        return {}
+
+    async def train_step(_cfg, step, *_args, current_sampling_client, loop_state_extra, **_kwargs):
+        if step == 1:
+            return current_sampling_client, {"train/skipped_no_valid_groups": 1}
+        saved_policy_steps.append(loop_state_extra["policy_step"])
+        return SamplingClient(f"step{step + 1}"), {}
+
+    monkeypatch.setattr(
+        train_module, "save_checkpoint_and_get_sampling_client",
+        AsyncMock(return_value=(initial, {})),
+    )
+    monkeypatch.setattr(train_module, "run_evaluations_parallel", evaluate)
+    monkeypatch.setattr(train_module, "do_train_step_and_get_sampling_client", train_step)
+
+    progress = asyncio.run(train_module.do_sync_training(
+        start_batch=0, end_batch=4, num_batches=4, cfg=config,
+        training_client=MagicMock(), kl_reference_client=None,
+        evaluators=[MagicMock()], dataset=dataset, ml_logger=ml_logger,
+        tokenizer=MagicMock(), final_loop_state=final_loop_state,
+    ))
+
+    checkpoints = [builder.calls[0][0] for builder in builders]
+    assert [checkpoint.policy_step for checkpoint in checkpoints] == [0, 1, 1, 2]
+    assert [checkpoint.checkpoint_id for checkpoint in checkpoints] == [
+        "step0", "step1", "step1", "step3",
+    ]
+    assert evaluations == [(step, checkpoint) for step, checkpoint in enumerate(checkpoints)]
+    assert saved_initial.policy_step is None
+    assert saved_policy_steps == [1, 2, 3]
+    assert final_loop_state == {"policy_step": 3}
+    assert progress == (4, 3)
+    assert all(len(builder.calls) == (2 if resample else 1) for builder in builders)
+    for call in ml_logger.log_metrics.call_args_list:
+        metrics = call.args[0]
+        if "sampling/pre_filter/total_groups" in metrics:
+            assert metrics["sampling/pre_filter/total_groups"] == 1
+            assert metrics["sampling/pre_filter/total_episodes"] == 2
+
+
+@pytest.mark.parametrize("unsupported", [
+    {"dynamic_sampling": True}, {"async_config": MagicMock()},
+    {"stream_minibatch_config": MagicMock()}, {"strategy": MagicMock()},
+    {"strategy": MagicMock(), "refill_on_drop": True},
+])
+def test_batch_recovery_rejects_unsupported_sampling_modes(tmp_path, unsupported):
+    with pytest.raises(ValueError, match="rollout_batch_recovery requires"):
+        train_module.Config(
+            learning_rate=1e-4, dataset_builder=lambda: None, model_name="model",
+            max_tokens=8, log_path=str(tmp_path), rollout_batch_recovery=AsyncMock(),
+            **unsupported,
+        )
+
+
+@pytest.mark.parametrize(
+    "start_batch,resume_step,expected,skipped",
+    [(5, 2, 2, True), (5, None, None, True), (0, None, None, True),
+     (5, 2, 2, False), (5, None, None, False), (0, 0, 0, False)],
+)
+def test_sync_resume_preserves_known_or_unknown_policy_step(
+    tmp_path, monkeypatch, start_batch, resume_step, expected, skipped,
+):
+    class SamplingClient:
+        def __init__(self):
+            self.sampling_checkpoint = SamplingCheckpoint("session", "step0")
+
+        def set_sampling_checkpoint_step(self, step):
+            self.sampling_checkpoint = replace(self.sampling_checkpoint, policy_step=step)
+
+    builder = _AutonomousBuilder(_trajectory_group([0.0, 1.0]))
+    dataset = SimpleNamespace(get_batch=lambda _index: [builder])
+    config = train_module.Config(
+        learning_rate=1e-4, dataset_builder=lambda: None, model_name="model",
+        max_tokens=8, log_path=str(tmp_path), eval_every=0, save_every=0,
+        num_groups_to_log=0,
+    )
+    sampling_client = SamplingClient()
+    monkeypatch.setattr(
+        train_module, "save_checkpoint_and_get_sampling_client",
+        AsyncMock(return_value=(sampling_client, {})),
+    )
+    monkeypatch.setattr(
+        train_module, "do_train_step_and_get_sampling_client",
+        AsyncMock(return_value=(sampling_client, {"train/skipped_no_valid_groups": 1} if skipped else {})),
+    )
+    final_loop_state = {}
+
+    asyncio.run(train_module.do_sync_training(
+        start_batch=start_batch, end_batch=start_batch + 1, num_batches=start_batch + 1,
+        cfg=config, training_client=MagicMock(), kl_reference_client=None,
+        evaluators=[], dataset=dataset, ml_logger=MagicMock(), tokenizer=MagicMock(),
+        resume_sampling_policy_step=resume_step, has_resume_checkpoint=True,
+        final_loop_state=final_loop_state,
+    ))
+
+    assert builder.calls[0][0].policy_step == expected
+    next_step = expected if skipped or expected is None else expected + 1
+    assert sampling_client.sampling_checkpoint.policy_step == next_step
+    assert final_loop_state == {"policy_step": next_step}
+
+
+def test_empty_minibatch_keeps_current_policy_without_checkpointing(monkeypatch, tmp_path):
+    config = train_module.Config(
+        learning_rate=1e-4, dataset_builder=lambda: None, model_name="model",
+        max_tokens=8, log_path=str(tmp_path), num_groups_to_log=0,
+    )
+    sampler = object()
+    training_client = MagicMock()
+    monkeypatch.setattr(
+        train_module, "prepare_minibatch", AsyncMock(return_value=([], {})),
+    )
+    train_step = AsyncMock()
+    save_metrics = AsyncMock()
+    monkeypatch.setattr(train_module, "train_step", train_step)
+    monkeypatch.setattr(
+        train_module, "compute_full_batch_metrics_and_get_sampling_client", save_metrics,
+    )
+
+    result, metrics = asyncio.run(train_module.do_train_step_and_get_sampling_client(
+        config, 2, training_client, None, MagicMock(), [], [],
+        current_sampling_client=sampler,
+    ))
+
+    assert result is sampler
+    assert metrics["train/skipped_no_valid_groups"] == 1
+    train_step.assert_not_awaited()
+    save_metrics.assert_not_awaited()
 
 
 class _OrdinaryEnv(Env):

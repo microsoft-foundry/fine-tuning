@@ -1,7 +1,9 @@
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from programmed_training.rl import train as rl_train
+from programmed_training.rl.train_azure import AzureSDKSamplingClient
 
 
 def test_periodic_rl_checkpoint_persists_internal_step(tmp_path):
@@ -20,6 +22,7 @@ def test_periodic_rl_checkpoint_persists_internal_step(tmp_path):
             log_path=str(tmp_path),
             save_every=2,
             start_batch=0,
+            loop_state_extra={"policy_step": 2},
         )
     )
 
@@ -29,7 +32,44 @@ def test_periodic_rl_checkpoint_persists_internal_step(tmp_path):
     assert row["name"] == "4"
     assert row["batch"] == 4
     assert row["step"] == 3
+    assert row["policy_step"] == 2
+    assert rl_train._resumed_sampling_policy_step(row) == 2
     assert row["state_path"] == "model_source/4"
+
+
+@pytest.mark.parametrize(
+    "resume_info,expected",
+    [({}, None), ({"step": 0}, None), ({"batch": 8, "step": 2}, None),
+     ({"policy_step": 0}, 0), ({"batch": 8, "step": 6, "policy_step": 2}, 2),
+     ({"step": 6, "policy_step": None}, None)],
+)
+def test_resume_policy_step_uses_explicit_successful_update_counter(resume_info, expected):
+    assert rl_train._resumed_sampling_policy_step(resume_info) == expected
+
+
+@pytest.mark.parametrize("step", [-1, True, 1.5, "2"])
+def test_resume_policy_step_rejects_invalid_checkpoint_metadata(step):
+    with pytest.raises(ValueError, match="non-negative integer"):
+        rl_train._resumed_sampling_policy_step({"policy_step": step})
+
+
+@pytest.mark.parametrize("policy_step", [0, 2, None])
+def test_final_eval_uses_policy_counter_not_metrics_step_or_checkpoint_name(tmp_path, policy_step):
+    sampling_client = AzureSDKSamplingClient(MagicMock(), "session", "final", MagicMock())
+    save_checkpoint = AsyncMock(return_value={"sampler_path": "final"})
+    evaluator = AsyncMock(return_value={})
+    cfg = _main_cfg(tmp_path, num_batches=10, evaluators=[lambda: evaluator], eval_every=1)
+
+    async def fake_training_func(**kwargs):
+        kwargs["final_loop_state"]["policy_step"] = policy_step
+        return 7, 5
+
+    _run_main(cfg, save_checkpoint, fake_training_func, sampling_client=sampling_client)
+
+    assert sampling_client.sampling_checkpoint.checkpoint_id == "final"
+    assert sampling_client.sampling_checkpoint.policy_step == policy_step
+    assert save_checkpoint.await_args.kwargs["loop_state"]["policy_step"] == policy_step
+    evaluator.assert_awaited_once_with(sampling_client, step=7)
 
 
 def test_final_rl_checkpoint_persists_actual_completed_step(tmp_path):
@@ -253,10 +293,10 @@ def test_stream_minibatch_empty_step_does_not_train_or_complete(tmp_path):
     training_client.optim_step_async.assert_not_called()
 
 
-def _run_main(cfg, save_checkpoint, training_func, resume_batch=None):
+def _run_main(cfg, save_checkpoint, training_func, resume_batch=None, sampling_client="sampling-client"):
     training_client = MagicMock()
     training_client.get_tokenizer.return_value = MagicMock()
-    training_client.create_sampling_client = MagicMock(return_value="sampling-client")
+    training_client.create_sampling_client = MagicMock(return_value=sampling_client)
     service_client = MagicMock()
     if resume_batch is None:
         get_last_checkpoint = MagicMock(return_value=None)

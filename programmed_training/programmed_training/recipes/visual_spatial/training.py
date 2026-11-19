@@ -8,8 +8,8 @@ import os
 import random
 import threading
 from collections import OrderedDict
-from dataclasses import dataclass
-from functools import partial
+from dataclasses import dataclass, field
+from functools import cached_property, partial
 from typing import Callable, Literal, Sequence
 
 import chz
@@ -339,6 +339,14 @@ def _validate_prompt_budget(
 
 @chz.chz
 class VisualSpatialSftBuilder(ChatDatasetBuilder):
+    """Cache one renderer per builder, keeping model and tokenizer sources separate.
+
+    ``model_name`` selects the base model's image processor. Omit it to retain
+    legacy programmatic behavior using ``common_config.model_name_for_tokenizer``
+    for image processing too; entrypoints pass the real base model explicitly.
+    """
+
+    model_name: str | None = None
     max_train_examples: int | None = None
     seed: int = 0
     images_per_example: int = 1
@@ -346,14 +354,17 @@ class VisualSpatialSftBuilder(ChatDatasetBuilder):
     image_cache_dir: str | None = None
     task_variant: TaskVariant = "single_image"
 
-    @property
+    @cached_property
     def renderer(self) -> Renderer:
+        processor_model_name = (
+            self.common_config.model_name_for_tokenizer
+            if self.model_name is None
+            else self.model_name
+        )
         renderer = get_renderer(
             self.common_config.renderer_name,
             self.tokenizer,
-            image_processor=get_image_processor(
-                self.common_config.model_name_for_tokenizer
-            ),
+            image_processor=get_image_processor(processor_model_name),
         )
         renderer.image_cache_dir = self.image_cache_dir
         return renderer
@@ -748,6 +759,7 @@ class VisualSpatialAccuracyEvaluator(SamplingClientEvaluator):
     image_cache_dir: str | None = None
     log_examples: bool = False
     task_variant: TaskVariant = "single_image"
+    tokenizer_name: str | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         if self.concurrency < 1:
@@ -787,7 +799,7 @@ class VisualSpatialAccuracyEvaluator(SamplingClientEvaluator):
         )
         self.renderer = get_renderer(
             self.renderer_name,
-            get_tokenizer(self.model_name),
+            get_tokenizer(self.tokenizer_name or self.model_name),
             image_processor=get_image_processor(self.model_name),
         )
         self.renderer.image_cache_dir = self.image_cache_dir
@@ -927,9 +939,12 @@ class VisualSpatialAccuracyEvaluator(SamplingClientEvaluator):
         completed_predictions = [
             prediction for prediction in predictions if prediction is not None
         ]
-        os.makedirs(self.output_dir, exist_ok=True)
+        from programmed_training.auto_resume import current_log_path
+
+        output_dir = current_log_path(self.output_dir)
+        os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(
-            self.output_dir, f"visual_spatial_eval_{self.call_index}.jsonl"
+            output_dir, f"visual_spatial_eval_{self.call_index}.jsonl"
         )
         output_descriptor = os.open(
             output_path,

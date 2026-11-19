@@ -26,16 +26,21 @@ def default_logs_root() -> Path:
     """Return the default root directory for run logs.
 
     Resolution order:
-      1. ``$INTERACTIVE_POST_TRAINING_LOGS_ROOT`` environment variable, if set (any platform).
-      2. ``C:\\interactive-post-training-runs`` on native Windows (short, fixed root that avoids
+    1. ``$INTERACTIVE_POST_TRAINING_LOGS_ROOT``, if nonempty (any platform).
+    2. ``$LOOM_LOGS_ROOT``, if nonempty (legacy/internal fallback).
+    3. ``C:\\interactive-post-training-runs`` on native Windows (short, fixed root that avoids
          OneDrive-redirected ``%USERPROFILE%`` paths and the 260-char path cap).
-      3. ``~/interactive-post-training-runs`` everywhere else (Linux, macOS, WSL).
+    4. ``~/interactive-post-training-runs`` everywhere else (Linux, macOS, WSL).
 
     Recipes write to ``<root>/<recipe>/<run_name>/`` and the dashboard scans
     ``<root>`` for runs. Override per-run with ``log_path=...`` on the CLI,
     or globally with ``INTERACTIVE_POST_TRAINING_LOGS_ROOT=/some/path``.
+    Existing LOOM-only configurations and preview platform defaults are unchanged;
+    neither environment variable moves or copies previous run logs.
     """
-    env = os.environ.get("INTERACTIVE_POST_TRAINING_LOGS_ROOT")
+    env = os.environ.get("INTERACTIVE_POST_TRAINING_LOGS_ROOT") or os.environ.get(
+        "LOOM_LOGS_ROOT"
+    )
     if env:
         return Path(env).expanduser()
     if sys.platform.startswith("win"):

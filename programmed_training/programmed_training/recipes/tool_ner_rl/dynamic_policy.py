@@ -1,16 +1,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, ClassVar, Protocol
 
 from programmed_training.dynamic_batching import build_strategy
 from programmed_training.dynamic_batching.strategy import DynamicBatchStrategy, PodsStrategy
+
+
+class NerBatchingPolicy(Protocol):
+    @property
+    def name(self) -> str: ...
+
+    def training_overrides(self) -> dict[str, Any]: ...
+
+    def metadata(self) -> dict[str, Any]: ...
 
 
 @dataclass(frozen=True)
 class NerDynamicBatchingPolicy:
     """Default online signal-selection policy for graded exact-F1 rewards."""
 
+    name: ClassVar[str] = "pods"
     group_size: int = 8
     pods_keep: int = 4
     max_oversample_rounds: int = 3
@@ -46,3 +56,6 @@ class NerDynamicBatchingPolicy:
             "refill_on_drop": False,
             "max_rolls_per_group": None,
         }
+
+    def metadata(self) -> dict[str, Any]:
+        return {"pods_keep": self.pods_keep}

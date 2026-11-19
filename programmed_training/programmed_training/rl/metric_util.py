@@ -3,15 +3,17 @@ import inspect
 import itertools
 import logging
 import math
+import time
 from collections import defaultdict
 from collections.abc import Awaitable, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Dict, List, Protocol
+from typing import Any, Callable, Dict, Iterator, List, Protocol
 
 import numpy as np
 from azure.ai.finetuningsessions import FineTuningSession
 from azure.ai.finetuningsessions.models import ModelInput, ModelInputChunk
-from programmed_training.completers import SessionTokenCompleter, TokenCompleter
+from programmed_training.completers import ContextLengthExceededError, SessionTokenCompleter, TokenCompleter
 from programmed_training.eval.evaluators import SamplingClientEvaluator
 from programmed_training.rl.rollouts import (
     AuthoritativeGroupGradingError,
@@ -182,6 +184,46 @@ class ValidationSkipped:
     reason: str
 
 
+PhaseTimingObserver = Callable[[str, float, float, int, BaseException | None], None]
+"""Callback invoked with (key, started, ended, step, error) when a phase ends."""
+
+
+def record_phase_time(
+    key: str,
+    metrics: dict[str, Any],
+    started: float,
+    step: int,
+    error: BaseException | None = None,
+    *,
+    observer: PhaseTimingObserver | None = None,
+) -> None:
+    """Record one phase's scalar duration metric and notify an optional observer."""
+    ended = time.monotonic()
+    metrics[f"time/{key}"] = ended - started
+    if observer is not None:
+        observer(key, started, ended, step, error)
+
+
+@contextmanager
+def timed_phase(
+    key: str,
+    metrics: dict[str, Any],
+    step: int,
+    *,
+    observer: PhaseTimingObserver | None = None,
+) -> Iterator[None]:
+    """Measure once for scalar metrics and an optional interval observer."""
+    started = time.monotonic()
+    error: BaseException | None = None
+    try:
+        yield
+    except BaseException as exc:
+        error = exc
+        raise
+    finally:
+        record_phase_time(key, metrics, started, step, error, observer=observer)
+
+
 class ValidationObserver(Protocol):
     """Observe a pass, supply rewards, or return ValidationSkipped to omit its metrics."""
 
@@ -220,6 +262,7 @@ class RLTestSetEvaluator(SamplingClientEvaluator):
         observer: ValidationObserver | None = None,
         response_format: dict[str, Any] | None = None,
         require_full_validation: bool = False,
+        max_concurrent_groups: int | None = None,
         temperature: float = 1.0,
         seed: int | None = None,
     ):
@@ -247,6 +290,9 @@ class RLTestSetEvaluator(SamplingClientEvaluator):
         self.max_extra_trajectory_attempts_per_group = max_extra_trajectory_attempts_per_group
         self.observer = observer
         self.response_format = response_format
+        if max_concurrent_groups is not None and max_concurrent_groups < 1:
+            raise ValueError("max_concurrent_groups must be at least 1")
+        self.max_concurrent_groups = max_concurrent_groups
         self.temperature = temperature
         self.seed = seed
 
@@ -272,7 +318,14 @@ class RLTestSetEvaluator(SamplingClientEvaluator):
             else None
         )
 
-        async def run_group_rollout(builder, i):
+        semaphore = (
+            asyncio.Semaphore(self.max_concurrent_groups)
+            if self.max_concurrent_groups is not None
+            else None
+        )
+        context_errors: list[ContextLengthExceededError] = []
+
+        async def run_group_rollout_unbounded(builder, i):
             enable_logging = i < self.num_groups_to_log
             with logtree.optional_enable_logging(enable=enable_logging):
                 try:
@@ -313,14 +366,22 @@ class RLTestSetEvaluator(SamplingClientEvaluator):
                         i,
                     )
                     return None
-                except Exception:
+                except Exception as exc:
                     # Collect failed groups before enforcing full validation, so
                     # all concurrent rollouts finish their environment cleanup.
+                    if self.require_full_validation and isinstance(exc, ContextLengthExceededError):
+                        context_errors.append(exc)
                     logger.exception(
                         "Eval group %d failed; dropping it from eval.",
                         i,
                     )
                     return None
+
+        async def run_group_rollout(builder, i):
+            if semaphore is None:
+                return await run_group_rollout_unbounded(builder, i)
+            async with semaphore:
+                return await run_group_rollout_unbounded(builder, i)
 
         results_P = await asyncio.gather(
             *[run_group_rollout(builder, i) for i, builder in enumerate(self.env_group_builders_P)]
@@ -337,7 +398,7 @@ class RLTestSetEvaluator(SamplingClientEvaluator):
                 "Full validation failed: "
                 f"{dropped} of {len(results_P)} validation groups were dropped; "
                 "refusing to publish incomplete validation metrics"
-            )
+            ) from (context_errors[0] if context_errors else None)
         if not kept:
             logger.warning(
                 "All %d eval groups failed; returning empty eval metrics (run continues).",

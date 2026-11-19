@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 import programmed_training.rl.train as T
 from programmed_training.dynamic_batching.strategy import (
@@ -242,3 +244,64 @@ def test_fixed_strategy_single_wave_admits(monkeypatch):
     assert result is not None
     assert n_calls == 1
     assert len(result.trajectories_G) == 2
+
+
+@pytest.mark.parametrize("replenish", [False, True])
+def test_growth_wave_exhaustion_uses_the_same_retry_policy_and_drop_rules(monkeypatch, replenish):
+    policy = T.RolloutRetryPolicy(max_retries_per_trajectory=2, max_extra_attempts_per_group=4)
+    tracker = T.RolloutFailureTracker()
+    error = T.RolloutGroupExhausted("growth wave exhausted")
+    rollout = AsyncMock(side_effect=[_group([1.0, 0.0]), error])
+    monkeypatch.setattr(T, "do_group_rollout", rollout)
+    monkeypatch.setattr(T, "SessionTokenCompleter", lambda *a, **k: MagicMock())
+
+    operation = T.do_group_rollout_and_filter_constant_reward(
+        sampling_client=MagicMock(), env_group_builder=_env_group_builder(),
+        max_tokens=8, temperature=1.0, do_remove_constant_reward_groups=False,
+        enable_logging=False,
+        strategy=PilotCommitStrategy(
+            p_lower=0.125, p_upper=0.75, pilot_rollouts=2, commit_rollouts=2,
+        ),
+        max_rolls_per_group=4, retry_policy=policy, failure_tracker=tracker,
+        replenish_exhausted_group=replenish,
+    )
+    if replenish:
+        assert asyncio.run(operation) is None
+    else:
+        with pytest.raises(T.RolloutGroupExhausted) as caught:
+            asyncio.run(operation)
+        assert caught.value is error
+    assert rollout.await_count == 2
+    for call in rollout.call_args_list:
+        assert call.kwargs == {"retry_policy": policy, "failure_tracker": tracker}
+
+
+@pytest.mark.parametrize("max_resets", [0, 1])
+def test_growth_wave_circuit_breaker_honors_the_shared_recovery_budget(monkeypatch, max_resets):
+    policy = T.RolloutRetryPolicy(max_retries_per_trajectory=2, max_extra_attempts_per_group=4)
+    tracker = T.RolloutFailureTracker(max_resets=max_resets, reset_backoff_sec=0)
+    error = T.RolloutFailureRateExceeded("growth wave breaker tripped")
+    rollout = AsyncMock(side_effect=[_group([1.0, 0.0]), error, _group([1.0, 0.0])])
+    monkeypatch.setattr(T, "do_group_rollout", rollout)
+    monkeypatch.setattr(T, "SessionTokenCompleter", lambda *a, **k: MagicMock())
+
+    operation = T.do_group_rollout_and_filter_constant_reward(
+        sampling_client=MagicMock(), env_group_builder=_env_group_builder(),
+        max_tokens=8, temperature=1.0, do_remove_constant_reward_groups=False,
+        enable_logging=False,
+        strategy=PilotCommitStrategy(
+            p_lower=0.125, p_upper=0.75, pilot_rollouts=2, commit_rollouts=2,
+        ),
+        max_rolls_per_group=4, retry_policy=policy, failure_tracker=tracker,
+    )
+    if max_resets:
+        result = asyncio.run(operation)
+        assert result is not None and len(result.trajectories_G) == 4
+        assert rollout.await_count == 3 and tracker.resets_used == 1
+    else:
+        with pytest.raises(T.RolloutFailureRateExceeded) as caught:
+            asyncio.run(operation)
+        assert caught.value is error
+        assert rollout.await_count == 2 and tracker.resets_used == 0
+    for call in rollout.call_args_list:
+        assert call.kwargs == {"retry_policy": policy, "failure_tracker": tracker}

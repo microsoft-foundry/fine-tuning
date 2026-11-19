@@ -110,8 +110,12 @@ async def test_reference_logprobs_shift_and_validate():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("overrides", [{}, {
+    "adam_beta1": 0.6, "adam_beta2": 0.8, "adam_eps": 1e-4,
+    "adam_weight_decay": 0.15,
+}])
 async def test_training_loop_evaluates_and_keeps_reference_on_resume(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, overrides,
 ):
     from programmed_training.recipes.preference.dpo import training
 
@@ -172,12 +176,21 @@ async def test_training_loop_evaluates_and_keeps_reference_on_resume(
             max_steps=2,
             eval_every=1,
             save_every=1,
+            **overrides,
         ),
         client,
         reference,
         "reference-checkpoint",
     )
     assert client.optim_step_async.await_count == 1
+    adam = client.optim_step_async.call_args.args[0]
+    assert adam.as_dict() == {
+        "learning_rate": adam.learning_rate,
+        "beta1": overrides.get("adam_beta1", 0.9),
+        "beta2": overrides.get("adam_beta2", 0.999),
+        "eps": overrides.get("adam_eps", 1e-8),
+        "weight_decay": overrides.get("adam_weight_decay", 0.0),
+    }
     assert client.forward_async.await_count == 6
     assert save.await_count == 2
     final = save.call_args.kwargs

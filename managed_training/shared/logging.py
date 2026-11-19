@@ -14,9 +14,15 @@ _GUID = re.compile(
     re.IGNORECASE,
 )
 _URL = re.compile(r"https://[^\s\"']+", re.IGNORECASE)
+_SECRET_NAMES = (
+    r"api[-_ ]?keys?|(?:proxy[-_ ]?)?authorization|client[-_ ]?secrets?|"
+    r"(?:(?:access|refresh|id|auth|bearer)[-_ ]?)?tokens?"
+)
+_SECRET_KEY = re.compile(rf"(?:{_SECRET_NAMES})", re.IGNORECASE)
 _SECRET = re.compile(
-    r"(?i)\b(api[-_ ]?key|authorization|client[-_ ]?secret|token)\b"
-    r"(\s*[:=]\s*|\s+)(bearer\s+)?[^\s,;]+"
+    rf"\b({_SECRET_NAMES})\b([\"']?\s*[:=]\s*|\s+)(?:bearer\s+)?"
+    r'''("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;}\]]+)''',
+    re.IGNORECASE,
 )
 _RESOURCE_ID = re.compile(
     r"\b(?:ftjob|file|eval|run|deploy|resp|response)-[A-Za-z0-9_-]{6,}\b",
@@ -33,13 +39,43 @@ def safe_reference(value: str) -> str:
 def redact_text(value: str, *, sensitive_values: tuple[str, ...] = ()) -> str:
     """Redact endpoints, secrets, GUIDs, and service identifiers from text."""
     redacted = value
+    # Whole JSON messages can carry object/list-valued secrets too. The regex
+    # below also handles quoted keys embedded in ordinary exception prose.
+    try:
+        structured = json.loads(value)
+    except (ValueError, TypeError):
+        structured = None
+    if isinstance(structured, (dict, list)):
+        redacted = json.dumps(_redact_fields(structured), ensure_ascii=False)
     for sensitive in sensitive_values:
         if sensitive:
             redacted = redacted.replace(sensitive, "<redacted>")
-    redacted = _SECRET.sub(r"\1\2<redacted>", redacted)
+
+    def hide_secret(match: re.Match[str]) -> str:
+        value = match.group(3)
+        quote = value[0] if value[0] in {"'", '"'} else ""
+        return f"{match.group(1)}{match.group(2)}{quote}<redacted>{quote}"
+
+    redacted = _SECRET.sub(hide_secret, redacted)
     redacted = _URL.sub("<redacted-url>", redacted)
     redacted = _GUID.sub("<redacted-guid>", redacted)
     return _RESOURCE_ID.sub("<redacted-id>", redacted)
+
+
+def _redact_fields(value: Any) -> Any:
+    """Scrub structured secrets before JSON serialization, without mutation."""
+    if isinstance(value, Mapping):
+        return {
+            str(key): (
+                "<redacted>"
+                if _SECRET_KEY.fullmatch(str(key).strip())
+                else _redact_fields(item)
+            )
+            for key, item in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [_redact_fields(item) for item in value]
+    return redact_text(value) if isinstance(value, str) else value
 
 
 class RedactingFormatter(logging.Formatter):
@@ -93,4 +129,9 @@ def log_event(
     }
     if fields:
         payload["details"] = dict(fields)
-    logger.log(level, json.dumps(payload, default=str, sort_keys=True))
+    # Do not rely on a particular handler/formatter: callers can supply any
+    # logger, and secret values can themselves be dictionaries or lists.
+    logger.log(
+        level,
+        redact_text(json.dumps(_redact_fields(payload), default=str, sort_keys=True)),
+    )

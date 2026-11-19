@@ -55,6 +55,55 @@ def auto_tokenizer_loader(monkeypatch):
 
 
 @pytest.mark.parametrize("suffix", ["", ":adapter"])
+@pytest.mark.parametrize(
+    "model_name,tokenizer_name,revision",
+    [
+        ("Qwen/Qwen3.8-27B-256K", "Qwen/Qwen3.8-27B", "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0"),
+        ("meta-models/Muse-Glimmer-30B-128K", "meta-models/Muse-Glimmer-30B", "a4e59da52a7bc87ae7251dd5545c0dd437c44b68"),
+        (
+            "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16-256K",
+            "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16",
+            "77df655d5e9f8362164ed14dd8b48f8bce657498",
+        ),
+    ],
+)
+def test_long_context_models_use_public_tokenizers(
+    auto_tokenizer_loader, model_name, tokenizer_name, revision, suffix
+):
+    assert (
+        tokenizer_utils.get_tokenizer(model_name + suffix)
+        is auto_tokenizer_loader.return_value
+    )
+    auto_tokenizer_loader.assert_called_once_with(tokenizer_name, use_fast=True, revision=revision)
+
+
+@pytest.mark.parametrize("suffix", ["", ":adapter"])
+@pytest.mark.parametrize("model_name,processor_name", [
+    ("meta-models/Muse-Glimmer-30B-128K", "meta-models/Muse-Glimmer-30B"),
+    ("meta-models/Muse-Glimmer-30B", "meta-models/Muse-Glimmer-30B"),
+    ("./models/vision-128K", "./models/vision-128K"),
+    (r"C:\models\vision", r"C:\models\vision"),
+])
+def test_image_processor_resolves_exact_aliases_and_preserves_paths(
+    monkeypatch, model_name, processor_name, suffix
+):
+    from transformers.models.auto.image_processing_auto import AutoImageProcessor
+    from programmed_training.image_processing_utils import get_image_processor
+
+    loader = Mock(return_value=object())
+    monkeypatch.setattr(AutoImageProcessor, "from_pretrained", loader)
+    get_image_processor.cache_clear()
+    try:
+        assert get_image_processor(model_name + suffix) is loader.return_value
+        kwargs: dict[str, bool | str] = {"use_fast": True}
+        if model_name == "meta-models/Muse-Glimmer-30B-128K":
+            kwargs["revision"] = "a4e59da52a7bc87ae7251dd5545c0dd437c44b68"
+        loader.assert_called_once_with(processor_name, **kwargs)
+    finally:
+        get_image_processor.cache_clear()
+
+
+@pytest.mark.parametrize("suffix", ["", ":adapter"])
 def test_bonsai_uses_pinned_equivalent_companion_tokenizer(auto_tokenizer_loader, suffix):
     tokenizer_utils.get_tokenizer("prism-ml/Ternary-Bonsai-2-27B-gguf" + suffix)
     auto_tokenizer_loader.assert_called_once_with(
@@ -73,6 +122,41 @@ def test_bonsai_does_not_load_shadowing_companion(auto_tokenizer_loader, monkeyp
     auto_tokenizer_loader.assert_not_called()
 
 
+@pytest.mark.parametrize("model_name,tokenizer_name", [
+    ("Qwen/Qwen3.8-27B-256K", "Qwen/Qwen3.8-27B"),
+    ("meta-models/Muse-Glimmer-30B-128K", "meta-models/Muse-Glimmer-30B"),
+    (
+        "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16-256K",
+        "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16",
+    ),
+])
+def test_long_context_models_reject_shadowing_tokenizer(
+    auto_tokenizer_loader, monkeypatch, tmp_path, model_name, tokenizer_name
+):
+    (tmp_path / tokenizer_name).mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValueError, match="shadows"):
+        tokenizer_utils.get_tokenizer(model_name)
+    auto_tokenizer_loader.assert_not_called()
+
+
+def test_long_context_model_rejects_shadowing_image_processor(monkeypatch, tmp_path):
+    from transformers.models.auto.image_processing_auto import AutoImageProcessor
+    from programmed_training.image_processing_utils import get_image_processor
+
+    (tmp_path / "meta-models/Muse-Glimmer-30B").mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+    loader = Mock()
+    monkeypatch.setattr(AutoImageProcessor, "from_pretrained", loader)
+    get_image_processor.cache_clear()
+    try:
+        with pytest.raises(ValueError, match="shadows"):
+            get_image_processor("meta-models/Muse-Glimmer-30B-128K")
+        loader.assert_not_called()
+    finally:
+        get_image_processor.cache_clear()
+
+
 @pytest.mark.parametrize(
     "model_name",
     [
@@ -82,6 +166,8 @@ def test_bonsai_does_not_load_shadowing_companion(auto_tokenizer_loader, monkeyp
         "other/model-Instruct",
         "other/model.60",
         "other-mirror/model",
+        "other/model-256K",
+        "./Qwen/Qwen3.8-27B-256K",
         "./other/model",
         "/models/other/model",
     ],
@@ -137,7 +223,13 @@ def test_glm5_detection_preserves_windows_drive(monkeypatch, tmp_path, suffix):
 
 @pytest.mark.parametrize(
     "model_name",
-    ["custom/tokenizer", "other/model", "other/model:adapter"],
+    [
+        "custom/tokenizer",
+        "other/model",
+        "other/model:adapter",
+        "Qwen/Qwen3.8-27B-256K",
+        "meta-models/Muse-Glimmer-30B-128K",
+    ],
 )
 def test_custom_registry_takes_precedence_over_cached_hf_tokenizer(
     monkeypatch, auto_tokenizer_loader, model_name

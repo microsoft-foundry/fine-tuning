@@ -12,11 +12,14 @@ is most likely to silently break during a port:
 * CLIConfig fields used by experiments/run_all_benchmarks.sh
 """
 
+import ast
+import io
 import json
-from unittest.mock import AsyncMock, MagicMock
+import sys
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
-
+from azure.ai.finetuningsessions.models import ModelInput
 from programmed_training.recipes.code_rl import (
     code_env,
     code_grading,
@@ -30,8 +33,9 @@ from programmed_training.recipes.code_rl.code_grading import (
     taco_to_lcb_format,
 )
 from programmed_training.recipes.code_rl.deepcoder_tool import DeepcoderReward, DeepcoderTask
+from programmed_training.recipes.code_rl.lcb_utils import TEST_UTIL
 from programmed_training.recipes.code_rl.train_azure import CLIConfig
-
+from programmed_training.utils.misc_utils import dict_mean
 
 # ---------------------------------------------------------------------------
 # Import wiring — catches missing modules or broken programmed_training.* paths
@@ -182,6 +186,114 @@ def test_normalize_tests_returns_empty_on_unparseable_string():
     assert _normalize_tests("not json", metadata={}) == []
 
 
+def test_selected_dataset_normalization_preserves_source_order():
+    dataset = code_env.Dataset.from_list([
+        {"problem": "first question", "tests": [{"input": "1", "output": "1"}]},
+        {"problem": "unjudgeable question", "tests": []},
+        {"problem": "second question", "tests": [{"input": "2", "output": "2"}]},
+    ])
+    tasks = code_env.deepcoder_tasks_from_dataset(dataset)
+    assert len(tasks) == 2
+    assert "first question" in tasks[0].problem
+    assert "second question" in tasks[1].problem
+
+
+@pytest.fixture
+def code_io_harness():
+    # Load only trusted I/O helpers, not reliability_guard or model programs.
+    definitions = [
+        node for node in ast.parse(TEST_UTIL).body
+        if isinstance(node, (ast.FunctionDef, ast.ClassDef))
+        and node.name in ("call_method", "Capturing", "stripped_string_compare")
+    ]
+    assert len(definitions) == 3
+    namespace = {
+        "__name__": "trusted_code_io_harness",
+        "sys": sys, "patch": patch, "mock_open": mock_open,
+        "StringIO": io.StringIO, "BytesIO": io.BytesIO,
+        "BufferedReader": io.BufferedReader, "BufferedWriter": io.BufferedWriter,
+        "TextIOWrapper": io.TextIOWrapper,
+    }
+    exec(compile(ast.Module(body=definitions, type_ignores=[]), "trusted_code_io_harness", "exec"), namespace)
+    return namespace
+
+
+@pytest.mark.parametrize(
+    ("reader", "expected"),
+    [
+        pytest.param(lambda: sys.stdin.read(), "a\nb\n", id="text-read"),
+        pytest.param(lambda: sys.stdin.buffer.read(), b"a\nb\n", id="binary-read"),
+        pytest.param(lambda: sys.stdin.buffer.peek(), b"a\nb\n", id="binary-peek"),
+        pytest.param(lambda: (sys.stdin.read(1), sys.stdin.read()), ("a", "\nb\n"), id="sized-read"),
+        pytest.param(
+            lambda: (sys.stdin.readline(), sys.stdin.readline(), sys.stdin.readline()),
+            ("a\n", "b\n", ""), id="readline-eof",
+        ),
+        pytest.param(lambda: sys.stdin.readlines(), ["a\n", "b\n"], id="readlines"),
+        pytest.param(lambda: list(sys.stdin), ["a\n", "b\n"], id="line-iteration"),
+        pytest.param(lambda: (input(), input()), ("a", "b"), id="builtin-input"),
+    ],
+)
+def test_grader_preserves_stdin_stream_semantics(code_io_harness, reader, expected):
+    original = sys.stdin
+    assert code_io_harness["call_method"](reader, "a\nb\n") == expected
+    assert sys.stdin is original
+
+
+def test_grader_captures_text_and_binary_stdout(code_io_harness):
+    original = sys.stdout
+    with code_io_harness["Capturing"]() as output:
+        print("a", end="")
+        sys.stdout.buffer.write(b"b")
+        print("c", end="")
+    assert output == ["abc"]
+    assert sys.stdout is original
+
+
+def test_grader_captures_utf8_binary_stdout(code_io_harness):
+    with code_io_harness["Capturing"]() as output:
+        sys.stdout.buffer.write("caf\u00e9".encode())
+    assert output == ["caf\u00e9"]
+
+
+def test_grader_can_read_output_after_solution_closes_stdout(code_io_harness):
+    with code_io_harness["Capturing"]() as output:
+        sys.stdout.buffer.write(b"done")
+        sys.stdout.close()
+    assert output == ["done"]
+
+
+def test_grader_restores_stdout_after_invalid_utf8(code_io_harness):
+    original = sys.stdout
+    with pytest.raises(UnicodeDecodeError):
+        with code_io_harness["Capturing"]():
+            sys.stdout.buffer.write(b"\xff")
+    assert sys.stdout is original
+
+
+def test_grader_restores_stdin_after_program_error(code_io_harness):
+    original = sys.stdin
+    with pytest.raises(ZeroDivisionError):
+        code_io_harness["call_method"](lambda: 1 / 0, "a")
+    assert sys.stdin is original
+
+
+@pytest.mark.parametrize(
+    ("actual", "expected", "matches"),
+    [
+        ("0\n6\n7\n", "0 6 7", True),
+        (" YES \n answer\n", "YES answer", True),
+        ("2 1", "1 2", False),
+        ("1 1 2", "1 2 2", False),
+        ("YES abc", "YES bac", False),
+    ],
+)
+def test_stdout_whitespace_matching_preserves_order_and_multiplicity(
+    code_io_harness, actual, expected, matches
+):
+    assert code_io_harness["stripped_string_compare"](actual, expected) is matches
+
+
 # ---------------------------------------------------------------------------
 # DeepcoderReward — verify reward arithmetic with sandbox stubbed out.
 #
@@ -222,6 +334,46 @@ async def test_code_env_forwards_failed_parse_reward(monkeypatch):
     await builder.make_envs()
 
     assert captured["failed_parse_reward"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_code_env_counts_parse_failures_in_correctness(monkeypatch):
+    renderer = MagicMock()
+    renderer.get_stop_sequences.return_value = None
+    renderer.build_generation_prompt.return_value = ModelInput(chunks=[])
+    renderer.parse_response_with_tools.side_effect = [
+        ({"role": "assistant", "content": ""}, False),
+        ({"role": "assistant", "content": "```python\nprint(1)\n```"}, True),
+    ]
+    monkeypatch.setattr(code_env.tokenizer_utils, "get_tokenizer", MagicMock())
+    monkeypatch.setattr(code_env, "get_renderer", MagicMock(return_value=renderer))
+    monkeypatch.setattr(code_env, "_initial_messages", MagicMock(return_value=[]))
+    grader = AsyncMock(return_value=(True, {"stub": True}))
+    monkeypatch.setattr(deepcoder_tool, "sandbox_check_correctness", grader)
+    builder = code_env.DeepcoderEnvGroupBuilder(
+        task=_task(),
+        model_name="test-model",
+        renderer_name="test-renderer",
+        max_turns=2,
+        group_size=2,
+        sandbox_backend=None,
+        failed_parse_reward=-0.25,
+    )
+
+    failed_env, passing_env = await builder.make_envs()
+    failed = await failed_env.step([])
+    passing = await passing_env.step([])
+
+    assert failed.episode_done
+    assert failed.reward == -0.25
+    assert failed.metrics == {"parse_error": 1.0, "format": 0.0, "correct": 0.0}
+    assert passing.episode_done
+    assert passing.reward == 1.0
+    assert passing.metrics == {"format": 1.0, "correct": 1.0}
+    aggregate = dict_mean([failed.metrics, passing.metrics])
+    assert aggregate["correct"] == 0.5
+    assert aggregate["format"] == 0.5
+    grader.assert_awaited_once()
 
 
 def _patch_sandbox(monkeypatch, *, passed: bool):

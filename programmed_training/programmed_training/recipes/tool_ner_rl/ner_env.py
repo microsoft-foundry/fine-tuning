@@ -297,6 +297,8 @@ def load_openpii_tasks(
     revision: str = DEFAULT_DATASET_REVISION,
     max_documents_scanned: int | None = None,
 ) -> list[NerTask]:
+    import pyarrow.dataset as arrow_dataset
+
     if max_examples > MAX_SAFE_POOL_EXAMPLES:
         raise ValueError(
             f"OpenPII loading is capped at {MAX_SAFE_POOL_EXAMPLES} examples; "
@@ -323,6 +325,8 @@ def load_openpii_tasks(
         split=split,
         streaming=True,
         filters=[("language", "==", language)],
+        # This bounded scan stops early; do not prefetch after its file closes.
+        fragment_scan_options=arrow_dataset.ParquetFragmentScanOptions(pre_buffer=False),
     )
     return tasks_from_rows(
         cast(Iterable[dict[str, Any]], rows),

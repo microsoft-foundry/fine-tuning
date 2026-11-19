@@ -349,6 +349,8 @@ class Qwen3_5Renderer(Qwen3Renderer):
     - Tool calls are rendered/parsed in XML ``<function=...><parameter=...>`` form.
     """
 
+    _thinking_text_separator = "\n\n"
+
     # ------------------------------------------------------------------
     # Rendering
     # ------------------------------------------------------------------
@@ -365,7 +367,7 @@ class Qwen3_5Renderer(Qwen3Renderer):
         if ctx.last_user_index < 0 or ctx.idx <= ctx.last_user_index:
             return ""
 
-        content = message.get("content", "")
+        content = message.get("content") or ""
         has_think = False
         if isinstance(content, list):
             has_think = any(p["type"] == "thinking" for p in content)
@@ -380,7 +382,7 @@ class Qwen3_5Renderer(Qwen3Renderer):
 
     def _render_tool_calls_text(self, message: Message) -> str:
         """Render tool_calls using Qwen3.5's XML parameter format."""
-        content = message.get("content", "")
+        content = message.get("content") or ""
         if isinstance(content, str):
             has_visible_content = bool(content.strip())
         else:
@@ -390,7 +392,7 @@ class Qwen3_5Renderer(Qwen3Renderer):
         separator = "\n\n" if has_visible_content else ""
         return separator + "\n".join(
             _format_tool_call_xml(tc, self._format_tool_call_argument)
-            for tc in message["tool_calls"]
+            for tc in message.get("tool_calls") or []
         )
 
     def render_message(self, message: Message, ctx: RenderContext) -> RenderedMessage:
@@ -404,7 +406,8 @@ class Qwen3_5Renderer(Qwen3Renderer):
         # sampling time).
         header_str += self._assistant_header_suffix(message, ctx)
 
-        content = message["content"]
+        content = message["content"] or ""
+        tool_calls = message.get("tool_calls") or []
 
         if isinstance(content, list):
             parts = content
@@ -423,7 +426,7 @@ class Qwen3_5Renderer(Qwen3Renderer):
                     rendered_parts.append(f"<think>\n{p['thinking']}\n</think>\n\n")
                 elif p["type"] == "text":
                     text = p["text"]
-                    if "tool_calls" in message and text_part_indexes:
+                    if tool_calls and text_part_indexes:
                         if index == text_part_indexes[0]:
                             text = text.lstrip()
                         if index == text_part_indexes[-1]:
@@ -431,12 +434,12 @@ class Qwen3_5Renderer(Qwen3Renderer):
                     rendered_parts.append(text)
             output_content = "".join(rendered_parts)
         else:
-            output_content = content.strip() if "tool_calls" in message else content
+            output_content = content.strip() if tool_calls else content
 
         if message["role"] == "tool":
             output_content = self._wrap_qwen_tool_response(output_content)
 
-        if "tool_calls" in message:
+        if tool_calls:
             # HF trims text content before tool calls but preserves thinking separators.
             # Tinker-cookbook carries the equivalent fix (6f4d702), so preserve on sync.
             output_content += self._render_tool_calls_text(message)
@@ -511,16 +514,21 @@ class Qwen3_5Renderer(Qwen3Renderer):
                     first_text_after_thinking = p
                     break
 
-            if first_text_after_thinking is not None and first_text_after_thinking[
-                "text"
-            ].startswith("\n\n"):
-                first_text_after_thinking["text"] = first_text_after_thinking["text"][2:]
+            separator = self._thinking_text_separator
+            if (
+                separator
+                and first_text_after_thinking is not None
+                and first_text_after_thinking["text"].startswith(separator)
+            ):
+                first_text_after_thinking["text"] = first_text_after_thinking["text"][
+                    len(separator) :
+                ]
 
         # The Qwen3 parent parser assumes JSON inside <tool_call>; reinterpret
         # any blocks that look like XML <function=...> calls here.
         converted_xml_calls: list[ToolCall] = []
         remaining_unparsed: list[UnparsedToolCall] = []
-        for unparsed in message.get("unparsed_tool_calls", []):
+        for unparsed in message.get("unparsed_tool_calls") or []:
             raw = unparsed.raw_text
             if "<function=" not in raw:
                 remaining_unparsed.append(unparsed)
@@ -539,7 +547,7 @@ class Qwen3_5Renderer(Qwen3Renderer):
                 remaining_unparsed.append(parsed)
 
         if converted_xml_calls:
-            message["tool_calls"] = list(message.get("tool_calls", [])) + converted_xml_calls
+            message["tool_calls"] = list(message.get("tool_calls") or []) + converted_xml_calls
         if remaining_unparsed:
             message["unparsed_tool_calls"] = remaining_unparsed
         else:

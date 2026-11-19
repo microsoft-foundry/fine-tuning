@@ -39,7 +39,11 @@ export MODEL_CONTEXT_LENGTH="<model-context-length>"
 
 The recipe uses `model_name` as the tokenizer source and selects the model's
 recommended renderer. Set `tokenizer_name` or `renderer_name` only when the
-selected model requires an explicit override.
+selected model requires an explicit override. A tokenizer override is used for
+both training and accuracy evaluation in the SFT and RFT entrypoints. Image
+processing still uses the base vision model's `model_name`, not the tokenizer
+repository. The SFT builder reuses one renderer per builder instance, including
+its image processor and image-cache directory.
 
 
 ## Validate the dataset
@@ -293,7 +297,7 @@ the `Do-You-See-Me` dataset to Programmed Training first.
 | Parameter | Purpose |
 |---|---|
 | `model_name` | Identifier of a supported vision-language model. Defaults to `meta-models/Muse-Glimmer-30B`. |
-| `tokenizer_name` | Optional tokenizer override. Defaults to `model_name`. |
+| `tokenizer_name` | Optional tokenizer override for training and evaluation. Defaults to `model_name`; image processing always uses `model_name`. |
 | `renderer_name` | Optional renderer override. Defaults to the model registry recommendation. |
 | `data_path` | Optional local Azure OpenAI conversations JSONL file. Uses `microsoft/Do-You-See-Me` when omitted. The source path is not recorded in run metadata. |
 | `task_variant` | `single_image` (default), `absolute_difference` for two-image composition, or `count_category` for learning a stable one-digit label taxonomy. |

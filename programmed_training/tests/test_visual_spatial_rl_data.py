@@ -107,6 +107,32 @@ def test_staged_workflow_selects_best_recoverable_sft_checkpoint(
     )
 
 
+def test_staged_checkpoint_selection_keeps_recovery_attempt_evaluations_separate(
+    tmp_path: Path,
+) -> None:
+    replacement = tmp_path / "recovery_attempts" / "replacement"
+    replacement.mkdir(parents=True)
+    (tmp_path / "recovery.jsonl").write_text(
+        json.dumps({"event": "attempt", "log_path": str(tmp_path)}) + "\n"
+        + json.dumps({"event": "attempt", "log_path": str(replacement)}) + "\n"
+    )
+    (tmp_path / "checkpoints.jsonl").write_text(
+        '{"step":2,"state_path":"loom://model_original/weights/2"}\n'
+    )
+    (tmp_path / "metrics.jsonl").write_text(
+        '{"step":2,"test/visual_spatial_accuracy":0.9}\n'
+    )
+    (replacement / "checkpoints.jsonl").write_text(
+        '{"step":2,"state_path":"loom://model_replacement/weights/2"}\n'
+    )
+    (replacement / "metrics.jsonl").write_text(
+        '{"step":2,"test/visual_spatial_accuracy":0.4}\n'
+    )
+    selected = train_azure._select_best_sft_checkpoint(str(tmp_path))
+    assert selected.checkpoint_path == "loom://model_original/weights/2"
+    assert selected.accuracy == 0.9
+
+
 def test_staged_workflow_pairs_final_checkpoint_with_final_evaluation(
     tmp_path: Path,
 ) -> None:
@@ -249,12 +275,15 @@ async def test_staged_workflow_hands_best_sft_checkpoint_to_rft(
             log_path=str(log_path),
             behavior_if_log_dir_exists="raise",
             training_type=training_type,
+            auto_resume_max_retries=5,
         )
     )
 
     assert captured["sft"].learning_rate == 3e-5
     assert captured["sft"].training_type == training_type
     assert captured["rft"].training_type == training_type
+    assert captured["sft"].auto_resume_max_retries == 5
+    assert captured["rft"].auto_resume_max_retries == 5
     assert captured["sft"].max_steps == 60
     assert captured["rft"].load_checkpoint_path == "model_test/40"
     assert captured["rft"].learning_rate == 3e-6

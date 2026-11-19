@@ -7,6 +7,7 @@ import chz
 from azure.ai.finetuningsessions.models import ModelInput
 from datasets import Dataset, concatenate_datasets, get_dataset_config_names, load_dataset
 from programmed_training import renderers
+from programmed_training.recipes.math_rl.grading_executor import run_grading
 from programmed_training.recipes.math_rl.math_grading import (
     extract_boxed,
     grade_answer,
@@ -67,7 +68,8 @@ class MathEnv(ProblemEnv):
         renderer: renderers.Renderer,
         convo_prefix: list[renderers.Message] | None = None,
         grader: Literal["sympy", "math_verify"] = "sympy",
-        timeout: float = 1.0,
+        # Expression budget; isolated worker initialization is bounded separately.
+        timeout: float = 10.0,
         forced_commit: bool = False,
         forced_commit_penalty: float = 0.0,
         forced_commit_prompt: str | None = None,
@@ -151,7 +153,9 @@ class MathEnv(ProblemEnv):
             )
 
         correct_format = 1.0 if has_answer else 0.0
-        correct_answer = float(self.check_answer(text_after)) if has_answer else 0.0
+        correct_answer = (
+            float(await run_grading(self.check_answer, text_after)) if has_answer else 0.0
+        )
         answer_from_forced = 1.0 if (self._used_forced_commit and has_answer) else 0.0
         forced_commit_penalty_value = (
             self.forced_commit_penalty if answer_from_forced else 0.0
@@ -218,7 +222,8 @@ class MathEnv(ProblemEnv):
         ]
 
 
-def safe_grade(given_answer: str, ground_truth: str, grader: str = "sympy", timeout: float = 1.0):
+def safe_grade(given_answer: str, ground_truth: str, grader: str = "sympy", timeout: float = 10.0):
+    """Grade with a killable expression budget, separate from bounded initialization."""
     if grader == "sympy":
         grader_func = grade_answer
     elif grader == "math_verify":
@@ -226,7 +231,7 @@ def safe_grade(given_answer: str, ground_truth: str, grader: str = "sympy", time
     else:
         raise ValueError(f"Invalid grader: {grader}")
     out = run_with_timeout_signal(
-        grader_func, args=(given_answer, ground_truth), timeout_seconds=int(math.ceil(timeout))
+        grader_func, args=(given_answer, ground_truth), timeout_seconds=timeout
     )
     if out is None:
         logger.warning(f"Timeout grading {given_answer} against {ground_truth}")

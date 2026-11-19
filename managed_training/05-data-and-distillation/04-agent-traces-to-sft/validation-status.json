@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "status": "offline_preparation_and_tests_passed_no_cloud_execution",
+  "original_sources_modified": false,
+  "source_metadata_rows": {"traces-clean.jsonl": 100, "train.jsonl": 80, "val.jsonl": 10, "test.jsonl": 10},
+  "review_reported_validation_prefix_rows": 8,
+  "review_reported_replacement_inventory_examples": {"train": 19, "validation": 2, "test": 1},
+  "recomputed_counts": {
+    "source_traces": 100,
+    "conversation_groups": 40,
+    "prepared_splits": {"train": 80, "validation": 10, "test": 10},
+    "legacy_cross_split_conversation_pairs": 44,
+    "legacy_cross_split_message_prefix_pairs": 35,
+    "source_rows_with_inventory": {"train": 19, "validation": 2, "test": 1},
+    "source_replacement_inventory_actions": {"train": 16, "validation": 1, "test": 1}
+  },
+  "verified_prepared_hashes": {
+    "train.jsonl": "3863ea9249dcb2b57fe3ceb5d99fe704403e714dd380f39ca505429fe91be950",
+    "val.jsonl": "ff5d4f84848af131eeec8dfaf2f05c26c0ff53e8c960d91b7638cebcf96b0d53",
+    "test.jsonl": "8a3e2b18b294fed67bb003b1a8d81d8d941e08b1b6024941bc5010456d5a772d"
+  },
+  "prepared_artifacts": null,
+  "preparation_entrypoint": "trace_integrity.py prepare",
+  "preparation_manifest": "outputs/prepared/preparation-manifest.json",
+  "preserve_all_source_traces": true,
+  "row_split_fallback_allowed": false,
+  "policy_amendment": "Apply inventory checks to exchanges and replacements; preserve tool names, parameter schemas, recorded calls and results.",
+  "model_or_tool_execution_performed": false
+}

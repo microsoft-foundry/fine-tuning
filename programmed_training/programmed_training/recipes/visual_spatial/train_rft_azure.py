@@ -13,6 +13,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 import chz
+
+from programmed_training import auto_resume
 from azure.ai.finetuningsessions.models import LossFn as LossFnType
 
 from programmed_training import checkpoint_utils, cli_utils, model_info
@@ -23,6 +25,7 @@ from programmed_training.recipes.visual_spatial.training import (
 )
 from programmed_training.rl import train_azure as rl_azure
 from programmed_training.rl.train import AsyncConfig, Config, EvaluationStrategy
+from programmed_training.optimizers import AdamConfig
 from programmed_training.training_types import (
     TrainingType,
     normalize_training_type,
@@ -155,7 +158,7 @@ def _write_accuracy_summary(log_path: str) -> dict[str, Any] | None:
 
 
 @chz.chz
-class CLIConfig:
+class CLIConfig(auto_resume.AutoResumeConfig, AdamConfig):
     """Configuration for visual-spatial reinforcement learning."""
 
     model_name: str = "meta-models/Muse-Glimmer-30B"
@@ -359,6 +362,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
     )
     config = Config(
         learning_rate=cli_config.learning_rate,
+        **cli_config.adam_kwargs(),
         dataset_builder=dataset_builder,
         model_name=tokenizer_name,
         tokenizer_name=tokenizer_name,
@@ -377,6 +381,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
         evaluator_builders=[
             lambda: VisualSpatialAccuracyEvaluator(
                 model_name=cli_config.model_name,
+                tokenizer_name=tokenizer_name,
                 renderer_name=renderer_name,
                 seed=cli_config.seed,
                 output_dir=log_path,
@@ -562,6 +567,19 @@ async def cli_main(cli_config: CLIConfig) -> None:
         }
         write_run_meta()
 
+    session_kwargs = dict(
+        base_model=cli_config.model_name,
+        lora_config=LoRAConfig(
+            rank=cli_config.lora_rank,
+            freeze_vision_tower=cli_config.freeze_vision_tower,
+            freeze_multi_modal_projector=cli_config.freeze_multi_modal_projector,
+        ),
+        type="training",
+        from_checkpoint=from_checkpoint,
+        timeout_sec=cli_config.create_session_timeout_sec,
+        user_metadata=cli_config.user_metadata,
+        training_type=normalize_training_type(cli_config.training_type),
+    )
     try:
         if cli_config.existing_session_id:
             session_id = cli_config.existing_session_id
@@ -572,21 +590,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
                 f"lora_rank={cli_config.lora_rank} "
                 f"endpoint={cli_config.project_endpoint}"
             )
-            session_id = await client.create_session(
-                base_model=cli_config.model_name,
-                lora_config=LoRAConfig(
-                    rank=cli_config.lora_rank,
-                    freeze_vision_tower=cli_config.freeze_vision_tower,
-                    freeze_multi_modal_projector=(
-                        cli_config.freeze_multi_modal_projector
-                    ),
-                ),
-                type="training",
-                from_checkpoint=from_checkpoint,
-                timeout_sec=cli_config.create_session_timeout_sec,
-                user_metadata=cli_config.user_metadata,
-                training_type=normalize_training_type(cli_config.training_type),
-            )
+            session_id = await client.create_session(**session_kwargs)
         print(f"Session ready: session_id={session_id}")
         run_meta["azure"]["session_id"] = session_id
         write_run_meta()
@@ -594,15 +598,19 @@ async def cli_main(cli_config: CLIConfig) -> None:
         if cli_config.initial_idle_seconds > 0:
             await asyncio.sleep(cli_config.initial_idle_seconds)
 
-        await rl_azure.main(
+        await auto_resume.run_rl(
             config,
             client,
             session_id,
+            recovery_config=cli_config,
+            client_kwargs=client_kwargs,
+            session_kwargs=session_kwargs,
+            restart_from_original_input=not bool(cli_config.existing_session_id),
             prepared_datasets=prepared_datasets,
             training_type=cli_config.training_type,
         )
         try:
-            _write_accuracy_summary(log_path)
+            _write_accuracy_summary(auto_resume.latest_attempt_log_path(log_path))
         except Exception:
             logger.exception(
                 "Training completed, but the visual-spatial accuracy summary "

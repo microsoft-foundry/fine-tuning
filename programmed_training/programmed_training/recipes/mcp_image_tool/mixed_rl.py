@@ -10,6 +10,8 @@ from dataclasses import asdict
 
 import chz
 
+from programmed_training import auto_resume, checkpoint_utils
+
 from programmed_training.recipes.mcp_image_tool.data import build_mixed_tasks
 from programmed_training.rl.metric_util import RLTestSetEvaluator
 from programmed_training.rl.train import (
@@ -88,10 +90,13 @@ async def train_mixed(config, training_client, tokenizer, train_dataset, test_da
         sampler, test_dataset, stage="before_rl", step=0, **evaluation_kwargs,
     )
     started = time.monotonic()
-    updates = 0
-    skipped_batches = 0
+    resume = checkpoint_utils.get_last_checkpoint(config.log_path) if auto_resume.current_attempt() else None
+    start_batch = resume["batch"] if resume else 0
+    updates = resume.get("mcp_updates", 0) if resume else 0
+    skipped_batches = resume.get("mcp_skipped_batches", 0) if resume else 0
+    next_batch = start_batch
     stop_reason = "budget_exhausted"
-    for batch_index in range(max_batches):
+    for batch_index in range(start_batch, max_batches):
         if (config.max_wall_clock_seconds is not None
                 and time.monotonic() - started >= config.max_wall_clock_seconds):
             stop_reason = "wall_clock_budget"
@@ -139,20 +144,40 @@ async def train_mixed(config, training_client, tokenizer, train_dataset, test_da
         })
         if not mixed:
             skipped_batches += 1
+            next_batch = batch_index + 1
             continue
         sampler, metrics = await do_train_step_and_get_sampling_client(
             config, batch_index, training_client, None, tokenizer, batch, groups,
+            loop_state_extra={
+                "stage": "rl", "mcp_updates": updates + 1,
+                "mcp_skipped_batches": skipped_batches,
+            } if auto_resume.current_attempt() is not None else None,
         )
         updates += 1
+        next_batch = batch_index + 1
         record(config.log_path, "updates.jsonl", {"updates": updates, **metrics})
         checkpoint_name = f"rl_step_{updates}"
-        checkpoint = await training_client.save_state_async(checkpoint_name)
-        await checkpoint.result_async()
+        if auto_resume.current_attempt() is not None:
+            await checkpoint_utils.save_checkpoint_async(
+                training_client, checkpoint_name, config.log_path,
+                loop_state={"batch": next_batch, "stage": "rl", "mcp_updates": updates,
+                            "mcp_skipped_batches": skipped_batches},
+            )
+        else:
+            checkpoint = await training_client.save_state_async(checkpoint_name)
+            await checkpoint.result_async()
         record(config.log_path, "rl_checkpoints.jsonl", {
             "updates": updates, "name": checkpoint_name,
         })
-    checkpoint = await training_client.save_state_async("final")
-    await checkpoint.result_async()
+    if auto_resume.current_attempt() is not None:
+        await checkpoint_utils.save_checkpoint_async(
+            training_client, "final", config.log_path,
+            loop_state={"batch": next_batch, "stage": "rl", "mcp_updates": updates,
+                        "mcp_skipped_batches": skipped_batches},
+        )
+    else:
+        checkpoint = await training_client.save_state_async("final")
+        await checkpoint.result_async()
     after = await evaluate_repeated(
         sampler, test_dataset, stage="after_rl", step=updates, **evaluation_kwargs,
     ) if updates else dict(before, stage="after_rl")

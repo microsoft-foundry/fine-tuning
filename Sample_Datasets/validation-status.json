@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "execution_status": "offline audits and temporary-output preparation tests passed; no dataset code or cloud operations executed",
+  "medmcq": {
+    "status": "blocked_missing_validation_labels",
+    "review_reported_validation_rows_missing_labels": 6150,
+    "recomputed_missing_label_count": 6150,
+    "reconstruction_status": "blocked; publisher withholds official test ground truth; do not fabricate labels",
+    "prepared_artifacts": null,
+    "preparation_entrypoint": "dataset_integrity.py prepare-medmcq",
+    "matching_rule": "exact question and four ordered options; exactly one original-format single-choice source record"
+  },
+  "nl_to_python": {
+    "status": "preserved_sources_not_syntax_certified",
+    "source_metadata": "../managed_training/05-data-and-distillation/02-code-distillation/data/SOURCE_DATA_SHA256SUMS.txt",
+    "source_hash_rule": "CRLF-to-LF only; original archive raw digests preserved separately",
+    "expected_sources": {
+      "train": {"rows": 1576, "sha256": "af16c47387056f9e597deeef495d444702f125d4dd7ab91dee4e4836296cc913", "archive_raw_sha256": "18950b69bc0d63a4f56b7194b7eafa76b34aa6acecf2aff7321e18f488280708"},
+      "validation": {"rows": 83, "sha256": "558f93d59fe1d9c063f0922aec264aad3f26e96561c9ab5bcc514afb30265756", "archive_raw_sha256": "821a800a749279b540f9562e2ae86fca7649d088f5238f8a23256ec439b0c3cc"}
+    },
+    "review_reported_ast_invalid_rows": {"train": 95, "validation": 5},
+    "recomputed_ast_invalid_rows": {"train": 95, "validation": 5},
+    "verified_curated_rows": {"train": 1481, "validation": 78},
+    "prepared_artifacts": null,
+    "preparation_entrypoint": "dataset_integrity.py curate-code",
+    "curation_rule": "retain unchanged records whose single assistant target parses as Python 3.11 after only an enclosing conventional code fence is removed for parsing"
+  }
+}

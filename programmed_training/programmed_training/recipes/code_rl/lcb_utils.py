@@ -24,7 +24,7 @@ import signal
 import numpy as np
 
 # for capturing the stdout
-from io import StringIO
+from io import BufferedReader, BufferedWriter, BytesIO, StringIO, TextIOWrapper
 
 # used for testing the code that reads from input
 from unittest.mock import patch, mock_open
@@ -78,15 +78,27 @@ signal.signal(signal.SIGALRM, timeout_handler)
 class Capturing(list):
     def __enter__(self):
         self._stdout = sys.stdout
-        sys.stdout = self._stringio = StringIO()
-        # Make closing the StringIO a no-op
-        self._stringio.close = lambda x: 1
+        self._bytes = BytesIO()
+        self._buffer = BufferedWriter(self._bytes)
+        self._stream = TextIOWrapper(self._buffer, encoding="utf-8", write_through=True)
+        # Keep output readable even if the solution closes its stream.
+        self._bytes.close = lambda: None
+        self._buffer.close = lambda: None
+        self._stream.close = lambda: None
+        sys.stdout = self._stream
         return self
 
     def __exit__(self, *args):
-        self.append(self._stringio.getvalue())
-        del self._stringio  # free up some memory
-        sys.stdout = self._stdout
+        try:
+            self._stream.flush()
+            self.append(self._bytes.getvalue().decode("utf-8"))
+        finally:
+            sys.stdout = self._stdout
+            del self._stream.close
+            del self._buffer.close
+            del self._bytes.close
+            self._stream.close()
+            del self._stream, self._buffer, self._bytes
 
 
 def only_int_check(val):
@@ -664,9 +676,7 @@ def custom_compare_(output, ground_truth):
 
 
 def stripped_string_compare(s1, s2):
-    s1 = s1.lstrip().rstrip()
-    s2 = s2.lstrip().rstrip()
-    return s1 == s2
+    return s1.split() == s2.split()
 
 
 def call_method(method, inputs):
@@ -674,16 +684,11 @@ def call_method(method, inputs):
     if isinstance(inputs, list):
         inputs = "\n".join(inputs)
 
-    inputs_line_iterator = iter(inputs.split("\n"))
-
     # sys.setrecursionlimit(10000)
 
     # @patch('builtins.input', side_effect=inputs.split("\n"))
     @patch("builtins.open", mock_open(read_data=inputs))
-    @patch("sys.stdin", StringIO(inputs))
-    @patch("sys.stdin.readline", lambda *args: next(inputs_line_iterator))
-    @patch("sys.stdin.readlines", lambda *args: inputs.split("\n"))
-    @patch("sys.stdin.read", lambda *args: inputs)
+    @patch("sys.stdin", TextIOWrapper(BufferedReader(BytesIO(inputs.encode("utf-8"))), encoding="utf-8"))
     # @patch('sys.stdout.write', print)
     def _inner_call_method(_method):
         try:

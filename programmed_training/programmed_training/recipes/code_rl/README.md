@@ -15,16 +15,17 @@ tool between turns.
 
 ### 1. Sandbox
 
-Generated code is run in a sandbox during both training and eval. Two backends
-are supported.
+For this recipe, generated code is run through
+one of two backends during both training and eval. Its existing sandbox
+reachability check still runs before Azure session creation.
 
 **SandboxFusion (default).** [SandboxFusion](https://bytedance.github.io/SandboxFusion/)
 gives you a local Docker-backed sandbox:
 
 ```bash
-export INTERACTIVE_TRAINING_ROOT="$PWD"  # run from the cookbook root
+export PROGRAMMED_TRAINING_ROOT="$PWD"  # run from the cookbook root
 docker run -it -p 127.0.0.1:8080:8080 \
-   -v "${INTERACTIVE_TRAINING_ROOT}/programmed_training/recipes/code_rl/sandbox_config/local.yaml:/root/sandbox/sandbox/configs/local.yaml" \
+   -v "${PROGRAMMED_TRAINING_ROOT}/programmed_training/recipes/code_rl/sandbox_config/local.yaml:/root/sandbox/sandbox/configs/local.yaml" \
     volcengine/sandbox-fusion:server-20250609
 ```
 
@@ -87,7 +88,7 @@ omit the Qwen-specific `renderer_name` override so the recipe selects its render
 
 Historical experiments also used `openai/gpt-oss-20b` with LoRA rank capped at
 `16`. It is now a [legacy model](../../../docs/supported_models.md#legacy-models)
-and is not supported for new programmed training. Use the public entrypoint
+and is not supported for new Programmed Training. Use the public entrypoint
 with a currently supported model; no separate setup script is required.
 
 ## Tool: `check_solution`
@@ -129,6 +130,24 @@ Graded once at episode end:
 ```
 reward = format_coef * (has_code_block - 1) + correct
 ```
+
+Renderer parse failures retain `failed_parse_reward` and report zero `format`
+and `correct` metrics, so they count as misses rather than disappearing from
+the evaluation denominator. Choose a generation budget that lets the model
+finish its answer; truncated responses can otherwise dominate the failures.
+
+The sandbox harness supports text and binary `sys.stdin`/`sys.stdout` streams,
+including `.buffer`, sized reads and normal end-of-file behavior. These I/O
+choices must not turn a correct program into an incorrect grading result.
+The initial whitespace-normalized standard-output comparison treats spaces and
+line breaks equivalently while preserving token order and multiplicity. The
+existing later compatibility checks are unchanged.
+
+The mixed heldout set also contains Codeforces problems whose constructive
+answers are not unique. Matching a single reference output is not a complete
+judge for those tasks. Report that limitation rather than silently counting
+valid alternative answers as semantic failures; a separately identified
+LiveCodeBench cohort can be used for supported unit-test evaluation.
 
 - **`has_code_block`** ∈ {0, 1}: 1 iff a ```python ... ``` block is present in
   the final assistant message.

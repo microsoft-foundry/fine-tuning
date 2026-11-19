@@ -1,4 +1,7 @@
+import hashlib
 from types import SimpleNamespace
+
+import pytest
 
 from live_validation import assess_completed_job_reuse, summarize_result_csv
 
@@ -105,3 +108,35 @@ def test_result_csv_summary_ignores_empty_metric_cells():
         "total_loss_sum": [262307.9, 304185.9],
         "entropy_loss_sum": [70.7, 55.1],
     }
+
+
+@pytest.mark.parametrize("raw_sizes_match", [True, False])
+def test_completed_job_hashes_normalize_crlf_without_weakening_raw_sizes(raw_sizes_match):
+    canonical = {"train": b'{"answer":"1"}\n', "valid": b'{"answer":"2"}\n'}
+    downloaded = {key: value.replace(b"\n", b"\r\n") for key, value in canonical.items()}
+    job = SimpleNamespace(
+        status="succeeded", model="math-model", training_file="train", validation_file="valid",
+        method=SimpleNamespace(
+            type="reinforcement",
+            reinforcement=SimpleNamespace(hyperparameters=SimpleNamespace(
+                batch_size=128, eval_interval=25, eval_samples=2,
+                learning_rate_multiplier=2.0, n_epochs=2, reasoning_effort="medium",
+            )),
+        ),
+    )
+    files = {
+        key: SimpleNamespace(bytes=len(value) + (0 if raw_sizes_match else 1))
+        for key, value in downloaded.items()
+    }
+    result = assess_completed_job_reuse(
+        job, base_model="math-model", retrieve_file=files.__getitem__,
+        retrieve_content=downloaded.__getitem__,
+        training_sha256=hashlib.sha256(canonical["train"]).hexdigest(),
+        validation_sha256=hashlib.sha256(canonical["valid"]).hexdigest(),
+        local_regrade_matches_service=True,
+    )
+    assert result["checks"]["training_sha256"] is True
+    assert result["checks"]["validation_sha256"] is True
+    assert result["checks"]["training_bytes"] is raw_sizes_match
+    assert result["checks"]["validation_bytes"] is raw_sizes_match
+    assert result["reusable"] is raw_sizes_match

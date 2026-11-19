@@ -6,11 +6,14 @@ import asyncio
 import json
 import logging
 import os
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
 import chz
+
+from programmed_training import auto_resume
 
 from programmed_training import checkpoint_utils, cli_utils, model_info
 from programmed_training.recipes.visual_spatial.train_rft_azure import (
@@ -27,6 +30,7 @@ from programmed_training.rl.train_azure import AzureSDKTrainingClient
 from programmed_training.supervised import train
 from programmed_training.supervised.types import ChatDatasetBuilderCommonConfig
 from programmed_training.tokenizer_utils import get_tokenizer
+from programmed_training.optimizers import AdamConfig
 from programmed_training.training_types import (
     TrainingType,
     normalize_training_type,
@@ -39,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 
 @chz.chz
-class CLIConfig:
+class CLIConfig(auto_resume.AutoResumeConfig, AdamConfig):
     """Configuration for visual-spatial supervised fine-tuning."""
 
     model_name: str = "meta-models/Muse-Glimmer-30B"
@@ -214,6 +218,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
     )
     dataset_builder = VisualSpatialSftBuilder(
         common_config=common_config,
+        model_name=cli_config.model_name,
         max_train_examples=cli_config.max_train_examples,
         seed=cli_config.seed,
         images_per_example=cli_config.images_per_example,
@@ -223,6 +228,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
     )
     evaluator = VisualSpatialAccuracyEvaluator(
         model_name=cli_config.model_name,
+        tokenizer_name=tokenizer_name,
         renderer_name=renderer_name,
         seed=cli_config.seed,
         output_dir=log_path,
@@ -244,6 +250,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
         evaluator_builders=[lambda: evaluator],
         infrequent_evaluator_builders=[],
         learning_rate=cli_config.learning_rate,
+        **cli_config.adam_kwargs(),
         lr_schedule=cli_config.lr_schedule,
         num_epochs=cli_config.num_epochs,
         max_steps=cli_config.max_steps,
@@ -372,26 +379,27 @@ async def cli_main(cli_config: CLIConfig) -> None:
 
     session_id: str | None = None
     training_client: AzureSDKTrainingClient | None = None
+    supervisor_owned = False
+    workload_error: BaseException | None = None
+    session_kwargs = dict(
+        base_model=cli_config.model_name,
+        lora_config=LoRAConfig(
+            rank=cli_config.lora_rank,
+            freeze_vision_tower=cli_config.freeze_vision_tower,
+            freeze_multi_modal_projector=cli_config.freeze_multi_modal_projector,
+        ),
+        type="training",
+        from_checkpoint=from_checkpoint,
+        timeout_sec=cli_config.create_session_timeout_sec,
+        user_metadata=cli_config.user_metadata,
+        training_type=normalize_training_type(cli_config.training_type),
+    )
     try:
         if cli_config.existing_session_id:
             session_id = cli_config.existing_session_id
             print(f"Attaching to existing session: {session_id}")
         else:
-            session_id = await client.create_session(
-                base_model=cli_config.model_name,
-                lora_config=LoRAConfig(
-                    rank=cli_config.lora_rank,
-                    freeze_vision_tower=cli_config.freeze_vision_tower,
-                    freeze_multi_modal_projector=(
-                        cli_config.freeze_multi_modal_projector
-                    ),
-                ),
-                type="training",
-                from_checkpoint=from_checkpoint,
-                timeout_sec=cli_config.create_session_timeout_sec,
-                user_metadata=cli_config.user_metadata,
-                training_type=normalize_training_type(cli_config.training_type),
-            )
+            session_id = await client.create_session(**session_kwargs)
         print(f"Session ready: session_id={session_id}")
         run_meta["azure"]["session_id"] = session_id
         _write_run_meta(metadata_path, run_meta)
@@ -404,26 +412,45 @@ async def cli_main(cli_config: CLIConfig) -> None:
             session_id,
             get_tokenizer(tokenizer_name),
         )
-        await train.main(
+        supervisor_owned = cli_config.auto_resume
+        await auto_resume.run_supervised(
             config,
             training_client,
+            recovery_config=cli_config, client=client, session_id=session_id,
+            client_kwargs=client_kwargs, session_kwargs=session_kwargs,
+            restart_from_original_input=not bool(cli_config.existing_session_id),
             prepared_datasets=prepared_datasets,
         )
         try:
-            _write_accuracy_summary(log_path)
+            _write_accuracy_summary(auto_resume.latest_attempt_log_path(log_path))
         except Exception:
             logger.exception(
                 "Training completed, but the visual-spatial accuracy summary "
                 "could not be generated"
             )
+    except BaseException as exc:
+        workload_error = exc
+        raise
     finally:
-        if training_client is not None:
-            await training_client.close_poller()
-        if session_id is not None:
-            await client.close_session(session_id)
-        await client.close()
+        closers: list[Callable[[], Awaitable[Any]]] = []
+        if training_client is not None and not supervisor_owned:
+            closers.append(training_client.close_poller)
+        if session_id is not None and not supervisor_owned:
+            closers.append(lambda session_id=session_id: client.close_session(session_id))
+        closers.append(client.close)
         if hasattr(credential, "close"):
-            await credential.close()
+            closers.append(credential.close)
+        cleanup_errors: list[BaseException] = []
+        for closer in closers:
+            try:
+                await closer()
+            except BaseException as exc:
+                logger.exception("Visual-spatial SFT resource cleanup failed")
+                cleanup_errors.append(exc)
+        if cleanup_errors and workload_error is None:
+            if len(cleanup_errors) == 1:
+                raise cleanup_errors[0]
+            raise BaseExceptionGroup("Visual-spatial SFT resource cleanup failed", cleanup_errors)
 
 
 if __name__ == "__main__":

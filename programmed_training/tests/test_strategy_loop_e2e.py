@@ -74,6 +74,40 @@ def _run_stream(cfg, dataset, session, tmp_path, start=0, end=1, num_batches=1):
     return logger
 
 
+@pytest.mark.parametrize("mode", ["sync", "async", "stream"])
+@pytest.mark.parametrize("overrides", [{}, {
+    "adam_beta1": 0.6, "adam_beta2": 0.8, "adam_eps": 1e-4,
+    "adam_weight_decay": 0.15,
+}])
+def test_adam_defaults_and_overrides_reach_each_training_loop(tmp_path, mode, overrides):
+    dataset = ControlledDataset([[
+        MixedRewardGroupBuilder([1.0, 0.0]),
+        MixedRewardGroupBuilder([0.0, 1.0]),
+    ]])
+    session = _make_mock_session()
+    options = dict(overrides)
+    runner = _run_sync
+    if mode == "async":
+        options["async_config"] = AsyncConfig(max_steps_off_policy=100, groups_per_batch=2)
+        runner = _run_async
+    elif mode == "stream":
+        options["stream_minibatch_config"] = StreamMinibatchConfig(
+            groups_per_batch=2, num_minibatches=1,
+        )
+        runner = _run_stream
+    cfg = _make_config(dataset, tmp_path, **options)
+    runner(cfg, dataset, session, tmp_path, end=1, num_batches=1)
+
+    session.optim_step_async.assert_awaited_once()
+    assert session.optim_step_async.call_args.args[0].as_dict() == {
+        "learning_rate": cfg.learning_rate,
+        "beta1": overrides.get("adam_beta1", 0.9),
+        "beta2": overrides.get("adam_beta2", 0.999),
+        "eps": overrides.get("adam_eps", 1e-8),
+        "weight_decay": overrides.get("adam_weight_decay", 0.0),
+    }
+
+
 # ---------------------------------------------------------------------------
 # A-axis DROP through the real async loop (builder/group/key alignment)
 # ---------------------------------------------------------------------------

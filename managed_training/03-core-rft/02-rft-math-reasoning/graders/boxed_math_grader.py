@@ -6,9 +6,24 @@ def normalize(answer):
         return ""
     compact = re.sub(r"\s+", "", answer.strip())
     compact = compact.replace(r"\,", ",")
-    if "," in compact:
-        return ",".join(sorted(part for part in compact.split(",") if part))
-    return compact
+    # Reorder only whole answers, never coordinates or nested LaTeX arguments.
+    parts = []
+    stack = []
+    matching = {")": "(", "]": "[", "}": "{"}
+    start = 0
+    for position, character in enumerate(compact):
+        if character in "([{":
+            stack.append(character)
+        elif character in matching:
+            if not stack or stack.pop() != matching[character]:
+                return compact
+        elif character == "," and not stack:
+            parts.append(compact[start:position])
+            start = position + 1
+    if stack:
+        return compact
+    parts.append(compact[start:])
+    return ",".join(sorted(part for part in parts if part))
 
 
 def extract_model_answer(text):

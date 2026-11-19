@@ -18,7 +18,12 @@ logger = logging.getLogger(__name__)
 def public_checkpoint_path(path: str) -> str:
     """Use the SDK-supported session/checkpoint form instead of a service URI."""
     if "://" not in path:
-        return path
+        parts = path.split("/")
+        if len(parts) == 2 and all(parts):
+            return path
+        raise ValueError(
+            "Unrecognized training checkpoint path; expected a source session and checkpoint"
+        )
     _, _, location = path.partition("://")
     if len(location.split("/")) == 2 and all(location.split("/")):
         return location
@@ -55,6 +60,15 @@ def get_last_checkpoint(log_dir: str, required_key: str = "state_path") -> dict[
     Returns:
         The last checkpoint, or None if no checkpoint is found.
     """
+    from programmed_training.auto_resume import current_attempt
+
+    attempt = current_attempt()
+    if (
+        attempt is not None
+        and required_key == "state_path"
+        and os.path.abspath(log_dir) == os.path.abspath(attempt.log_path)
+    ):
+        return attempt.resume_info
     checkpoints = load_checkpoints_file(log_dir)
     checkpoints_with_key = [c for c in checkpoints if required_key in c]
     if checkpoints_with_key:
@@ -172,6 +186,9 @@ async def save_checkpoint_async(
     with open(os.path.join(log_path, "checkpoints.jsonl"), "a", encoding="utf-8") as f:
         f.write(json.dumps(full_dict) + "\n")
 
+    from programmed_training.auto_resume import checkpoint_committed
+
+    checkpoint_committed(log_path, full_dict)
     return paths
 
 

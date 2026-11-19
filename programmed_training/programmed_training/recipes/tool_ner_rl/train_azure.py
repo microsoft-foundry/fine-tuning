@@ -9,16 +9,19 @@ import logging
 import os
 import shutil
 import sys
+from collections.abc import Callable
 from datetime import datetime
 from functools import partial
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import chz
+
+from programmed_training import auto_resume
 from azure.ai.finetuningsessions.models import LossFn as LossFnType
 
 from programmed_training import cli_utils, model_info
-from programmed_training.recipes.tool_ner_rl.dynamic_policy import NerDynamicBatchingPolicy
+from programmed_training.recipes.tool_ner_rl.dynamic_policy import NerBatchingPolicy, NerDynamicBatchingPolicy
 from programmed_training.recipes.tool_ner_rl.ner_env import (
     DATASET_NAME,
     DEFAULT_DATASET_REVISION,
@@ -28,7 +31,8 @@ from programmed_training.recipes.tool_ner_rl.ner_env import (
 from programmed_training.recipes.tool_ner_rl.ner_task import ToolVariant
 from programmed_training.rl.metric_util import RLTestSetEvaluator
 from programmed_training.rl import train_azure as rl_azure
-from programmed_training.rl.train import AsyncConfig, Config, EvaluationStrategy
+from programmed_training.rl.train import AsyncConfig, Config, EvaluationStrategy, StreamMinibatchConfig
+from programmed_training.optimizers import AdamConfig
 from programmed_training.training_types import (
     TrainingType,
     normalize_training_type,
@@ -38,9 +42,12 @@ from programmed_training.utils import file_utils
 
 logger = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    from azure.ai.finetuningsessions.aio import FineTuningSessionClient
+
 
 @chz.chz
-class CLIConfig:
+class CLIConfig(auto_resume.AutoResumeConfig, AdamConfig):
     project_endpoint: str = os.environ.get("PROJECT_ENDPOINT", "")
     train_filter_manifest_path: str = str(Path(__file__).with_name("train_selection.json"))
     training_type: TrainingType | None = training_type_field()
@@ -67,7 +74,7 @@ class CLIConfig:
 
     group_size: int = 8
     groups_per_batch: int = 16
-    pods_keep: int = 4
+    pods_keep: int | None = 4
     max_oversample_rounds: int = 4
     oversample_cushion: float = 1.2
     max_concurrent_groups: int | None = 4
@@ -87,6 +94,7 @@ class CLIConfig:
     loss_fn_config: dict[str, Any] | None = None
     compute_post_kl: bool = False
     max_steps_off_policy: int | None = None
+    stream_num_minibatches: int | None = None
     kl_penalty_coef: float = 0.0
     num_substeps: int = 1
 
@@ -115,6 +123,13 @@ class CLIConfig:
             raise ValueError("In-place resume is unsupported; use load_checkpoint_path with a fresh log_path")
         if self.max_steps_off_policy is not None and self.max_steps_off_policy < 1:
             raise ValueError("max_steps_off_policy must be positive for async training")
+        if self.stream_num_minibatches is not None and (
+            self.stream_num_minibatches < 1 or self.num_substeps < 1
+            or self.groups_per_batch % (self.num_substeps * self.stream_num_minibatches)
+        ):
+            raise ValueError(
+                "stream_num_minibatches must be positive and evenly divide groups_per_batch / num_substeps"
+            )
         if self.tool_variant != "fast" or self.prompt_version != "fewshot_fast" or self.max_turns != 2:
             raise ValueError("This recipe supports only unfocused fewshot_fast/fast two-turn training")
         if self.tab_fraction != 0.25:
@@ -123,7 +138,7 @@ class CLIConfig:
             raise ValueError("tab_eval_documents must be between 1 and 127")
         if not 2 <= self.group_size <= 16:
             raise ValueError("group_size must be between 2 and 16")
-        if not 2 <= self.pods_keep <= self.group_size:
+        if self.pods_keep is not None and not 2 <= self.pods_keep <= self.group_size:
             raise ValueError("pods_keep must be between 2 and group_size")
         if not 1 <= self.groups_per_batch <= 64:
             raise ValueError("groups_per_batch must be between 1 and 64")
@@ -206,7 +221,7 @@ class TabTrainingEvaluator(RLTestSetEvaluator):
         )
         collection = load_tab_dev_tasks(max_documents=cli_config.tab_eval_documents, seed=42)
         self.reference_tasks = collection.tasks
-        self.output_root = log_path / "tab_dev"
+        self.output_root = Path(auto_resume.current_log_path(str(log_path))) / "tab_dev"
         self.output_root.mkdir(parents=True, exist_ok=True)
         (self.output_root / "manifest.json").write_text(
             json.dumps(_tab_manifest(collection, self.eval_config), indent=2), encoding="utf-8",
@@ -245,7 +260,21 @@ class TabTrainingEvaluator(RLTestSetEvaluator):
         return metrics
 
 
-async def cli_main(cli_config: CLIConfig) -> None:
+async def cli_main(
+    cli_config: CLIConfig,
+    *,
+    client_factory: Callable[..., FineTuningSessionClient] | None = None,
+    batching_policy: NerBatchingPolicy | None = None,
+) -> None:
+    if batching_policy is None:
+        if cli_config.pods_keep is None:
+            raise ValueError("pods_keep is required for the default batching policy")
+        batching_policy = NerDynamicBatchingPolicy(
+            group_size=cli_config.group_size,
+            pods_keep=cli_config.pods_keep,
+            max_oversample_rounds=cli_config.max_oversample_rounds,
+            oversample_cushion=cli_config.oversample_cushion,
+        )
     manifest_path = Path(cli_config.train_filter_manifest_path).expanduser().resolve()
     manifest_summary = _read_manifest_summary(
         manifest_path,
@@ -256,9 +285,12 @@ async def cli_main(cli_config: CLIConfig) -> None:
         cli_config.model_name, prefer_non_thinking=True
     )
     async_training = cli_config.max_steps_off_policy is not None
+    streaming = cli_config.stream_num_minibatches is not None
     run_name = (
-        f"ner-rl-{'async-pods' if async_training else 'pods'}-{cli_config.model_name.replace('/', '-')}-g{cli_config.group_size}"
-        f"-b{cli_config.groups_per_batch}-k{cli_config.pods_keep}-seed{cli_config.seed}"
+        f"ner-rl-{'async-' if async_training else ''}{'stream-' if streaming else ''}{batching_policy.name}"
+        f"-{cli_config.model_name.replace('/', '-')}-g{cli_config.group_size}"
+        f"-b{cli_config.groups_per_batch}"
+        f"{f'-k{cli_config.pods_keep}' if batching_policy.name == 'pods' else ''}-seed{cli_config.seed}"
         f"-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
     )
     log_path = (
@@ -276,14 +308,8 @@ async def cli_main(cli_config: CLIConfig) -> None:
     copied_manifest = log_path / "train_filter_manifest.json"
     shutil.copy2(manifest_path, copied_manifest)
 
-    policy = NerDynamicBatchingPolicy(
-        group_size=cli_config.group_size,
-        pods_keep=cli_config.pods_keep,
-        max_oversample_rounds=cli_config.max_oversample_rounds,
-        oversample_cushion=cli_config.oversample_cushion,
-    )
-    policy_overrides = policy.training_overrides()
-    if async_training:
+    policy_overrides = batching_policy.training_overrides()
+    if async_training or streaming:
         policy_overrides.update(dynamic_sampling=False)
     dataset_builder = NerDatasetBuilder(
         model_name_for_tokenizer=tokenizer_name,
@@ -308,6 +334,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
     )
     training_config = Config(
         learning_rate=cli_config.learning_rate,
+        **cli_config.adam_kwargs(),
         dataset_builder=dataset_builder,
         model_name=tokenizer_name,
         tokenizer_name=tokenizer_name,
@@ -332,6 +359,12 @@ async def cli_main(cli_config: CLIConfig) -> None:
                 groups_per_batch=cli_config.groups_per_batch,
             )
             if cli_config.max_steps_off_policy is not None else None
+        ),
+        stream_minibatch_config=(
+            StreamMinibatchConfig(
+                groups_per_batch=cli_config.groups_per_batch,
+                num_minibatches=cli_config.stream_num_minibatches,
+            ) if streaming else None
         ),
         eval_every=cli_config.eval_every,
         save_every=cli_config.save_every,
@@ -379,15 +412,18 @@ async def cli_main(cli_config: CLIConfig) -> None:
             "tab_setup": "v4_target_context_native_schemas_train_example_shared_dev_predictions",
         },
         "batching": {
-            "strategy": "pods",
+            "strategy": batching_policy.name,
             "group_size": cli_config.group_size,
             "groups_per_batch": cli_config.groups_per_batch,
-            "pods_keep": cli_config.pods_keep,
-            "dynamic_sampling": not async_training,
+            "dynamic_sampling": training_config.dynamic_sampling,
             "max_steps_off_policy": cli_config.max_steps_off_policy,
-            "constant_reward_filter": True,
+            "stream_num_minibatches": cli_config.stream_num_minibatches,
+            "constant_reward_filter": training_config.remove_constant_reward_groups,
+            "max_rolls_per_group": training_config.max_rolls_per_group,
+            "refill_on_drop": training_config.refill_on_drop,
             "max_oversample_rounds": cli_config.max_oversample_rounds,
             "oversample_cushion": cli_config.oversample_cushion,
+            **batching_policy.metadata(),
         },
         "training": {
             "learning_rate": cli_config.learning_rate,
@@ -422,8 +458,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
     write_metadata()
 
     def record_reference_session(reference_session_id: str) -> None:
-        metadata["azure"]["reference_session_id"] = reference_session_id
-        write_metadata()
+        auto_resume.record_reference_session(log_path, reference_session_id)
 
     from azure.ai.finetuningsessions.aio import FineTuningSessionClient
     from azure.ai.finetuningsessions.models import FromCheckpoint, LoRAConfig
@@ -445,7 +480,8 @@ async def cli_main(cli_config: CLIConfig) -> None:
     }
     if not azure_api_key:
         client_kwargs["credential_scopes"] = ["https://ai.azure.com/.default"]
-    client = FineTuningSessionClient(**client_kwargs)
+    create_client = client_factory or FineTuningSessionClient
+    client = create_client(**client_kwargs)
 
     from_checkpoint: FromCheckpoint | None = None
     if cli_config.load_checkpoint_path is not None:
@@ -462,9 +498,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
         }
         write_metadata()
 
-    session_id: str | None = None
-    try:
-        session_id = await client.create_session(
+    session_kwargs = dict(
             base_model=cli_config.model_name,
             lora_config=LoRAConfig(
                 rank=cli_config.lora_rank,
@@ -476,17 +510,23 @@ async def cli_main(cli_config: CLIConfig) -> None:
             timeout_sec=cli_config.create_session_timeout_sec,
             user_metadata=cli_config.user_metadata,
             training_type=normalize_training_type(cli_config.training_type),
-        )
+    )
+    session_id: str | None = None
+    try:
+        session_id = await client.create_session(**session_kwargs)
         metadata["azure"]["session_id"] = session_id
         write_metadata()
-        await rl_azure.main(
+        await auto_resume.run_rl(
             training_config, client, session_id, training_type=cli_config.training_type,
+            recovery_config=cli_config, client_kwargs=client_kwargs,
+            session_kwargs=session_kwargs,
+            client_factory=lambda: create_client(**client_kwargs),
             on_reference_session_created=record_reference_session,
         )
     except BaseException:
         if session_id is not None:
             try:
-                async with FineTuningSessionClient(**client_kwargs) as cleanup_client:
+                async with create_client(**client_kwargs) as cleanup_client:
                     await cleanup_client.close_session(session_id)
             except Exception:
                 logger.exception("Failed to close training session %s after failure", session_id)

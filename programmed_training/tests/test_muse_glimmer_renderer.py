@@ -40,17 +40,19 @@ def _decode_prompt(renderer, messages):
     )
 
 
-def test_model_info_routes_muse_glimmer_to_renderer():
-    attributes = model_info.get_model_attributes("meta-models/Muse-Glimmer-30B")
+@pytest.mark.parametrize("model,context", [
+    ("meta-models/Muse-Glimmer-30B", 32_768),
+    ("meta-models/Muse-Glimmer-30B-128K", 131_072),
+])
+def test_model_info_routes_muse_glimmer_to_renderer(model, context):
+    attributes = model_info.get_model_attributes(model)
 
     assert attributes.is_vl
-    assert attributes.max_context_length == 32_768
+    assert attributes.max_context_length == context
     model_info.require_vision_language_model(
-        "meta-models/Muse-Glimmer-30B", workload="dataset='visual_spatial'"
+        model, workload="dataset='visual_spatial'"
     )
-    assert model_info.get_recommended_renderer_names(
-        "meta-models/Muse-Glimmer-30B"
-    ) == ["muse_glimmer"]
+    assert model_info.get_recommended_renderer_names(model) == ["muse_glimmer"]
 
 
 def test_model_info_rejects_text_only_model_for_vision_workload():
@@ -58,6 +60,14 @@ def test_model_info_rejects_text_only_model_for_vision_workload():
         model_info.require_vision_language_model(
             "Qwen/Qwen3-32B", workload="dataset='visual_spatial'"
         )
+
+
+def test_muse_128k_reuses_renderer_and_accepts_image_workloads():
+    model = "meta-models/Muse-Glimmer-30B-128K"
+    assert model_info.get_model_attributes(model).is_vl
+    assert model_info.get_model_context_length(model) == 131072
+    assert model_info.get_recommended_renderer_names(model) == ["muse_glimmer"]
+    model_info.require_vision_language_model(model, workload="images")
 
 
 @pytest.mark.parametrize(
@@ -282,8 +292,9 @@ def test_image_prompt_preserves_multiple_foundry_images_in_order(monkeypatch):
         ("text_and_image", True, True),
     ],
 )
+@pytest.mark.parametrize("model", ["meta-models/Muse-Glimmer-30B", "meta-models/Muse-Glimmer-30B-128K"])
 def test_mcp_tool_output_flows_from_tool_call_to_generation_prompt(
-    monkeypatch, content_kind, has_text, has_image
+    monkeypatch, content_kind, has_text, has_image, model
 ):
     Image = pytest.importorskip("PIL.Image")
     image_buffer = io.BytesIO()
@@ -335,19 +346,27 @@ def test_mcp_tool_output_flows_from_tool_call_to_generation_prompt(
             assert (height, width) == (2, 3)
             return 6
 
-    renderer = MuseGlimmerRenderer(
+    renderer = get_renderer(
+        model_info.get_recommended_renderer_names(model)[0],
         ReversibleTokenizer(),
         image_processor=ImageProcessor(),
-        current_date="2026-08-13",
     )
 
+    history = "x" * 65536 if model.endswith("-128K") else ""
     prompt = renderer.build_generation_prompt(
         [
-            Message(role="user", content="What is on screen?"),
+            Message(role="user", content=history + "What is on screen?"),
             Message(role="assistant", content="", tool_calls=[tool_call]),
             *tool_result.messages,
         ]
     )
+    prompt_length = sum(
+        chunk.expected_tokens if isinstance(chunk, ImageChunk) else len(chunk.tokens)
+        for chunk in prompt.chunks
+    )
+    assert prompt_length < model_info.get_model_context_length(model)
+    if model.endswith("-128K"):
+        assert prompt_length > 32768
 
     assert (
         ModelInputChunk(tokens=list(b"<|start|>tool fetch_image<|message|>"))

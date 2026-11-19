@@ -113,6 +113,10 @@ def get_renderer(
             - "qwen3_8_medium_reasoning": Qwen3.8 with reasoning effort medium
             - "qwen3_8_low_reasoning": Qwen3.8 with reasoning effort low
             - "qwen3_8_disable_thinking": Qwen3.8 with thinking disabled
+            - "nemotron3_ultra": Nemotron-3 Ultra with full reasoning
+            - "nemotron3_ultra_medium_thinking": Ultra with medium-effort reasoning
+            - "nemotron3_ultra_disable_thinking": Ultra with thinking disabled
+            - "nemotron3_ultra_preserve_thinking": Ultra retaining history reasoning
             - "deepseekv3": DeepSeek V3 (defaults to non-thinking mode)
             - "deepseekv3_disable_thinking": DeepSeek V3 non-thinking (alias)
             - "deepseekv3_thinking": DeepSeek V3 thinking mode
@@ -152,6 +156,12 @@ def get_renderer(
     from programmed_training.renderers.gpt_oss import GptOssRenderer
     from programmed_training.renderers.llama3 import Llama3Renderer
     from programmed_training.renderers.muse_glimmer import MuseGlimmerRenderer
+    from programmed_training.renderers.nemotron3 import (
+        Nemotron3UltraDisableThinkingRenderer,
+        Nemotron3UltraMediumThinkingRenderer,
+        Nemotron3UltraPreserveThinkingRenderer,
+        Nemotron3UltraRenderer,
+    )
     from programmed_training.renderers.qwen3 import (
         Qwen3DisableThinkingRenderer,
         Qwen3InstructRenderer,
@@ -196,6 +206,14 @@ def get_renderer(
         return Qwen3_8Renderer(tokenizer, reasoning_effort="low")
     elif name == "qwen3_8_disable_thinking":
         return Qwen3_8DisableThinkingRenderer(tokenizer)
+    elif name == "nemotron3_ultra":
+        return Nemotron3UltraRenderer(tokenizer)
+    elif name == "nemotron3_ultra_medium_thinking":
+        return Nemotron3UltraMediumThinkingRenderer(tokenizer)
+    elif name == "nemotron3_ultra_disable_thinking":
+        return Nemotron3UltraDisableThinkingRenderer(tokenizer)
+    elif name == "nemotron3_ultra_preserve_thinking":
+        return Nemotron3UltraPreserveThinkingRenderer(tokenizer)
     elif name == "deepseekv3":
         # Default to non-thinking mode (matches HF template default behavior)
         return DeepSeekV3DisableThinkingRenderer(tokenizer)

@@ -9,6 +9,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from typing import Any, TypeVar, overload
 
 from azure.core.exceptions import HttpResponseError, ServiceRequestError, ServiceResponseError
+from azure.ai.finetuningsessions import RequestRetryableError
 from azure.ai.finetuningsessions.models import ModelInput, ModelInputChunk
 
 from programmed_training.completers import ContextLengthExceededError, TokenCompleter
@@ -176,11 +177,25 @@ class RolloutFailureTracker:
             self._warning_active = False
 
 
+def _is_websocket_closed_error(error: BaseException) -> bool:
+    """Recognize dropped RLE sockets without requiring websockets for text recipes."""
+    try:
+        from websockets.exceptions import ConnectionClosed
+    except ImportError:
+        return False
+    return isinstance(error, ConnectionClosed)
+
+
 def _is_retryable_rollout_error(error: BaseException) -> bool:
     """Only transient sampling/transport failures are safe to retry with a fresh slot."""
+    from programmed_training.auto_resume import is_resumable
+
+    if is_resumable(error):
+        return False
     if isinstance(
         error,
         (
+            RequestRetryableError,
             TimeoutError,
             ConnectionError,
             OSError,
@@ -189,6 +204,8 @@ def _is_retryable_rollout_error(error: BaseException) -> bool:
             ServiceResponseError,
         ),
     ):
+        return True
+    if _is_websocket_closed_error(error):
         return True
     if isinstance(error, HttpResponseError):
         status_code = getattr(error, "status_code", None)
@@ -335,7 +352,9 @@ async def do_group_rollout(
 
     try:
         while pending_indices:
-            results = await asyncio.gather(
+            from programmed_training import auto_resume
+
+            results = await auto_resume.gather(
                 *[
                     do_single_rollout(
                         policy,
@@ -346,6 +365,7 @@ async def do_group_rollout(
                     for i in pending_indices
                 ],
                 return_exceptions=True,
+                retryable_error=_is_retryable_rollout_error,
             )
             for result in results:
                 if isinstance(result, BaseException) and not isinstance(result, Exception):

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import errno
+import json
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -9,6 +12,8 @@ from shared.foundry_operations import (
     create_or_reuse_fine_tuning_job,
     upload_or_reuse_file,
 )
+
+SFT_METHOD = {"type": "supervised", "supervised": {"hyperparameters": {"n_epochs": 2}}}
 
 
 class Files:
@@ -32,7 +37,8 @@ class Files:
         self.data.append(item)
         return item
 
-    def retrieve(self, file_id):
+    def retrieve(self, file_id, *, timeout):
+        assert timeout > 0
         return next(item for item in self.data if item.id == file_id)
 
 
@@ -45,7 +51,10 @@ class Jobs:
 
     def create(self, **payload):
         extra_body = payload.pop("extra_body", {})
-        job = SimpleNamespace(id="ftjob-created", status="queued", **payload, **extra_body)
+        job = SimpleNamespace(
+            id="ftjob-created", status="queued",
+            **{"suffix": None, "validation_file": None, "hyperparameters": None, **payload, **extra_body},
+        )
         self.data.append(job)
         return job
 
@@ -80,6 +89,7 @@ def test_job_reuse_requires_matching_inputs() -> None:
         training_file_id="file-train",
         validation_file_id="file-valid",
         suffix="sample-sft",
+        method=SFT_METHOD,
     )
     second = create_or_reuse_fine_tuning_job(
         client,
@@ -87,6 +97,7 @@ def test_job_reuse_requires_matching_inputs() -> None:
         training_file_id="file-train",
         validation_file_id="file-valid",
         suffix="sample-sft",
+        method=SFT_METHOD,
     )
     assert first.reused is False
     assert second.reused is True
@@ -102,6 +113,7 @@ def test_pending_job_is_reused() -> None:
             training_file="file-train",
             validation_file=None,
             suffix="sample-sft",
+            method=SFT_METHOD,
         )
     )
     result = create_or_reuse_fine_tuning_job(
@@ -109,6 +121,7 @@ def test_pending_job_is_reused() -> None:
         model="base-model",
         training_file_id="file-train",
         suffix="sample-sft",
+        method=SFT_METHOD,
     )
     assert result.reused
     assert result.resource_id == "ftjob-pending"
@@ -120,12 +133,12 @@ def test_training_type_is_sent_and_matching_job_is_reused() -> None:
     client = SimpleNamespace(fine_tuning=SimpleNamespace(jobs=jobs))
     first = create_or_reuse_fine_tuning_job(
         client, model="base-model", training_file_id="file-train",
-        training_type="globalStandard",
+        training_type="globalStandard", method=SFT_METHOD,
     )
     assert jobs.data[0].trainingType == "globalStandard"
     second = create_or_reuse_fine_tuning_job(
         client, model="base-model", training_file_id="file-train",
-        training_type="GlobalStandard",
+        training_type="GlobalStandard", method=SFT_METHOD,
     )
     assert second.reused
     assert first.resource_id == second.resource_id
@@ -163,8 +176,9 @@ def test_explicit_job_id_recovers_matching_recipe(status) -> None:
         "reinforcement": {
             "grader": {
                 "type": "score_model",
-                "input": [{"role": "user", "content": "{{sample.output_text}}"}],
+                "input": [{"role": "user", "content": "{{sample.output_text}}", "type": "message"}],
             },
+            "hyperparameters": {"n_epochs": 1},
         },
     }
     actual = {
@@ -180,7 +194,7 @@ def test_explicit_job_id_recovers_matching_recipe(status) -> None:
     job = SimpleNamespace(
         id="job-recorded", status=status, model="base-model",
         training_file="file-train", validation_file="file-valid",
-        method=SimpleNamespace(model_dump=lambda: actual),
+        method=SimpleNamespace(model_dump=lambda **kwargs: actual),
         metadata={"cookbook_suffix": "sample-rft"},
     )
     jobs.data.append(job)
@@ -238,6 +252,7 @@ def test_job_reuse_supports_native_responses_without_suffix_field() -> None:
         model="base-model",
         training_file_id="file-train",
         suffix="sample-sft",
+        method=SFT_METHOD,
     )
     del jobs.data[0].suffix
     second = create_or_reuse_fine_tuning_job(
@@ -245,6 +260,7 @@ def test_job_reuse_supports_native_responses_without_suffix_field() -> None:
         model="base-model",
         training_file_id="file-train",
         suffix="sample-sft",
+        method=SFT_METHOD,
     )
     assert jobs.data[0].metadata == {"cookbook_suffix": "sample-sft"}
     assert second.reused
@@ -359,7 +375,8 @@ def test_file_creation_disables_sdk_automatic_retries(tmp_path) -> None:
     upload_or_reuse_file(
         client, demo_slug="sample-demo", purpose_name="training", path=path, reuse=False
     )
-    assert options == [{"max_retries": 0}]
+    # Upload and the subsequent processing poll each disable SDK retries.
+    assert options == [{"max_retries": 0}, {"max_retries": 0}]
     assert files.created == 1
 
 
@@ -379,3 +396,214 @@ def test_manifest_output_boundaries(tmp_path) -> None:
     with pytest.raises(ValueError, match="outputs"):
         runtime.write(tmp_path / "runtime.json")
     assert runtime.write(tmp_path / "outputs" / "runtime.json").is_file()
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        {"type": "reinforcement", "reinforcement": {"hyperparameters": {"n_epochs": 2}}},
+        {"type": "dpo", "dpo": {"hyperparameters": {"n_epochs": 2}}},
+        SFT_METHOD,
+        None,
+    ],
+)
+@pytest.mark.parametrize("requested", [{}, {"hyperparameters": {"n_epochs": 2}}])
+def test_omitted_method_never_reuses_other_or_uncertain_default_recipe(method, requested) -> None:
+    jobs = Jobs()
+    jobs.data.append(SimpleNamespace(
+        id="ftjob-other", status="queued", model="base-model",
+        training_file="file-train", validation_file=None, suffix=None,
+        method=method, hyperparameters={"n_epochs": 2},
+    ))
+    result = create_or_reuse_fine_tuning_job(
+        SimpleNamespace(fine_tuning=SimpleNamespace(jobs=jobs)),
+        model="base-model", training_file_id="file-train", **requested,
+    )
+    assert not result.reused
+    assert len(jobs.data) == 2
+    assert not hasattr(jobs.data[-1], "method")  # Preserve the default request shape.
+
+
+@pytest.mark.parametrize(
+    "actual,requested",
+    [
+        ({"suffix": "custom"}, {}),
+        ({"hyperparameters": {"n_epochs": 7}}, {}),
+        ({"method": {"type": "reinforcement"}}, {}),
+        ({"method": {"type": "dpo"}}, {}),
+        ({"method": {"type": "supervised", "supervised": {
+            "hyperparameters": {"n_epochs": 2, "batch_size": 8},
+        }}}, {}),
+        ({"hyperparameters": {"n_epochs": 2, "batch_size": 8}},
+         {"hyperparameters": {"n_epochs": 2}}),
+    ],
+)
+def test_job_reuse_does_not_treat_omitted_settings_as_wildcards(actual, requested) -> None:
+    jobs = Jobs()
+    jobs.data.append(SimpleNamespace(**{
+        "id": "ftjob-other", "status": "queued", "model": "base-model",
+        "training_file": "file-train", "validation_file": None, "suffix": None,
+        "method": SFT_METHOD, "hyperparameters": None, **actual,
+    }))
+    result = create_or_reuse_fine_tuning_job(
+        SimpleNamespace(fine_tuning=SimpleNamespace(jobs=jobs)),
+        model="base-model", training_file_id="file-train", method=SFT_METHOD, **requested,
+    )
+    assert not result.reused
+    assert len(jobs.data) == 2
+
+
+@pytest.mark.parametrize("hyperparameters", [None, {"n_epochs": 2}])
+def test_exact_explicit_recipe_can_reuse_an_observed_default_suffix(hyperparameters) -> None:
+    jobs = Jobs()
+    jobs.data.append(SimpleNamespace(
+        id="ftjob-exact", status="queued", model="base-model",
+        training_file="file-train", validation_file=None, suffix=None,
+        method=SFT_METHOD, hyperparameters=hyperparameters,
+    ))
+    result = create_or_reuse_fine_tuning_job(
+        SimpleNamespace(fine_tuning=SimpleNamespace(jobs=jobs)),
+        model="base-model", training_file_id="file-train",
+        method=SFT_METHOD, hyperparameters=hyperparameters,
+    )
+    assert result.reused
+    assert result.resource_id == "ftjob-exact"
+    assert len(jobs.data) == 1
+
+
+def test_unobservable_default_suffix_conservatively_prevents_reuse() -> None:
+    jobs = Jobs()
+    jobs.data.append(SimpleNamespace(
+        id="ftjob-unknown", status="queued", model="base-model",
+        training_file="file-train", validation_file=None, method=SFT_METHOD,
+    ))
+    result = create_or_reuse_fine_tuning_job(
+        SimpleNamespace(fine_tuning=SimpleNamespace(jobs=jobs)),
+        model="base-model", training_file_id="file-train", method=SFT_METHOD,
+    )
+    assert not result.reused
+
+
+def test_materialized_default_hyperparameters_are_not_assumed_equivalent() -> None:
+    jobs = Jobs()
+    jobs.data.append(SimpleNamespace(
+        id="ftjob-defaults", status="queued", model="base-model",
+        training_file="file-train", validation_file=None, suffix=None,
+        method={"type": "supervised"}, hyperparameters=None,
+    ))
+    result = create_or_reuse_fine_tuning_job(
+        SimpleNamespace(fine_tuning=SimpleNamespace(jobs=jobs)),
+        model="base-model", training_file_id="file-train", method={"type": "supervised"},
+    )
+    assert not result.reused
+
+
+def test_native_model_dump_recipe_can_be_reused_without_unknown_defaults() -> None:
+    class NativeMethod:
+        def model_dump(self, *, exclude_none):
+            assert exclude_none
+            return SFT_METHOD
+
+    jobs = Jobs()
+    jobs.data.append(SimpleNamespace(
+        id="ftjob-native", status="queued", model="base-model",
+        training_file="file-train", validation_file=None, suffix=None,
+        method=NativeMethod(), hyperparameters=None,
+    ))
+    result = create_or_reuse_fine_tuning_job(
+        SimpleNamespace(fine_tuning=SimpleNamespace(jobs=jobs)),
+        model="base-model", training_file_id="file-train", method=SFT_METHOD,
+    )
+    assert result.reused
+    assert result.resource_id == "ftjob-native"
+
+
+@pytest.mark.parametrize("explicit_root", [False, True])
+@pytest.mark.parametrize("tail", ["../runtime.json", "../other/outputs/runtime.json"])
+def test_runtime_manifest_rejects_traversal_out_of_intended_outputs(tmp_path, explicit_root, tail) -> None:
+    root = tmp_path / "outputs"
+    options = {"outputs_root": root} if explicit_root else {}
+    with pytest.raises(ValueError, match="outputs"):
+        RuntimeManifest(demo_id="sample").write(root / tail, **options)
+    assert not root.exists()
+    assert not (tmp_path / "runtime.json").exists()
+    assert not (tmp_path / "other").exists()
+
+
+def _symlink(link, target, *, directory: bool) -> None:
+    try:
+        link.symlink_to(target, target_is_directory=directory)
+    except NotImplementedError:
+        pytest.skip("Symlink creation is not implemented on this platform")
+    except OSError as error:
+        if error.errno in {errno.ENOSYS, errno.EOPNOTSUPP} or (
+            os.name == "nt" and getattr(error, "winerror", None) in {1, 50, 1314}
+        ):
+            pytest.skip("Symlink creation is unsupported or lacks the Windows symlink privilege")
+        raise
+
+
+@pytest.mark.parametrize("explicit_root", [False, True])
+@pytest.mark.parametrize("redirect", ["root", "directory", "file"])
+def test_runtime_manifest_rejects_symlink_escape(tmp_path, explicit_root, redirect) -> None:
+    root = tmp_path / "outputs"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    target = outside / "runtime.json"
+    if redirect == "root":
+        _symlink(root, outside, directory=True)
+        destination = root / "runtime.json"
+    else:
+        root.mkdir()
+        if redirect == "directory":
+            _symlink(root / "link", outside, directory=True)
+            destination = root / "link" / "runtime.json"
+        else:
+            target.write_text("unchanged", encoding="utf-8")
+            _symlink(root / "runtime.json", target, directory=False)
+            destination = root / "runtime.json"
+    before = target.read_bytes() if target.exists() else None
+    options = {"outputs_root": root} if explicit_root else {}
+    with pytest.raises(ValueError, match="outputs"):
+        RuntimeManifest(demo_id="sample").write(destination, **options)
+    assert (target.read_bytes() if target.exists() else None) == before
+
+
+def test_runtime_manifest_explicit_root_and_nested_output_compatibility(tmp_path) -> None:
+    root = tmp_path / "outputs"
+    runtime = RuntimeManifest(demo_id="sample")
+    path = runtime.write(root / "run" / "runtime.json", outputs_root=root)
+    assert json.loads(path.read_text(encoding="utf-8"))["demo_id"] == "sample"
+    with pytest.raises(ValueError, match="outputs"):
+        runtime.write(tmp_path / "another" / "outputs" / "runtime.json", outputs_root=root)
+
+
+def test_relative_runtime_path_cannot_normalize_away_outputs_before_check(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    runtime = RuntimeManifest(demo_id="sample")
+    with pytest.raises(ValueError, match="outputs"):
+        runtime.write("outputs/../other/outputs/runtime.json")
+    assert not (tmp_path / "other").exists()
+    assert runtime.write("outputs/run/runtime.json").is_file()
+
+
+def test_multiple_outputs_ancestors_require_the_explicit_intended_root(tmp_path) -> None:
+    root = tmp_path / "outputs" / "demo" / "outputs"
+    destination = root / "runtime.json"
+    runtime = RuntimeManifest(demo_id="sample")
+    with pytest.raises(ValueError, match="unambiguous"):
+        runtime.write(destination)
+    assert not root.exists()
+    assert runtime.write(destination, outputs_root=root).is_file()
+
+
+def test_runtime_manifest_allows_symlink_target_that_remains_within_root(tmp_path) -> None:
+    root = tmp_path / "outputs"
+    target = root / "runs"
+    target.mkdir(parents=True)
+    _symlink(root / "alias", target, directory=True)
+    result = RuntimeManifest(demo_id="sample").write(
+        root / "alias" / "runtime.json", outputs_root=root,
+    )
+    assert result == target / "runtime.json"
+    assert result.is_file()

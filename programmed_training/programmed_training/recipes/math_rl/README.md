@@ -4,6 +4,59 @@ Math problems have been an active testbed for RL with LLMs. This recipe wires GS
 
 Each prompt is appended with "Write your answer in `\boxed{}` format." The grading function (`math_grading.py`) extracts the contents of the last `\boxed{}` in the model's response and compares it to the gold answer. This format is convenient because it cleanly separates the reasoning chain from the final answer, and most modern LLMs are already trained to produce `\boxed{}` output for math problems.
 
+Grading uses a disposable **lightweight isolated interpreter**, launched by the
+absolute grader file rather than multiprocessing's replay of the training
+entrypoint. It imports the grader, not the Azure/Torch/datasets/Kimi training
+graph. The **10-second expression wall budget** remains the default in
+`MathEnv`, `safe_grade`, and the RLE server. A separate **30-second initialization
+deadline** covers interpreter/import/callable setup; initialization failure is
+an error, not a wrong answer. Explicit fractional per-environment timeouts are
+supported and begin only after the worker is ready.
+
+`MathEnv.step` offloads synchronous `check_answer` to a **dedicated grading
+executor**, including the forced-commit terminal turn. The CLI shares one
+executor/admission scope across training, baseline/final evaluation, and recovery
+attempts. HTTP netrc/proxy/DNS work keeps using the default executor; grading
+does not queue in that pool. `grading_concurrency` limits both grading threads
+and admitted subprocess calls. It defaults to half the reported logical CPUs,
+rounded down, with a minimum of one and maximum of eight. Override it for the
+driver's CPU and memory budget, independently of `max_concurrent_groups` or SDK
+HTTP limits. This is a conservative starting cap, not a measured optimum or a
+memory reservation; the two paths still share host resources.
+
+Excess grades wait asynchronously **before** executor submission. Admission wait
+is outside the existing initialization and expression deadlines. Cancelling a
+rollout does not free its grading slot until the underlying thread has finished
+subprocess cleanup; run-scope exit drains admitted work and joins its threads,
+including on cancellation. The thread supervises a killable process; SymPy
+itself never runs as an unkillable thread job. Direct `check_answer` and
+synchronous RLE `safe_grade` calls remain supported. Timeout cleanup terminates
+and reaps the worker with two bounded
+one-second waits (terminate, then kill if necessary). Only expression timeout
+is scored incorrect; startup, grader, serialization, and IPC errors propagate.
+
+Programmatic callers running concurrent `MathEnv` rollouts should enclose the
+whole training/evaluation workload in
+`async with GradingExecutor(max_workers=...)` from
+`programmed_training.recipes.math_rl.grading_executor`. Tasks inherit this scope
+through context variables; worker submissions preserve the caller's context.
+Without a scope, `step` preserves its existing default-executor behavior.
+Programmatic callers need the explicit scope to obtain the isolation and shared
+admission used automatically by the CLI; no process-global pool is installed.
+
+Requests and responses use temporary files capped at 1 MiB and 4000 bytes,
+respectively, with no result queue or captured worker output. Temporary files
+are removed after cleanup. Linux workers retain address-space, CPU, and core
+dump limits; Windows uses wall deadlines and bounded IPC. This is isolation for
+grading, not an untrusted-Python sandbox. Generic timeout callables must be
+picklable and defined in importable modules, not the caller's `__main__`.
+On Windows, the actual running interpreter image is used with the same venv
+resolution so killing a launcher cannot leave its grader child behind. The
+optional `math_verify` backend uses its external-timeout mode, with errors
+propagated, rather than launching its own nested timeout processes.
+Workers are per-call rather than pooled: lightweight grader initialization is
+still paid on each answer, but is not charged to its expression budget.
+
 ## Setup
 
 Authenticate to the Azure AI Fine-Tuning Sessions endpoint with either an API

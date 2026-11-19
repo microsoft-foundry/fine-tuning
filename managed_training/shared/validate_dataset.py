@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from itertools import combinations
 from pathlib import Path
 from typing import Sequence
 
@@ -24,6 +25,36 @@ def _canonical_evidence(path: Path) -> dict[str, object]:
     }
 
 
+def _preflight_paths(
+    sources: dict[str, Path],
+    *,
+    canonical_output_dir: Path | None = None,
+    manifest_output: Path | None = None,
+) -> dict[str, Path]:
+    output_paths = (
+        {name: canonical_output_dir / f"{name}.jsonl" for name in sources}
+        if canonical_output_dir is not None
+        else {}
+    )
+    paths = {f"{name} source": path for name, path in sources.items()}
+    paths.update({f"{name} canonical output": path for name, path in output_paths.items()})
+    if manifest_output is not None:
+        paths["manifest output"] = manifest_output
+    resolved = {name: path.resolve() for name, path in paths.items()}
+    for (left_name, left), (right_name, right) in combinations(resolved.items(), 2):
+        if (
+            left == right
+            or left in right.parents
+            or right in left.parents
+            or (left.exists() and right.exists() and left.samefile(right))
+        ):
+            raise ValueError(
+                f"Dataset paths must not overwrite or alias one another "
+                f"({left_name}, {right_name}): {paths[left_name]} / {paths[right_name]}"
+            )
+    return output_paths
+
+
 def build_manifest(
     train: str | Path,
     validation: str | Path,
@@ -34,6 +65,8 @@ def build_manifest(
         "train": Path(train),
         "validation": Path(validation),
     }
+    output_dir = Path(canonical_output_dir) if canonical_output_dir is not None else None
+    output_paths = _preflight_paths(selected, canonical_output_dir=output_dir)
     reports = {
         name: validate_jsonl(path).require_valid()
         for name, path in selected.items()
@@ -43,16 +76,11 @@ def build_manifest(
         name: _canonical_evidence(path)
         for name, path in selected.items()
     }
-    output_dir = Path(canonical_output_dir) if canonical_output_dir else None
     canonical_paths: dict[str, str] = {}
-    if output_dir:
+    if output_dir is not None:
         output_dir.mkdir(parents=True, exist_ok=True)
         for name, path in selected.items():
-            output_path = output_dir / f"{name}.jsonl"
-            if output_path.resolve() == path.resolve():
-                raise ValueError(
-                    f"Canonical output must not overwrite its source file: {path}"
-                )
+            output_path = output_paths[name]
             output_path.write_bytes(canonical_upload_bytes(path))
             canonical_paths[name] = str(output_path)
 
@@ -96,6 +124,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
 
+    # Include the manifest in the same preflight, before build_manifest can write
+    # either canonical copy or create its output directory.
+    _preflight_paths(
+        {"train": args.train, "validation": args.validation},
+        canonical_output_dir=args.canonical_output_dir,
+        manifest_output=args.output,
+    )
     manifest = build_manifest(
         args.train,
         args.validation,

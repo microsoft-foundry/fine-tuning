@@ -42,6 +42,7 @@ import chz
 import pytest
 
 import programmed_training.recipes as _recipes_pkg
+from programmed_training.optimizers import AdamConfig
 
 # ``recipes`` ships no __init__.py (namespace package), so ``__file__`` is None.
 # Namespace packages still expose ``__path__``; use its first entry.
@@ -56,8 +57,10 @@ RECIPES_DIR = Path(next(iter(_recipes_pkg.__path__)))
 
 RECIPE_KINDS: dict[str, frozenset[str]] = {
     "code_rl": frozenset({"rl"}),
+    "llm_judge_rl": frozenset({"rl"}),
     "math_rl": frozenset({"rl"}),
     "mcp_image_tool": frozenset({"rl"}),
+    "rl_numerics_check": frozenset({"rl"}),
     "search_tool": frozenset({"rl"}),
     "tool_rl": frozenset({"rl"}),
     "tool_ner_rl": frozenset({"rl"}),
@@ -93,6 +96,10 @@ UNIVERSAL_PARAMS: frozenset[str] = frozenset({
     "lora_rank",
     "load_checkpoint_path",
     "learning_rate",
+    "adam_beta1",
+    "adam_beta2",
+    "adam_eps",
+    "adam_weight_decay",
     "eval_every",
     "save_every",
     # Promoted to universal
@@ -320,13 +327,14 @@ def test_rl_universal_params_present(recipe: str):
     if "eval_strategy" not in FIXED_WORKFLOW_EXCEPTIONS.get(recipe, frozenset())
 ])
 def test_rl_recipes_default_to_step_evaluation(recipe: str):
-    # RL recipe CLIConfigs default to step-based evaluation (master parity).
+    # Step-based scheduling also applies when periodic evaluation is disabled.
     cli_config = _import_cliconfig(recipe, "rl")(
         project_endpoint="https://example.test",
         model_name="example/model",
     )
     assert cli_config.eval_strategy == "steps"
-    assert cli_config.eval_every == 20
+    expected_eval_every = {"llm_judge_rl": 10, "rl_numerics_check": 0}.get(recipe, 20)
+    assert cli_config.eval_every == expected_eval_every
 
 
 @pytest.mark.parametrize("recipe", _recipes_of_kind("sft"))
@@ -344,8 +352,8 @@ def test_sft_universal_params_present(recipe: str):
 # recipe could satisfy the presence checks above while silently dropping the
 # param on the floor (declared in ``CLIConfig`` but never threaded into the
 # ``Config`` / dataset builder). This guard fails when a universal param is not
-# referenced as ``cli_config.<param>`` anywhere in the recipe's entrypoint —
-# the cheap, high-signal tripwire for exactly that plumbing mistake.
+# referenced as ``cli_config.<param>`` or forwarded through the shared
+# ``adam_kwargs`` expansion in the recipe's entrypoint.
 # =============================================================================
 
 
@@ -356,6 +364,8 @@ def test_universal_params_are_wired(recipe: str, kind: str):
         encoding="utf-8"
     )
     required = UNIVERSAL_PARAMS - FIXED_WORKFLOW_EXCEPTIONS.get(recipe, frozenset())
+    if "**cli_config.adam_kwargs()" in source:
+        required -= chz.chz_fields(AdamConfig).keys()
     unwired = sorted(p for p in required if f"cli_config.{p}" not in source)
     assert not unwired, (
         f"Recipe '{recipe}' ({kind}) declares universal params but never consumes them "

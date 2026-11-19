@@ -5,10 +5,20 @@ Includes math_normalize functionality that was dependency of grader.
 """
 
 import contextlib
+import importlib.util
+import io
 import logging
+import math
+import os
+import pickle
 import re
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
-from typing import Any, Callable, Dict, Tuple, TypeVar
+import subprocess
+import sys
+import tempfile
+import time
+import types
+from pathlib import Path
+from typing import Any, Callable, Dict, Tuple, TypeVar, cast
 
 import sympy
 from pylatexenc import latex2text
@@ -497,10 +507,15 @@ def grade_answer_math_verify(given_answer: str, ground_truth: str) -> bool:
     if not ground_truth.startswith("$") and not ground_truth.endswith("$"):
         ground_truth = f"${ground_truth}$"
 
-    given_answer_parsed = parse(given_answer)
-    ground_truth_parsed = parse(ground_truth)
+    # The outer isolated worker owns the killable deadline. In particular,
+    # math-verify's Windows timeout wrapper must not spawn nested processes
+    # or silently convert a startup/grader failure into an empty parse.
+    given_answer_parsed = parse(given_answer, parsing_timeout=None, raise_on_error=True)
+    ground_truth_parsed = parse(ground_truth, parsing_timeout=None, raise_on_error=True)
 
-    is_correct = verify(given_answer_parsed, ground_truth_parsed)
+    is_correct = verify(
+        given_answer_parsed, ground_truth_parsed, timeout_seconds=None, raise_on_error=True
+    )
 
     return is_correct
 
@@ -515,44 +530,279 @@ class TimeoutException(Exception):
     pass
 
 
+_MAX_WORKER_INPUT_BYTES = 1024 * 1024
+# Capped files carry the request and response, not potentially blocking pipe
+# writes. Stdio carries only a one-byte start handshake; grader output is
+# discarded, so neither printed output nor a Queue feeder can grow IPC.
+_MAX_WORKER_MESSAGE_BYTES = 4000
+_WORKER_MEMORY_LIMIT_BYTES = 1024 * 1024 * 1024
+_WORKER_STARTUP_TIMEOUT_SECONDS = 30.0
+_WORKER_TERMINATION_GRACE_SECONDS = 1.0
+
+
+def _limit_worker_resources(timeout_seconds: float) -> None:
+    """Apply Linux limits only in the disposable child, never in the server.
+
+    Windows still has the parent-enforced wall timeout and bounded IPC, but
+    does not offer these POSIX CPU/address-space limits through the stdlib.
+    This process boundary is not a sandbox for executing untrusted Python.
+    """
+    if sys.platform != "linux":
+        return
+
+    import resource
+
+    usage = resource.getrusage(resource.RUSAGE_SELF)
+    # RLIMIT_CPU is cumulative from process creation. Imported dependencies
+    # must not consume the expression's CPU allowance either.
+    cpu_limit = math.ceil(usage.ru_utime + usage.ru_stime + timeout_seconds) + 1
+    limits = (
+        (resource.RLIMIT_AS, _WORKER_MEMORY_LIMIT_BYTES),
+        (resource.RLIMIT_CPU, max(1, cpu_limit)),
+        (resource.RLIMIT_CORE, 0),
+    )
+    for resource_id, requested in limits:
+        soft, hard = resource.getrlimit(resource_id)
+        finite_limits = [requested]
+        finite_limits.extend(limit for limit in (soft, hard) if limit != resource.RLIM_INFINITY)
+        limit = min(finite_limits)
+        resource.setrlimit(resource_id, (limit, limit))
+
+
+class _InvocationPickler(pickle.Pickler):
+    """Record exact Python source origins without serializing the caller's runtime."""
+
+    def __init__(self, stream: io.BytesIO):
+        super().__init__(stream, protocol=pickle.HIGHEST_PROTOCOL)
+        self.origins: dict[str, str] = {}
+        self.roots: set[str] = set()
+
+    def persistent_id(self, obj: Any) -> None:
+        if isinstance(obj, (type, types.FunctionType, types.BuiltinFunctionType)):
+            name = getattr(obj, "__module__", None)
+            if name in ("__main__", "__mp_main__"):
+                raise ValueError("Grading callables must live in an importable module, not __main__")
+            module = sys.modules.get(name)
+            origin = getattr(module, "__file__", None)
+            if origin and Path(origin).suffix in (".py", ".pyw"):
+                source = Path(origin).resolve()
+                self.origins[name] = str(source)
+                root = source.parent
+                package = getattr(module, "__package__", "") or ""
+                for _ in package.split(".") if package else ():
+                    root = root.parent
+                self.roots.add(str(root))
+        return None
+
+
+class _SourceUnpickler(pickle.Unpickler):
+    def __init__(self, invocation: bytes, origins: dict[str, str]):
+        super().__init__(io.BytesIO(invocation))
+        self.origins = origins
+
+    def find_class(self, module: str, name: str) -> Any:
+        if module not in self.origins:
+            return super().find_class(module, name)
+        source = Path(self.origins[module])
+        if source == Path(__file__).resolve():
+            loaded = sys.modules[__name__]
+            sys.modules[module] = loaded
+        else:
+            loaded = sys.modules.get(module)
+            if loaded is None:
+                spec = importlib.util.spec_from_file_location(module, source)
+                if spec is None or spec.loader is None:
+                    raise ImportError(f"Cannot load grading callable from {source}")
+                loaded = importlib.util.module_from_spec(spec)
+                sys.modules[module] = loaded
+                spec.loader.exec_module(loaded)
+            elif Path(loaded.__file__).resolve() != source:
+                raise ImportError(f"Grading callable source mismatch for {module}")
+        value: Any = loaded
+        for part in name.split("."):
+            value = getattr(value, part)
+        return value
+
+
+def _worker_response(succeeded: bool, value: Any) -> bytes:
+    try:
+        payload = pickle.dumps((succeeded, value), protocol=pickle.HIGHEST_PROTOCOL)
+        if len(payload) > _MAX_WORKER_MESSAGE_BYTES:
+            raise ValueError("grading worker response exceeds the IPC size limit")
+    except Exception as exc:
+        # Keep unpicklable exceptions visible, never turn them into timeouts.
+        description = type(value).__name__[:128]
+        if not succeeded:
+            description += f": {str(value)[:256]}"
+        error = RuntimeError(
+            f"Cannot transfer grading worker {'result' if succeeded else 'exception'} "
+            f"({description}): {str(exc)[:256]}"
+        )
+        payload = pickle.dumps((False, error), protocol=pickle.HIGHEST_PROTOCOL)
+    return payload
+
+
+def _timeout_process_worker(directory: Path) -> None:
+    """File entrypoint: no multiprocessing preparation or recipe __main__ replay."""
+    try:
+        with (directory / "request").open("rb") as stream:
+            request = stream.read(_MAX_WORKER_INPUT_BYTES + 1)
+        if len(request) > _MAX_WORKER_INPUT_BYTES:
+            raise ValueError("grading worker input exceeds the IPC size limit")
+        origins, roots, invocation, timeout_seconds = pickle.loads(request)
+        _limit_worker_resources(_WORKER_STARTUP_TIMEOUT_SECONDS + timeout_seconds)
+        # -I ignores ambient PYTHONPATH. Only explicitly recorded callable
+        # source roots are added, and the grader itself is already loaded.
+        sys.path[:0] = roots
+        func, args, kwargs = _SourceUnpickler(invocation, origins).load()
+        if func is grade_answer_math_verify:
+            __import__("math_verify")
+        _limit_worker_resources(timeout_seconds)
+        (directory / "ready").touch()
+        # The parent bounds this handshake with communicate(timeout=...).
+        # Parent exit closes stdin, and any deadline kills this entire child.
+        if sys.stdin.buffer.read(1) != b"G":
+            raise RuntimeError("Math grading worker did not receive the start handshake")
+        value = func(*args, **kwargs)
+        succeeded = True
+    except BaseException as exc:
+        value = exc
+        succeeded = False
+    (directory / "response").write_bytes(_worker_response(succeeded, value))
+
+
+def _stop_worker(process: subprocess.Popen) -> None:
+    """Reap a worker with bounded waits, escalating past ignored SIGTERM."""
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=_WORKER_TERMINATION_GRACE_SECONDS)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        try:
+            process.wait(timeout=_WORKER_TERMINATION_GRACE_SECONDS)
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError("Could not terminate the timed-out math grading worker") from exc
+
+
+def _read_worker_result(process: subprocess.Popen, directory: Path) -> Any:
+    if process.returncode != 0:
+        raise RuntimeError(f"Math grading worker exited with code {process.returncode}")
+    try:
+        with (directory / "response").open("rb") as stream:
+            payload = stream.read(_MAX_WORKER_MESSAGE_BYTES + 1)
+    except FileNotFoundError as exc:
+        raise RuntimeError("Math grading worker exited without a result") from exc
+    if len(payload) > _MAX_WORKER_MESSAGE_BYTES:
+        raise RuntimeError("grading worker response exceeds the IPC size limit")
+    try:
+        succeeded, value = pickle.loads(payload)
+        if not isinstance(succeeded, bool) or (not succeeded and not isinstance(value, BaseException)):
+            raise ValueError("invalid result envelope")
+    except Exception as exc:
+        raise RuntimeError("Invalid math grading worker response") from exc
+    if not succeeded:
+        raise value
+    return value
+
+
+def _wait_worker_ready(process: subprocess.Popen, directory: Path, deadline: float) -> None:
+    while not (directory / "ready").exists():
+        if process.poll() is not None:
+            _read_worker_result(process, directory)
+            raise RuntimeError("Math grading worker exited without becoming ready")
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError("Math grading worker initialization timed out")
+        try:
+            process.wait(timeout=min(0.01, remaining))
+        except subprocess.TimeoutExpired:
+            pass
+
+
+def _worker_interpreter() -> tuple[str, dict[str, str] | None]:
+    if sys.platform != "win32":
+        return sys.executable, None
+
+    import ctypes
+
+    # Windows venv/Store executables can be redirectors. Killing the
+    # redirector's Popen handle would leave the real grader running. Start
+    # the actual current image, retaining venv resolution just as CPython's
+    # multiprocessing launcher does, but without its __main__ preparation.
+    image = ctypes.create_unicode_buffer(32768)
+    length = ctypes.windll.kernel32.GetModuleFileNameW(None, image, len(image))
+    if not length or length >= len(image):
+        raise OSError("Cannot locate the running Python interpreter image")
+    environment = os.environ.copy()
+    environment["__PYVENV_LAUNCHER__"] = sys.executable
+    return image.value, environment
+
+
 def run_with_timeout_signal(
     func: Callable[..., T],
     args: Tuple[Any, ...] = (),
-    kwargs: Dict[str, Any] = {},
-    timeout_seconds: int = 5,
+    kwargs: Dict[str, Any] | None = None,
+    timeout_seconds: float = 5,
 ) -> T | None:
-    """
-    Runs a function with a timeout using ThreadPoolExecutor (cross-platform).
+    """Run a picklable callable in a lightweight, disposable interpreter.
 
-    Args:
-        func: The function to execute.
-        args: Positional arguments for the function.
-        kwargs: Keyword arguments for the function.
-        timeout_seconds: Maximum time allowed in seconds.
+    Return its result, or None only on an expression wall-clock timeout.
+    Initialization has a separate bounded deadline; startup, grader and IPC
+    failures propagate. Cleanup adds at most two termination grace periods.
+    Requests are capped at 1 MiB, responses at 4000 bytes, with no output queue.
 
-    Returns:
-        The result of the function call, or None if it times out.
+    Execute this file with -I, never fork the server or replay its __main__.
+    Callables must live in importable modules; explicit Python source origins
+    support source checkouts without passing the training runtime to the child.
     """
-    # Deliberately not a `with ThreadPoolExecutor(...) as executor:` block:
-    # its __exit__ calls shutdown(wait=True), which would block this call
-    # until the (possibly still-stuck) worker thread finishes on its own --
-    # defeating the whole point of timeout_seconds, since Python can't force
-    # a thread to stop. shutdown(wait=False) lets us return promptly; the
-    # worker thread is simply abandoned to finish (or hang) on its own,
-    # which is safe because it isn't holding anything this call needs.
-    executor = ThreadPoolExecutor(max_workers=1)
-    try:
-        future = executor.submit(func, *args, **kwargs)
+    if not math.isfinite(timeout_seconds):
+        raise ValueError("timeout_seconds must be finite")
+    if timeout_seconds <= 0:
+        logger.warning("Function timed out after %s seconds.", timeout_seconds)
+        return None
+
+    stream = io.BytesIO()
+    pickler = _InvocationPickler(stream)
+    # Reduced callable objects can import this grader during initialization
+    # even when their pickle contains only their own reconstruction function.
+    pickler.persistent_id(grade_answer)
+    pickler.dump((func, args, kwargs or {}))
+    request = pickle.dumps(
+        (pickler.origins, sorted(pickler.roots), stream.getvalue(), timeout_seconds),
+        protocol=pickle.HIGHEST_PROTOCOL,
+    )
+    if len(request) > _MAX_WORKER_INPUT_BYTES:
+        raise ValueError("grading worker input exceeds the IPC size limit")
+
+    with tempfile.TemporaryDirectory(prefix="math-grading-") as temporary:
+        directory = Path(temporary)
+        (directory / "request").write_bytes(request)
+        executable, environment = _worker_interpreter()
+        startup_deadline = time.monotonic() + _WORKER_STARTUP_TIMEOUT_SECONDS
+        process = subprocess.Popen(
+            [executable, "-I", "-u", "-B", str(Path(__file__).resolve()),
+             "--math-grading-worker", str(directory)],
+            stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            env=environment,
+        )
         try:
-            result = future.result(timeout=timeout_seconds)
-        except FuturesTimeoutError:
-            logger.warning(f"Function timed out after {timeout_seconds} seconds.")
-            result = None
-        except Exception as e:
-            # Handle other exceptions from the function if needed
-            logger.warning(f"Function raised an exception: {e}")
-            result = None  # Or re-raise
-    finally:
-        executor.shutdown(wait=False)
+            _wait_worker_ready(process, directory, startup_deadline)
+            try:
+                process.communicate(input=b"G", timeout=timeout_seconds)
+            except subprocess.TimeoutExpired:
+                logger.warning("Function timed out after %s seconds.", timeout_seconds)
+                return None
+            return cast(T, _read_worker_result(process, directory))
+        finally:
+            _stop_worker(process)
+            if process.stdin is not None:
+                with contextlib.suppress(BrokenPipeError):
+                    process.stdin.close()
 
-    return result
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3 or sys.argv[1] != "--math-grading-worker":
+        raise SystemExit("This file is an internal math grading worker")
+    _timeout_process_worker(Path(sys.argv[2]))

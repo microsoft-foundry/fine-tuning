@@ -10,3 +10,13 @@ These files preserve the exact demonstration records, including prompts and answ
 The source demo also tracked a 10-row held-out scale. Those rows are not copied, uploaded, or used here.
 
 Each non-empty JSONL line is parsed before upload and must contain a non-empty `messages` array. The validated canonical LF bytes are uploaded without changing records, prompts, or answers.
+
+## Upstream copyright and license
+
+The [canonical sample notice](../../../../Sample_Datasets/Supervised_Fine_Tuning/Text-Bug-Detection/README.md)
+pins the published Microsoft source at Git revision
+`cc042d12f6704be36c70f9f4b2457aeaa12b97c7` and lists its source Git blobs.
+The complete upstream MIT notice, including
+`Copyright (c) 2025 Azure AI Foundry`, is retained beside these renamed copies
+in [LICENSE.md](LICENSE.md). Keep it with redistributed data. This license
+addition changes neither the records nor the integrity contract above.

@@ -9,7 +9,7 @@ from collections import Counter
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 _SECRET_PATTERNS = (
     re.compile(r"(?i)\b(?:api[-_ ]?key|client[-_ ]?secret)\b\s*[:=]\s*\S+"),
@@ -85,6 +85,47 @@ def canonical_record_hash(record: Mapping[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _nonempty_string(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _valid_content(content: Any) -> bool:
+    if isinstance(content, str):
+        return _nonempty_string(content)
+    if not isinstance(content, list) or not content:
+        return False
+    for part in content:
+        if not isinstance(part, dict):
+            return False
+        if part.get("type") == "text":
+            if not _nonempty_string(part.get("text")):
+                return False
+        elif part.get("type") == "image_url":
+            image = part.get("image_url")
+            if not isinstance(image, dict) or not _nonempty_string(image.get("url")):
+                return False
+        else:
+            return False
+    return True
+
+
+def _valid_tool_calls(calls: Any) -> bool:
+    if not isinstance(calls, list) or not calls:
+        return False
+    for call in calls:
+        if not isinstance(call, dict) or call.get("type") != "function":
+            return False
+        function = call.get("function")
+        if (
+            not _nonempty_string(call.get("id"))
+            or not isinstance(function, dict)
+            or not _nonempty_string(function.get("name"))
+            or not isinstance(function.get("arguments"), str)
+        ):
+            return False
+    return True
+
+
 def _messages_issues(
     messages: Any,
     *,
@@ -105,7 +146,7 @@ def _messages_issues(
             ],
             roles,
         )
-    previous_role: str | None = None
+    pending_tool_calls: set[str] = set()
     for index, message in enumerate(messages):
         if not isinstance(message, dict):
             issues.append(
@@ -118,7 +159,7 @@ def _messages_issues(
             )
             continue
         role = message.get("role")
-        if role not in _ALLOWED_ROLES:
+        if not isinstance(role, str) or role not in _ALLOWED_ROLES:
             issues.append(
                 DatasetIssue(
                     "error",
@@ -138,22 +179,62 @@ def _messages_issues(
                     line_number,
                 )
             )
-        if role == "tool" and previous_role not in {"assistant", "tool"}:
+        if pending_tool_calls and role != "tool":
             issues.append(
                 DatasetIssue(
                     "error",
-                    "message.order",
-                    "A tool message must follow an assistant tool call",
+                    "message.tool-results",
+                    f"messages[{index}] interrupts assistant tool calls without matching responses",
                     line_number,
                 )
             )
+            pending_tool_calls.clear()
+        if role == "tool":
+            identifier = message.get("tool_call_id")
+            if not _nonempty_string(identifier) or identifier not in pending_tool_calls:
+                issues.append(
+                    DatasetIssue(
+                        "error",
+                        "message.tool-call-id",
+                        f"messages[{index}].tool_call_id must match an outstanding assistant tool call",
+                        line_number,
+                    )
+                )
+            else:
+                pending_tool_calls.remove(identifier)
         content = message.get("content")
-        if content is None:
+        valid_calls = role == "assistant" and _valid_tool_calls(message.get("tool_calls"))
+        if message.get("tool_calls") is not None and not valid_calls:
+            issues.append(
+                DatasetIssue(
+                    "error",
+                    "message.tool-calls",
+                    f"messages[{index}].tool_calls must be non-empty assistant function calls",
+                    line_number,
+                )
+            )
+        if valid_calls:
+            identifiers = [call["id"] for call in message["tool_calls"]]
+            pending_tool_calls.update(identifiers)
+            if len(pending_tool_calls) != len(identifiers):
+                issues.append(
+                    DatasetIssue(
+                        "error",
+                        "message.tool-call-id",
+                        f"messages[{index}].tool_calls must have unique identifiers",
+                        line_number,
+                    )
+                )
+        tool_call_only = valid_calls and (
+            content is None or isinstance(content, str) and not content.strip()
+        )
+        if not _valid_content(content) and not tool_call_only:
             issues.append(
                 DatasetIssue(
                     "error",
                     "message.content",
-                    f"messages[{index}] is missing content",
+                    f"messages[{index}].content must be a non-empty string or a non-empty "
+                    "list of supported text/image_url parts (or an assistant tool call)",
                     line_number,
                 )
             )
@@ -166,7 +247,17 @@ def _messages_issues(
                     line_number,
                 )
             )
-        previous_role = role if isinstance(role, str) else previous_role
+    # An assistant-only final tool-call batch is a valid supervised target.
+    # Once responses begin, however, every call in that batch must be consumed.
+    if pending_tool_calls and isinstance(messages[-1], dict) and messages[-1].get("role") != "assistant":
+        issues.append(
+            DatasetIssue(
+                "error",
+                "message.tool-results",
+                "The final tool response batch is missing assistant tool-call results",
+                line_number,
+            )
+        )
     if roles["assistant"] == 0:
         issues.append(
             DatasetIssue(
@@ -177,6 +268,10 @@ def _messages_issues(
             )
         )
     return issues, roles
+
+
+def _reject_json_constant(value: str) -> NoReturn:
+    raise json.JSONDecodeError(f"Non-finite constant {value} is not valid JSON", value, 0)
 
 
 def validate_jsonl(
@@ -217,7 +312,7 @@ def validate_jsonl(
                 continue
             report.rows += 1
             try:
-                record = json.loads(raw_line)
+                record = json.loads(raw_line, parse_constant=_reject_json_constant)
             except json.JSONDecodeError as error:
                 report.issues.append(
                     DatasetIssue(
@@ -296,7 +391,7 @@ def _record_hashes(path: Path) -> set[str]:
     with path.open("r", encoding="utf-8-sig") as stream:
         for raw_line in stream:
             if raw_line.strip():
-                record = json.loads(raw_line)
+                record = json.loads(raw_line, parse_constant=_reject_json_constant)
                 if isinstance(record, dict):
                     hashes.add(canonical_record_hash(record))
     return hashes

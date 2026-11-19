@@ -2,7 +2,8 @@
 
 ## Prerequisites
 
-- Python 3.11-3.14
+- Standard CPython 3.11-3.14; see the [dependency compatibility notes](DEPENDENCY_COMPATIBILITY.md)
+    for platform limits and the distinction between published metadata and tested environments
 - A Microsoft Foundry project and access to the models required by the selected demo
 - Entra ID authentication available to `DefaultAzureCredential` (for example,
   `az login`, managed identity, Azure CLI, or workload identity)
@@ -27,6 +28,18 @@ The lock consolidates retained notebook/helper requirements, and the editable in
 makes the shared cookbook helpers importable from every demo. Notebook authors
 must not add drifting per-demo requirements files. Update both `pyproject.toml`
 and `requirements.lock` when a capability genuinely needs a new package.
+
+The Python range is unchanged. The lock uses the published Functions 1.24.0
+library because Functions 2.3.0 requires Python 3.13 or newer. NumPy 2.3.5
+provides CPython 3.14 wheels; OpenCV 4.13.0.90 is paired with it because the
+previous OpenCV pin required NumPy below 2.3. This is a local cookbook-library
+selection, not a statement of Azure Functions hosted-runtime support.
+
+The lock pins direct packages only. Transitive resolution, clean installation,
+native imports, and cookbook execution still require validation on the selected
+interpreter and OS. In particular, the inspected OpenCV release has no native
+Windows ARM64 wheel. Do not interpret a permissive `Requires-Python` field or
+a universal wheel as proof that the complete environment works on a platform.
 
 ## Configure without committing identifiers
 

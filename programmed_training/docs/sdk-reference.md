@@ -2,9 +2,13 @@
 
 A focused reference for the slice of the `azure-ai-finetuningsessions` SDK the cookbook exercises, plus the cookbook wrappers that bridge from raw HTTP-style calls to the train loop in [training.md](./training.md).
 
-This is **not** the full SDK reference. Examples target the pinned public preview, `azure-ai-finetuningsessions==1.0.0b1`; see the [published package and its documentation links](https://pypi.org/project/azure-ai-finetuningsessions/). For rendered custom data, start with [custom-data.md](./custom-data.md); for checkpoint use after training, see [evaluation and sampling](./evaluation-and-sampling.md).
+This is **not** the full SDK reference. Examples target the pinned public preview, `azure-ai-finetuningsessions==1.0.0b2`; see the [published package and its documentation links](https://pypi.org/project/azure-ai-finetuningsessions/). For rendered custom data, start with [custom-data.md](./custom-data.md); for checkpoint use after training, see [evaluation and sampling](./evaluation-and-sampling.md).
 
 For the **management** half of the SDK (`client.sessions.list / get / begin_unload / heartbeat`, `client.checkpoints.list / get`) — which the recipe does not exercise but you'll want for discovery, inspection, and cleanup — see [session-management.md](./session-management.md) and the companion [`notebooks/manage_sessions.ipynb`](../notebooks/manage_sessions.ipynb).
+
+Checkpoint listings may contain unfinished protected saves with `time=None`.
+See [checkpoint list compatibility](./session-management.md#checkpoint-list-compatibility)
+before sorting timestamps or depending on metadata added after the pinned preview.
 
 > [!NOTE]
 > Sync examples import `azure.ai.finetuningsessions.FineTuningSessionClient`; async examples import `azure.ai.finetuningsessions.aio.FineTuningSessionClient`. DTOs come from `azure.ai.finetuningsessions.models`. These clients and the cookbook wrappers are different interfaces, not interchangeable handles.
@@ -114,10 +118,14 @@ FromCheckpoint(
 ```python
 from azure.ai.finetuningsessions.models import AdamParams
 
-AdamParams(learning_rate=2e-5, beta1=0.9, beta2=0.95, eps=1e-8)
+AdamParams(learning_rate=2e-5, beta1=0.9, beta2=0.999, eps=1e-8, weight_decay=0.0)
 ```
 
 Passed to `optim_step`. The shared loops construct these parameters from the effective learning rate and optimizer settings; they do not universally reuse one object for the whole run. RL uses the recipe's learning rate for its substeps; SFT computes the scheduled rate for each step.
+
+These compatibility defaults match Loom's historical effective trainer settings,
+not the previously ignored `beta2=0.95` requests. The SDK model itself supplies
+no numeric defaults. See [Adam optimizer defaults](../README.md#adam-optimizer-defaults).
 
 ### `LossFn`
 
@@ -204,7 +212,7 @@ See [loss_functions.md § Writing a custom loss](./loss_functions.md#writing-a-c
 Apply accumulated gradients with the given Adam params.
 
 - Maps to: `POST /fine_tuning/sessions/<id>/optim_step`
-- Defaults to `AdamParams(learning_rate=3e-4, beta1=0.9, beta2=0.95, eps=1e-8)` if `None`.
+- Defaults to `AdamParams(learning_rate=3e-4, beta1=0.9, beta2=0.999, eps=1e-8, weight_decay=0.0)` if `None`.
 
 ### `save_state_async(name, ttl_seconds=None, *, step_number=None, metrics=None) → Future`
 

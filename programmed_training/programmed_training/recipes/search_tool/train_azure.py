@@ -14,12 +14,13 @@ from urllib.parse import urlparse
 import chz
 from azure.ai.finetuningsessions.models import LossFn as LossFnType
 
-from programmed_training import cli_utils, model_info
+from programmed_training import auto_resume, cli_utils, model_info
 from programmed_training.dynamic_batching import build_strategy
 from programmed_training.recipes.search_tool.search_env import SearchR1DatasetBuilder
 from programmed_training.recipes.search_tool.tools import RetrievalConfig
 from programmed_training.rl import train_azure as rl_azure
 from programmed_training.rl.train import AsyncConfig, Config, EvaluationStrategy
+from programmed_training.optimizers import AdamConfig
 from programmed_training.training_types import (
     TrainingType,
     normalize_training_type,
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 @chz.chz
-class CLIConfig:
+class CLIConfig(auto_resume.AutoResumeConfig, AdamConfig):
     """Command-line config for Azure SDK-based Search-R1 tool-use RL."""
 
     # Model
@@ -197,6 +198,7 @@ async def cli_main(cli_config: CLIConfig):
 
     config = Config(
         learning_rate=cli_config.learning_rate,
+        **cli_config.adam_kwargs(),
         dataset_builder=dataset_builder,
         model_name=tokenizer_name,
         tokenizer_name=tokenizer_name,
@@ -397,8 +399,7 @@ async def cli_main(cli_config: CLIConfig):
         + (f"  from_checkpoint={from_checkpoint}" if from_checkpoint else "")
     )
 
-    try:
-        session_id = await client.create_session(
+    session_kwargs = dict(
             base_model=cli_config.model_name,
             lora_config=LoRAConfig(rank=cli_config.lora_rank),
             type="training",
@@ -406,14 +407,18 @@ async def cli_main(cli_config: CLIConfig):
             timeout_sec=cli_config.create_session_timeout_sec,
             user_metadata=cli_config.user_metadata,
             training_type=normalize_training_type(cli_config.training_type),
-        )
+    )
+    try:
+        session_id = await client.create_session(**session_kwargs)
         print(f"Session ready: session_id={session_id}")
 
         run_meta["azure"]["session_id"] = session_id
         _write_meta()
 
-        await rl_azure.main(
-            config, client, session_id, training_type=cli_config.training_type
+        await auto_resume.run_rl(
+            config, client, session_id, training_type=cli_config.training_type,
+            recovery_config=cli_config, client_kwargs=client_kwargs,
+            session_kwargs=session_kwargs,
         )
     finally:
         await client.close()

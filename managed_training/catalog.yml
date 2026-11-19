@@ -187,8 +187,11 @@ demos:
     path: 05-data-and-distillation/04-agent-traces-to-sft
     techniques: [trace-distillation, sft]
     modalities: [text, tool-calls]
-    training: {base_models: [gpt-4.1-nano-2025-04-14], teacher_models: [runtime-configured], evaluator_models: [], result_model: runtime-recorded}
-    capabilities: [trace-collection, data-generation, file-upload, sft, training-metrics]
-    prerequisites: [foundry-project, entra-id, application-insights, model-access]
+    training: {base_models: [gpt-4.1-nano-2025-04-14], teacher_models: [], evaluator_models: [], result_model: runtime-recorded}
+    capabilities: [offline-trace-preparation, conversation-group-isolation, file-upload, sft, training-metrics]
+    prerequisites: [foundry-project, entra-id, model-access]
     cost_tier: high
     runtime_tier: long
+    validation:
+      status: partial
+      notes: "Offline preparation and tests verify 100 source traces in 40 conversation groups, a disjoint 80/10/10 split, and consistent exchange/replacement inventory descriptions. Original JSONL remains historical provenance. No live outcome or tool-execution correctness is certified."

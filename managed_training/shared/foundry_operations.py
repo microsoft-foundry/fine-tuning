@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import math
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -10,7 +12,7 @@ from typing import Any
 from .dataset_validation import hash_file
 from .logging import get_logger, log_event, safe_reference
 from .naming import slugify
-from .retry import RetryPolicy, retry_call
+from .retry import RetryError, RetryPolicy, retry_call
 
 FILE_TERMINAL_STATUSES = {"processed", "error", "expired", "failed", "cancelled"}
 JOB_TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
@@ -53,11 +55,14 @@ def _iter_page(page: Any) -> list[Any]:
 
 def _matches_configuration(actual: Any, requested: Any) -> bool:
     if hasattr(actual, "model_dump"):
-        actual = actual.model_dump()
+        actual = actual.model_dump(exclude_none=True)
     if isinstance(requested, dict):
         return isinstance(actual, dict) and all(
             key in actual and _matches_configuration(actual[key], value)
             for key, value in requested.items()
+        ) and not any(
+            key not in requested and value is not None
+            for key, value in actual.items()
         )
     if isinstance(requested, list):
         return isinstance(actual, list) and len(actual) == len(requested) and all(
@@ -79,6 +84,57 @@ def _remote_filename(demo_slug: str, purpose: str, path: Path) -> str:
     return f"{slugify(demo_slug, max_length=30)}-{slugify(purpose, max_length=20)}-{digest}{suffix}"
 
 
+def _polling_deadline(poll_interval_seconds: float, timeout_seconds: float) -> float:
+    for name, value in (
+        ("poll_interval_seconds", poll_interval_seconds),
+        ("timeout_seconds", timeout_seconds),
+    ):
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError(f"{name} must be finite and positive")
+    return time.monotonic() + timeout_seconds
+
+
+def _remaining_seconds(deadline: float, timeout_message: str) -> float:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError(timeout_message)
+    return remaining
+
+
+def _retrieve_with_deadline(
+    retrieve: Callable[[float], Any],
+    *,
+    deadline: float,
+    timeout_message: str,
+    operation_name: str,
+    policy: RetryPolicy,
+) -> Any:
+    def request() -> Any:
+        remaining = _remaining_seconds(deadline, timeout_message)
+        try:
+            result = retrieve(remaining)
+        except Exception as error:
+            if time.monotonic() >= deadline:
+                raise TimeoutError(timeout_message) from error
+            raise
+        _remaining_seconds(deadline, timeout_message)
+        return result
+
+    try:
+        return retry_call(
+            request,
+            policy=policy,
+            deadline=deadline,
+            operation_name=operation_name,
+            sleep=time.sleep,
+            clock=time.monotonic,
+        )
+    except RetryError as error:
+        if time.monotonic() >= deadline:
+            raise TimeoutError(timeout_message) from error
+        raise
+
+
 def wait_for_file(
     client: Any,
     file_id: str,
@@ -86,13 +142,23 @@ def wait_for_file(
     poll_interval_seconds: float = 5,
     timeout_seconds: float = 600,
 ) -> Any:
-    started = time.monotonic()
+    """Wait within one request/retry/polling budget; expiry does not delete files."""
+    deadline = _polling_deadline(poll_interval_seconds, timeout_seconds)
+    timeout_message = (
+        f"Uploaded file {safe_reference(file_id)} was not processed within "
+        f"{timeout_seconds:g} seconds"
+    )
+    polling_client = _submission_client(client)
+    retrieve = polling_client.files.retrieve
+    policy = RetryPolicy(timeout_seconds=timeout_seconds)
     last_status: str | None = None
     logger = get_logger()
     while True:
-        uploaded = retry_call(
-            lambda: client.files.retrieve(file_id),
-            policy=RetryPolicy(timeout_seconds=min(timeout_seconds, 90)),
+        uploaded = _retrieve_with_deadline(
+            lambda remaining: retrieve(file_id, timeout=remaining),
+            deadline=deadline,
+            timeout_message=timeout_message,
+            policy=policy,
             operation_name="retrieve uploaded file",
         )
         current = _status(uploaded)
@@ -105,6 +171,7 @@ def wait_for_file(
                 fields={"reference": safe_reference(file_id)},
             )
             last_status = current
+        remaining = _remaining_seconds(deadline, timeout_message)
         if current in FILE_TERMINAL_STATUSES:
             if current != "processed":
                 details = getattr(uploaded, "status_details", None)
@@ -112,12 +179,7 @@ def wait_for_file(
                     f"Uploaded file ended in terminal state {current}: {details}"
                 )
             return uploaded
-        if time.monotonic() - started >= timeout_seconds:
-            raise TimeoutError(
-                f"Uploaded file {safe_reference(file_id)} was not processed within "
-                f"{timeout_seconds:g} seconds"
-            )
-        time.sleep(poll_interval_seconds)
+        time.sleep(min(poll_interval_seconds, remaining))
 
 
 def upload_or_reuse_file(
@@ -221,6 +283,42 @@ def _job_training_type(job: Any) -> str | None:
     return str(value).casefold() if value is not None else None
 
 
+def _matches_job_recipe(
+    job: Any,
+    *,
+    suffix: str | None,
+    hyperparameters: dict[str, Any] | None,
+    method: dict[str, Any] | None,
+) -> bool:
+    # An omitted method requests the service's default SFT recipe, not any
+    # method. Resolved/default hyperparameters cannot be inferred reliably
+    # from a list response, so decline reuse without an explicit method.
+    if method is None or not method.get("type"):
+        return False
+    if hyperparameters is None:
+        settings = method.get(method["type"])
+        if not isinstance(settings, dict) or not settings.get("hyperparameters"):
+            return False
+    elif not hyperparameters:
+        return False
+    if not _matches_configuration(getattr(job, "method", None), method):
+        return False
+    if suffix is None:
+        # A missing response field is not proof that no custom suffix was used.
+        if not hasattr(job, "suffix") or _job_suffix(job) is not None:
+            return False
+    elif _job_suffix(job) != suffix:
+        return False
+    actual_hyperparameters = getattr(job, "hyperparameters", None)
+    if hasattr(actual_hyperparameters, "model_dump"):
+        actual_hyperparameters = actual_hyperparameters.model_dump(exclude_none=True)
+    if hyperparameters is None:
+        # Only the exact explicit method may supply settings in this case.
+        # Materialized top-level defaults are uncertain, never wildcards.
+        return actual_hyperparameters is None or actual_hyperparameters == {}
+    return _matches_configuration(actual_hyperparameters, hyperparameters)
+
+
 def create_or_reuse_fine_tuning_job(
     client: Any,
     *,
@@ -234,7 +332,13 @@ def create_or_reuse_fine_tuning_job(
     training_type: str | None = None,
     reuse: bool = True,
 ) -> OperationResult:
-    """Create or reuse a matching job; reject a mismatched explicit job ID."""
+    """Reuse only an observable, exact recipe; uncertain defaults mean nonreuse.
+
+    Omitting ``method`` still submits the service-default SFT request, but does
+    not establish equivalence to a listed job (including a materialized SFT
+    default). Resume an already recorded job by ID rather than guessing its
+    defaults. Extra resolved settings also conservatively prevent list reuse.
+    """
     if not model.strip() or not training_file_id.strip():
         raise ValueError("model and training_file_id are required")
     if training_type is not None and not training_type.strip():
@@ -287,20 +391,12 @@ def create_or_reuse_fine_tuning_job(
             if getattr(job, "model", None) == model
             and getattr(job, "training_file", None) == training_file_id
             and getattr(job, "validation_file", None) == validation_file_id
-            and (
-                normalized_suffix is None
-                or _job_suffix(job) == normalized_suffix
-            )
             and _status(job) in REUSABLE_JOB_STATUSES
-            and (
-                hyperparameters is None
-                or _matches_configuration(
-                    getattr(job, "hyperparameters", None), hyperparameters
-                )
-            )
-            and (
-                method is None
-                or _matches_configuration(getattr(job, "method", None), method)
+            and _matches_job_recipe(
+                job,
+                suffix=normalized_suffix,
+                hyperparameters=hyperparameters,
+                method=method,
             )
             and (
                 training_type is None
@@ -358,15 +454,24 @@ def monitor_fine_tuning_job(
     timeout_seconds: float = 24 * 60 * 60,
     require_success: bool = True,
 ) -> Any:
-    """Poll a fine-tuning job to a terminal state with an explicit timeout."""
-    started = time.monotonic()
+    """Poll within one request/retry/polling budget without cancelling the job."""
+    deadline = _polling_deadline(poll_interval_seconds, timeout_seconds)
+    timeout_message = (
+        f"Fine-tuning job {safe_reference(job_id)} did not finish within "
+        f"{timeout_seconds:g} seconds"
+    )
+    polling_client = _submission_client(client)
+    retrieve = polling_client.fine_tuning.jobs.retrieve
+    policy = RetryPolicy(max_attempts=10, timeout_seconds=timeout_seconds)
     last_status: str | None = None
     logger = get_logger()
     while True:
-        job = retry_call(
-            lambda: client.fine_tuning.jobs.retrieve(job_id),
+        job = _retrieve_with_deadline(
+            lambda remaining: retrieve(job_id, timeout=remaining),
+            deadline=deadline,
+            timeout_message=timeout_message,
             operation_name="retrieve fine-tuning job",
-            policy=RetryPolicy(max_attempts=10, timeout_seconds=600),
+            policy=policy,
         )
         current = _status(job)
         if current != last_status:
@@ -378,6 +483,7 @@ def monitor_fine_tuning_job(
                 fields={"reference": safe_reference(job_id)},
             )
             last_status = current
+        remaining = _remaining_seconds(deadline, timeout_message)
         if current in JOB_TERMINAL_STATUSES:
             if require_success and current != "succeeded":
                 error = getattr(job, "error", None)
@@ -385,9 +491,4 @@ def monitor_fine_tuning_job(
                     f"Fine-tuning job ended in terminal state {current}: {error}"
                 )
             return job
-        if time.monotonic() - started >= timeout_seconds:
-            raise TimeoutError(
-                f"Fine-tuning job {safe_reference(job_id)} did not finish within "
-                f"{timeout_seconds:g} seconds"
-            )
-        time.sleep(poll_interval_seconds)
+        time.sleep(min(poll_interval_seconds, remaining))

@@ -57,6 +57,7 @@ class _Future:
 class _TrainingClient:
     def __init__(self):
         self.completed_steps = 0
+        self.adam_params = []
 
     async def save_weights_and_get_sampling_client_async(self):
         return None
@@ -70,7 +71,7 @@ class _TrainingClient:
         )
 
     async def optim_step_async(self, adam_params):
-        del adam_params
+        self.adam_params.append(adam_params)
 
         def complete_step():
             self.completed_steps += 1
@@ -135,6 +136,86 @@ class _Logger:
 
     def close(self):
         pass
+
+
+@pytest.mark.parametrize("overrides", [{}, {
+    "adam_beta1": 0.6, "adam_beta2": 0.8, "adam_eps": 1e-4,
+    "adam_weight_decay": 0.15,
+}])
+def test_adam_defaults_and_explicit_overrides_reach_training_client(
+    monkeypatch, tmp_path, overrides,
+):
+    dataset = _Dataset(n_batches=1)
+
+    async def save_checkpoint(**kwargs):
+        return {}
+
+    monkeypatch.setattr(train.checkpoint_utils, "get_last_checkpoint", lambda _: None)
+    monkeypatch.setattr(train.checkpoint_utils, "save_checkpoint_async", save_checkpoint)
+    monkeypatch.setattr(train.ml_log, "setup_logging", lambda **_: _Logger())
+    monkeypatch.setattr(train, "get_tokenizer", lambda _: object())
+    monkeypatch.setattr(train, "compute_mean_nll", lambda *_: 0.0)
+    config = train.Config(
+        log_path=str(tmp_path), model_name="test/model",
+        dataset_builder=_DatasetBuilder(dataset), learning_rate=2e-4,
+        num_epochs=1, eval_every=0, save_every=0, sanitize_logs=True,
+        **overrides,
+    )
+    client = _TrainingClient()
+    asyncio.run(train.main(config, client))
+    assert len(client.adam_params) == 1
+    assert client.adam_params[0].as_dict() == {
+        "learning_rate": 2e-4,
+        "beta1": overrides.get("adam_beta1", 0.9),
+        "beta2": overrides.get("adam_beta2", 0.999),
+        "eps": overrides.get("adam_eps", 1e-8),
+        "weight_decay": overrides.get("adam_weight_decay", 0.0),
+    }
+
+
+@pytest.mark.parametrize("prepared", [False, True])
+@pytest.mark.parametrize("model_name", ["test/model", "test/model@high-performance"])
+def test_chat_training_uses_the_configured_dataset_tokenizer(
+    monkeypatch, tmp_path, prepared, model_name,
+):
+    from programmed_training.recipes.tulu3_sft.chat_datasets import Tulu3Builder
+    from programmed_training.supervised import types
+
+    dataset = _Dataset(n_batches=1)
+    builder = Tulu3Builder(common_config=types.ChatDatasetBuilderCommonConfig(
+        model_name_for_tokenizer="test/canonical-tokenizer",
+        renderer_name="role_colon", max_length=1200, batch_size=32,
+    ))
+    calls = []
+
+    def configured_tokenizer(name):
+        calls.append(name)
+        assert name == "test/canonical-tokenizer"
+        return object()
+
+    def unexpected_model_tokenizer(name):
+        raise AssertionError(f"API model identity must not override the chat tokenizer: {name}")
+
+    async def save_checkpoint(**kwargs):
+        return {}
+
+    monkeypatch.setattr(Tulu3Builder, "build", lambda self: (dataset, None))
+    monkeypatch.setattr(types, "get_tokenizer", configured_tokenizer)
+    monkeypatch.setattr(train, "get_tokenizer", unexpected_model_tokenizer)
+    monkeypatch.setattr(train.checkpoint_utils, "get_last_checkpoint", lambda _: None)
+    monkeypatch.setattr(train.checkpoint_utils, "save_checkpoint_async", save_checkpoint)
+    monkeypatch.setattr(train.ml_log, "setup_logging", lambda **_: _Logger())
+    monkeypatch.setattr(train, "compute_mean_nll", lambda *_: 0.0)
+    config = train.Config(
+        log_path=str(tmp_path), model_name=model_name, dataset_builder=builder,
+        num_epochs=1, eval_every=0, save_every=0, sanitize_logs=True,
+    )
+    client = _TrainingClient()
+    asyncio.run(train.main(
+        config, client, prepared_datasets=(dataset, None) if prepared else None,
+    ))
+    assert calls == ["test/canonical-tokenizer"]
+    assert client.completed_steps == 1
 
 
 @pytest.mark.parametrize("eval_every", [0, 1])
@@ -477,7 +558,7 @@ def test_steps_strategy_allows_eval_every_zero(tmp_path):
     assert config.eval_every == 0
 
 
-def _run_steps_sft_capturing_saves(monkeypatch, tmp_path, *, pipeline_depth):
+def _run_steps_sft_capturing_saves(monkeypatch, tmp_path, *, pipeline_depth, checkpoint_prefix="model_test/"):
     """Drive supervised.main in `steps` mode and capture eval + save behavior.
 
     Returns (evaluator.model_versions, client.completed_steps, saved checkpoints).
@@ -497,7 +578,7 @@ def _run_steps_sft_capturing_saves(monkeypatch, tmp_path, *, pipeline_depth):
     async def fake_save_checkpoint_async(**kwargs):
         saved_names.append(kwargs["name"])
         saved_loop_states.append(kwargs["loop_state"])
-        return {"state_path": f"model_test/{kwargs['name']}"}
+        return {"state_path": f"{checkpoint_prefix}{kwargs['name']}"}
 
     monkeypatch.setattr(
         train.checkpoint_utils, "save_checkpoint_async", fake_save_checkpoint_async
@@ -527,18 +608,19 @@ def _run_steps_sft_capturing_saves(monkeypatch, tmp_path, *, pipeline_depth):
     )
 
 
-def test_pipeline_depth_is_transparent_to_eval_and_save(monkeypatch, tmp_path):
+@pytest.mark.parametrize("checkpoint_prefix", ["model_test/", "loom://model_test/weights/"])
+def test_pipeline_depth_is_transparent_to_eval_and_save(monkeypatch, tmp_path, checkpoint_prefix):
     # Deep pipelining must not change WHAT eval sees or WHICH step is
     # checkpointed: the loop drains the in-flight window at each eval/save
     # boundary, so depth=3 is observationally identical to depth=1.
     versions_d1, completed_d1, saves_d1, loop_states_d1 = (
         _run_steps_sft_capturing_saves(
-            monkeypatch, tmp_path / "d1", pipeline_depth=1
+            monkeypatch, tmp_path / "d1", pipeline_depth=1, checkpoint_prefix=checkpoint_prefix
         )
     )
     versions_d3, completed_d3, saves_d3, loop_states_d3 = (
         _run_steps_sft_capturing_saves(
-            monkeypatch, tmp_path / "d3", pipeline_depth=3
+            monkeypatch, tmp_path / "d3", pipeline_depth=3, checkpoint_prefix=checkpoint_prefix
         )
     )
 
@@ -563,9 +645,9 @@ def test_pipeline_depth_is_transparent_to_eval_and_save(monkeypatch, tmp_path):
         )
     ]
     assert checkpointed_evals_d1 == [
-        (2, "model_test/2"),
-        (4, "model_test/4"),
-        (5, "model_test/final"),
+        (2, f"{checkpoint_prefix}2"),
+        (4, f"{checkpoint_prefix}4"),
+        (5, f"{checkpoint_prefix}final"),
     ]
 
     # Depth-3 is byte-for-byte identical on all three observables.

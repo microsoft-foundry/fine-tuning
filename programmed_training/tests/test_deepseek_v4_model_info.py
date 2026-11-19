@@ -22,7 +22,7 @@ _ALL_DSV4 = (_DSV4, _DSV4_0731)
 
 @pytest.mark.parametrize("model_id", _ALL_DSV4)
 def test_dsv4_attributes_resolve_regardless_of_flag(monkeypatch, model_id):
-    monkeypatch.delenv("INTERACTIVE_POST_TRAINING_ENABLE_DEEPSEEK_V4", raising=False)
+    monkeypatch.delenv(model_info.DEEPSEEK_V4_FLAG_ENV, raising=False)
     attrs = model_info.get_model_attributes(model_id)
     assert attrs.organization == "deepseek-ai"
     assert attrs.version_str == "4"
@@ -37,6 +37,11 @@ def test_every_dsv4_release_is_registered():
     assert registered == set(_ALL_DSV4)
 
 
+def test_dsv4_releases_agree_with_the_api_allowlist():
+    config = pytest.importorskip("loom_common.config", reason="loom_common not installed")
+    assert tuple(config.DEEPSEEK_V4_BASE_MODEL_IDS) == _ALL_DSV4
+
+
 def test_dsv4_releases_report_the_same_size():
     # 0731 differs only in its dropped MTP head, so the trainable model is the
     # same size; divergent metadata here would misreport capacity planning.
@@ -45,7 +50,7 @@ def test_dsv4_releases_report_the_same_size():
 
 
 def test_dsv4_renderer_routing_requires_flag(monkeypatch):
-    monkeypatch.delenv("INTERACTIVE_POST_TRAINING_ENABLE_DEEPSEEK_V4", raising=False)
+    monkeypatch.delenv(model_info.DEEPSEEK_V4_FLAG_ENV, raising=False)
     with pytest.raises(ValueError, match="feature-flagged"):
         model_info.get_recommended_renderer_names(_DSV4)
 
@@ -53,7 +58,7 @@ def test_dsv4_renderer_routing_requires_flag(monkeypatch):
 @pytest.mark.parametrize("model_id", _ALL_DSV4)
 @pytest.mark.parametrize("truthy", ["1", "true", "yes", "on"])
 def test_dsv4_renderer_routing_enabled_by_flag(monkeypatch, truthy, model_id):
-    monkeypatch.setenv("INTERACTIVE_POST_TRAINING_ENABLE_DEEPSEEK_V4", truthy)
+    monkeypatch.setenv(model_info.DEEPSEEK_V4_FLAG_ENV, truthy)
     assert model_info.get_recommended_renderer_names(model_id) == [
         "deepseekv3",
         "deepseekv3_thinking",
@@ -63,14 +68,14 @@ def test_dsv4_renderer_routing_enabled_by_flag(monkeypatch, truthy, model_id):
 @pytest.mark.parametrize("model_id", _ALL_DSV4)
 @pytest.mark.parametrize("falsey", ["0", "false", "no", "off", ""])
 def test_dsv4_renderer_routing_rejected_by_falsey_flag(monkeypatch, falsey, model_id):
-    monkeypatch.setenv("INTERACTIVE_POST_TRAINING_ENABLE_DEEPSEEK_V4", falsey)
+    monkeypatch.setenv(model_info.DEEPSEEK_V4_FLAG_ENV, falsey)
     with pytest.raises(ValueError, match="feature-flagged"):
         model_info.get_recommended_renderer_names(model_id)
 
 
 def test_existing_deepseek_v3_models_are_not_gated(monkeypatch):
     # DeepSeek V3.x must keep working with the flag off (only V4 is gated).
-    monkeypatch.delenv("INTERACTIVE_POST_TRAINING_ENABLE_DEEPSEEK_V4", raising=False)
+    monkeypatch.delenv(model_info.DEEPSEEK_V4_FLAG_ENV, raising=False)
     assert model_info.get_recommended_renderer_names(
         "deepseek-ai/DeepSeek-V3.2-Exp"
     ) == ["deepseekv3", "deepseekv3_thinking"]

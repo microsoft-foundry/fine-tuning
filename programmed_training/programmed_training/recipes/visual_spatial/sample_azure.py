@@ -14,7 +14,7 @@ from programmed_training.recipes.visual_spatial import azure_openai_jsonl
 from programmed_training.recipes.visual_spatial.data import answers_match, load_dataset, user_message
 from programmed_training.renderers import get_renderer, get_text_content
 from programmed_training.tokenizer_utils import get_tokenizer
-from programmed_training.training_types import TRAINING_TYPES, normalize_training_type
+from programmed_training.training_types import normalize_training_type
 
 
 def _credential():
@@ -41,7 +41,6 @@ def main() -> None:
     parser.add_argument(
         "--training-type",
         type=normalize_training_type,
-        choices=TRAINING_TYPES,
         help="Optional training tier; omitted values use the server default.",
     )
     parser.add_argument("--example-index", type=int, default=0)

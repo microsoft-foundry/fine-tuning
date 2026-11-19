@@ -8,7 +8,7 @@ from typing import Any
 
 from azure.core.exceptions import ResourceNotFoundError
 
-from .retry import retry_call
+from .retry import RetryPolicy, retry_call
 
 
 def _is_not_found(error: Exception) -> bool:
@@ -46,13 +46,26 @@ def ensure_deployment(
         create()
         deployment = None
 
-    started = time.monotonic()
+    deadline = time.monotonic() + timeout_seconds
+    read_timeout_seconds = RetryPolicy().timeout_seconds
+    timeout_message = (
+        f"Deployment {deployment_name!r} did not become visible with the "
+        f"expected model within {timeout_seconds:g} seconds"
+    )
     while True:
         if deployment is None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(timeout_message)
             try:
                 deployment = retry_call(
                     lambda: project_client.deployments.get(deployment_name),
                     operation_name="retrieve deployment",
+                    policy=RetryPolicy(
+                        timeout_seconds=min(read_timeout_seconds, remaining),
+                    ),
+                    sleep=time.sleep,
+                    clock=time.monotonic,
                 )
             except Exception as error:
                 if not _is_not_found(error):
@@ -64,12 +77,12 @@ def ensure_deployment(
                 model_name = deployment.get("model_name") or deployment.get("modelName")
             if expected_model_name is None or model_name == expected_model_name:
                 return deployment
-        if time.monotonic() - started >= timeout_seconds:
-            raise TimeoutError(
-                f"Deployment {deployment_name!r} did not become visible with the "
-                f"expected model within {timeout_seconds:g} seconds"
-            )
-        time.sleep(poll_interval_seconds)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError(timeout_message)
+        time.sleep(min(poll_interval_seconds, remaining))
+        # A visible but nonmatching deployment is unfinished, not a reusable cache.
+        deployment = None
 
 
 def invoke_chat(
