@@ -181,15 +181,9 @@ for project authorization, model capacity, and quota before running a recipe.
 
 ## Install
 
-The cookbook targets **`azure-ai-finetuningsessions==1.0.0b3` from [PyPI](https://pypi.org/project/azure-ai-finetuningsessions/)**.
+The cookbook uses **`azure-ai-finetuningsessions==1.0.0b2` from [PyPI](https://pypi.org/project/azure-ai-finetuningsessions/)**.
 Python imports use `azure.ai.finetuningsessions`, including the `aio` namespace.
 No local fine-tuning SDK build, sibling source checkout, or bundled SDK wheel is required.
-
-> [!IMPORTANT]
-> Until beta3 is published on PyPI, installation and hosted dependency-install
-> checks cannot complete. Wait for the release rather than substituting a local
-> SDK wheel. Source-only validation does not qualify the published package;
-> rerun compatibility and recovery checks against the released artifact.
 
 ```bash
 git clone https://github.com/microsoft-foundry/fine-tuning.git
@@ -228,10 +222,9 @@ python -m pip install -e '.[image]' --index-url https://pypi.org/simple --extra-
 
 ## Updating
 
-The cookbook pins its target SDK release in `pyproject.toml` (currently
-`azure-ai-finetuningsessions==1.0.0b3`). New betas use new version numbers; each cookbook sync
-selects its SDK release explicitly and requires validation against the published
-artifact instead of rebuilding a wheel.
+The cookbook pins its published SDK release in `pyproject.toml` (currently
+`azure-ai-finetuningsessions==1.0.0b2`). Reinstall the cookbook to pick up a
+pin change; publishing a new SDK does not upgrade existing environments.
 
 ```bash
 git pull

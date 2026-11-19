@@ -16,6 +16,7 @@ from azure.ai.finetuningsessions import TrainingEngineError
 from azure.ai.finetuningsessions._exceptions import _classify_poll_failure
 from azure.ai.finetuningsessions.aio import FineTuningSessionClient
 from azure.ai.finetuningsessions.models import FromCheckpoint, LoRAConfig
+from azure.core.exceptions import HttpResponseError
 
 from programmed_training import auto_resume, checkpoint_utils
 from programmed_training.rl.train import AsyncConfig, StreamMinibatchConfig
@@ -127,12 +128,25 @@ async def test_real_sdk_and_training_loops_recover_checkpoint(
     client = service.client()
     session_kwargs = dict(base_model="test-model", lora_config=LoRAConfig(rank=16), type="training")
     session = await client.create_session(**session_kwargs)
-    await asyncio.wait_for(auto_resume.run(
+    recovery = asyncio.wait_for(auto_resume.run(
         lambda c, s: train_azure.main(cfg, c, s),
         config=auto_resume.AutoResumeConfig(),
         log_path=str(tmp_path), client=client, session_id=session,
         client_factory=service.client, session_kwargs=session_kwargs,
     ), timeout=15)
+
+    if close_engine_dead and version("azure-ai-finetuningsessions") == "1.0.0b2":
+        with pytest.raises(TrainingEngineError) as original:
+            await recovery
+        assert original.value.error_code == "engine_dead"
+        close_error = original.value.__context__
+        assert isinstance(close_error, HttpResponseError)
+        assert close_error.status_code == 409
+        assert len(service.creations) == 1
+        assert service.closed == [session]
+        return
+
+    await recovery
 
     assert len(service.creations) == 2
     replacement, payload, restored = service.creations[1]

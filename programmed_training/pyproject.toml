@@ -5,7 +5,7 @@ description = "Programmed Training algorithms using the Azure AI Fine-Tuning Ses
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "azure-ai-finetuningsessions==1.0.0b3",
+    "azure-ai-finetuningsessions==1.0.0b2",
     "azure-identity",
     "aiohttp",
     "blobfile",

@@ -468,16 +468,12 @@ Also preserve dataset revision/order, split, seed, and batch/group configuration
 ## Automatic engine-loss recovery
 
 > [!IMPORTANT]
-> Recovery targets the pinned SDK `1.0.0b3` to surface terminal
-> `TrainingEngineError` responses and close failed sessions idempotently.
-> Wait for beta3 publication and validate against the released artifact.
-> SDK `1.0.0b1` retries a polled `engine_dead` response when
-> that response also sets `should_retry=true`, so recovery cannot reliably
-> start in that case. Both `1.0.0b1` and `1.0.0b2` expose an `engine_dead` response while closing
-> the failed session as an HTTP error, so cleanup stops recovery instead of
-> risking overlapping sessions. Reinstall the cookbook to update an older
-> environment. Do not substitute an internal SDK checkout or locally built
-> wheel for the pinned PyPI release.
+> Automatic recovery is best-effort with the pinned SDK `1.0.0b2`. It surfaces a
+> polled `engine_dead` as a terminal `TrainingEngineError` even when the response
+> includes `should_retry=true`. If closing that session returns HTTP 409 with
+> `engine_dead`, the SDK raises a generic HTTP error and the cookbook stops
+> without creating a replacement session. Confirm the old session is no longer
+> active before manually starting a new run from the last usable checkpoint.
 
 All public training recipes enable `auto_resume=True` by default, including
 SFT, RL, DPO, distillation, MCP image-tool, and visual-spatial training.
